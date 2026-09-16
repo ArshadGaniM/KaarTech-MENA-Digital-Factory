@@ -38,6 +38,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # A `schedule` trigger has no push ref, so the checkout above
+          # defaults to main. Never push a commit straight to main (CLAUDE.md
+          # §9.0) — skip until this workflow targets a real active dev branch.
+          if [ "$(git branch --show-current)" = "main" ]; then
+            echo "Scheduled checkout defaulted to main — skipping push."
+            exit 0
+          fi
           if ! git diff --quiet -- tasks/backlog.md; then
             git add tasks/backlog.md
             git commit -m "chore: autonomous backlog status update"
