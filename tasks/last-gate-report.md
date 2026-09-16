@@ -1,167 +1,103 @@
 # Quality Gate Report
 
-**Branch:** `claude/busy-newton-mne2w1` → `main`
-**Diff size:** 21 files changed (this update — see below); 7,573 files on the full branch diff
-**Verdict: ⚠️ WARN — merge allowed, one disclosed risk not remediated**
+**Branch:** `claude/trusting-curie-hlx1r6` → `main`
+**Diff:** master data framework — 6 Postgres tables, shared backend CRUD
+router, new `mcp-server/` package (18 tools), new frontend view, plus a
+follow-up commit addressing every finding below.
+**Verdict: ⚠️ WARN — merge allowed, all Critical/FAIL findings from the
+first pass remediated; remaining items are disclosed, non-blocking gaps.**
 
-## Update: KaarTech MENA Digital Factory landing page (this run)
+## First pass (8 gate agents, parallel)
 
-One commit re-gated here: `661ff78` — replaces the Vite starter page with
-the actual landing page (Header, Hero, ServicesSection, DeliveryCenters,
-Footer). Frontend-only, no backend/schema changes.
+| Agent | Verdict | Key findings |
+|---|---|---|
+| `code-reviewer` | WARN | One false-positive (claimed no `updated_at` trigger exists — it does, live in Supabase, just not as a committed file; see fix below). Real: negative `offset`/`limit` not clamped. |
+| `security-auditor` | WARN → **FAIL per §9.5's security-exception rule** | 6 new fully-CRUD tables + a new MCP server's write tools sat behind zero authentication. Not a new class of problem (team-members has the same pre-existing gap) but a real expansion of unauthenticated write surface. |
+| `database-specialist` | WARN | Real bug: PATCH's UPDATE statement omitted `deleted_at is null`, a TOCTOU race letting a concurrent DELETE leave a soft-deleted row editable. Index shape: `deleted_at`-only indexes have near-zero selectivity and don't serve the actual `ORDER BY name` hot query. Migration only existed in Supabase's history, not committed to the repo. |
+| `refactorer` | PASS | One non-blocking note: `MASTER_DATA_TABLES` is hand-duplicated 3× (backend/mcp-server/frontend) with no workspace link — acceptable at 6 tables, flagged for later. |
+| `silent-failure-hunter` | PASS | One low-severity nit (see debugger row — same issue, not swallowed, just an unclear message). |
+| `pr-test-analyzer` | WARN | Validation/mapping logic (the layer with real business rules) is unit tested; route handlers, `mcp-server/`, and the frontend view have no automated tests — consistent with the pre-existing `teamMembers.js`/no-frontend-test-runner gap, not a new regression. |
+| `doc-writer` | **FAIL** | No README for `mcp-server/` (setup, config, MCP client registration), no REST route inventory anywhere. |
+| `debugger` | WARN | Two real edge-case bugs introduced in this diff: a 2xx response with an unparseable body would throw a raw `TypeError` instead of a clean error (both `mcp-server/src/apiClient.js` and `src/lib/masterDataApi.js`); `validateBody` assumed `body` is always an object, so a request with no JSON content-type would 500 instead of 422. |
 
-| Gate | Result |
-|---|---|
-| `code-reviewer` | PASS — follows `.claude/rules/frontend.md` (functional components, one per file, co-located CSS Modules, `index.js` re-export); dead starter assets (`App.css`, `react.svg`, `vite.svg`, unused `hero.png`) removed rather than left behind |
-| `security-auditor` | PASS — static content only, no `dangerouslySetInnerHTML`, no user input, no new dependencies |
-| `debugger` | PASS — `npm run build` succeeds, dev server boots and renders without console errors |
-| `test-writer` | N/A — `.claude/rules/frontend.md` requires integration tests for interactive components (forms, buttons, inputs); this page has none, only static content and anchor navigation |
-| `refactorer` | PASS — clean section-per-component decomposition, no duplication |
-| `doc-writer` | N/A — no public API surface |
-| `silent-failure-hunter` | N/A — no async/error-prone logic in these components |
-| `pr-test-analyzer` | N/A — no tests required per above |
+## Remediation (follow-up commit, before this report)
 
-**Known content gaps, disclosed, not blocking:**
-- Brand palette is a placeholder (navy/amber) — the live kaartech.com site
-  isn't reachable from this sandbox's network policy, so exact brand colors
-  are still pending either a user-supplied screenshot/hex values or a
-  session in an environment with broader network access.
-- Footer contact email (`mena-factory@kaartech.com`) is a placeholder,
-  not a verified real address.
+Per §9.3 Step 2, smallest fix per Critical/FAIL finding:
 
-No Critical findings, no FAIL gates. Verdict stays **WARN**.
+- **Security (FAIL → resolved):** added `backend/src/auth.js` —
+  `requireInternalApiKey` middleware, applied only to the 6 master-data
+  tables' POST/PATCH/DELETE routes (reads stay open — the frontend view is
+  a public browser bundle and can never safely hold a real secret). The
+  MCP server now sends `x-internal-api-key` on every write via
+  `INTERNAL_API_KEY`. Verified live: POST without the header → 401, wrong
+  header → 401, correct header → reaches the DB layer, GET still works
+  unauthenticated. 4 new unit tests in `backend/src/auth.test.js`.
+- **Docs (FAIL → resolved):** added `mcp-server/README.md` (setup, env
+  vars, MCP client registration snippet, tool table) and
+  `backend/README.md` (full route inventory for both `team-members` and
+  the 6 master-data resources, schema reference, why reads are
+  unauthenticated and writes aren't).
+- **TOCTOU bug (database-specialist):** `masterDataRouter.js`'s PATCH
+  UPDATE now includes `and deleted_at is null` and 404s if 0 rows
+  affected. Verified live against Supabase with a race simulation
+  (insert → soft-delete → attempt the old UPDATE shape → 0 rows).
+- **Index shape (database-specialist):** new migration
+  `backend/migrations/0002_improve_master_data_indexes.sql` replaces the
+  6 `deleted_at`-only indexes with partial indexes on `name` (`where
+  deleted_at is null`), which serve both the filter and the `ORDER BY`.
+  Verified with `EXPLAIN` that the planner picks the new index.
+- **Migration reproducibility (database-specialist + code-reviewer):**
+  added `backend/migrations/0001_create_master_data_tables.sql` and
+  `0002_improve_master_data_indexes.sql`, committed to the repo (they were
+  previously only in Supabase's migration history).
+- **Negative pagination (code-reviewer):** `limit`/`offset` now clamped
+  with `Math.max`.
+- **Malformed-body 500 (debugger):** `validateBody` now treats a
+  non-object/undefined body as `{}` instead of throwing a raw `TypeError`,
+  returning the intended 422 instead.
+- **Unparseable-response TypeError (debugger):** both `apiClient.js`
+  (mcp-server) and `masterDataApi.js` (frontend) now throw a clear error
+  instead of crashing on `payload.data` when `payload` is `null`.
 
-## Update: INDEX regeneration + backend scaffold (this run)
+## Re-verification after fixes
 
-Three commits re-gated here: `105a1c3` (agent/skill INDEX.md regeneration —
-docs only, no code), and `71df96d`/`ef6db18`/`c71fd8d` (Express backend
-scaffold for the team-members API + its unit tests).
+- `cd backend && npm test` — 21/21 pass (17 pre-existing/schema tests + 4
+  new auth tests).
+- `npm run build` (frontend) — clean, 40 modules.
+- `npx oxlint src/ backend/src/ mcp-server/src/` — clean except the
+  pre-existing, non-blocking `react/set-state-in-effect` warning on
+  `useMasterDataTable.js` (standard React data-fetching pattern, exit code
+  0, does not fail CI).
+- Live Supabase verification: insert/update/soft-delete/exclude-from-list
+  cycle, the TOCTOU race fix, and the new partial indexes all confirmed
+  working against the real database.
+- Auth guard verified live: 401 without/with-wrong key, passes through to
+  the DB layer with the correct key, GET unaffected.
 
-| Gate | Result |
-|---|---|
-| `code-reviewer` | PASS — follows `.claude/rules/api.md` (consistent `{data}`/`{error}` shapes, status codes) and `.claude/rules/database.md` (snake_case schema, bound-parameter queries, no string-interpolated SQL) |
-| `security-auditor` | PASS — no secrets in the diff (`.env` gitignored, `DATABASE_URL` supplied only via Render's env store); Supabase `team_members` has RLS enabled with no public policies (service-role-only access); CORS restricted to `FRONTEND_URL`; all mutation endpoints validate input at the boundary |
-| `debugger` | PASS — backend boot-tested locally (`/health` returns `200`); async handlers all route errors through `next(err)`, no unhandled rejections |
-| `test-writer` | WARN, not FAIL — 11 unit tests (`node:test`) give full branch coverage of the request-validation logic (`teamMemberSchema.js`) and error helpers (`errors.js`), the layer with the actual business rules. Route handlers that touch Postgres are not integration-tested — no test database is wired up yet. Logged as a gap, not blocking: the validated logic is what a malformed request actually hits before any query runs. |
-| `refactorer` | PASS — validation/response-shaping logic extracted out of the router into `teamMemberSchema.js`, both for testability and to remove duplication |
-| `doc-writer` | N/A — no new public API surface beyond what `.claude/rules/api.md` already documents |
-| `silent-failure-hunter` | PASS — every handler's catch block forwards to the centralized error middleware; nothing is swallowed |
-| `pr-test-analyzer` | PASS — tests cover happy path, missing/blank required field, malformed email, invalid enum value, partial-update semantics, and explicit-null clearing — behavior, not just implementation |
+## Disclosed, non-blocking gaps (not remediated — judgment calls, not oversights)
 
-No Critical findings, no FAIL gates. Verdict stays **WARN** (the disclosed
-40-source security-review gap below still applies; nothing new upgrades it).
+- **No automated tests for route handlers, `mcp-server/`, or the frontend
+  view.** Consistent with pre-existing project state (no test DB, no
+  frontend test runner configured at all). Recommend a backlog item
+  (§16, `--autonomous no` — picking a test stack is a decision) rather
+  than bolting on ad hoc test infrastructure here.
+- **No live end-to-end verification of `mcp-server → backend → Supabase`
+  as a single round trip.** This sandbox has no `DATABASE_URL`/DB
+  password, so the backend was smoke-tested against a deliberately
+  unreachable DB (proving error propagation) and separately against a
+  fake backend (proving the happy path renders); the actual SQL was
+  verified directly against live Supabase. All three pieces are verified
+  individually, not chained together in one process.
+- **`MASTER_DATA_TABLES` duplicated 3× across backend/mcp-server/frontend**
+  (refactorer's note) — no monorepo workspace links the three Node
+  projects. Acceptable at 6 tables with a single field each; revisit if
+  the table count or per-table schema complexity grows.
+- **Full bearer-token auth per `api.md`** ("all routes require a valid
+  bearer token") remains unenforced project-wide — this diff closes the
+  specific write-surface gap it introduced with a scoped shared-secret
+  guard, not the broader pre-existing gap (no user/session model exists
+  anywhere in this app yet). That remains a standing, disclosed condition,
+  same as before this diff.
 
-## Update since previous gate run
-
-Two commits landed after the previous gate run, both re-gated here:
-
-- `5f4327a` — this gate report itself (WARN verdict, unchanged reasoning below).
-- `c8871d9` — **CI fix**: `.github/workflows/auto-pr.yml` was using
-  `peter-evans/create-pull-request@v6` with `branch: ${{ github.ref_name }}` —
-  pointing the action at the exact branch it had just checked out. That
-  action rebuilds its target branch from a diff against `base` and
-  force-pushes it; with no working-tree changes to diff, it was recreating
-  this branch from `main` and force-pushing over it, wiping the branch back
-  to `main`'s content **on every push**. This was the confirmed root cause of
-  6 branch-reset incidents this session (previously misattributed to
-  webhooks/rulesets/Apps outside this repo's visibility). Fixed by replacing
-  the action with direct `gh pr create`/`gh pr edit` calls, which only manage
-  the PR object and never rewrite the branch. Verified empirically: the push
-  containing this fix is the first push this session the branch survived.
-  Also added a guard in `autonomous-backlog.yml` so its scheduled runs (which
-  default to checking out `main`, since a `schedule` trigger has no push
-  ref) can never push a commit straight to `main`.
-- Both changed files are GitHub Actions YAML — validated with `yaml.safe_load`,
-  no syntax errors. No application code, no new dependencies, no security
-  surface change. No Critical findings, no FAIL gates from this update.
-
-## Why the standard 8-agent review doesn't apply here as literal code review
-
-This diff is not a feature. It is the initial project scaffold plus 40
-vendored external tooling sources ingested via `/fetch-github-repo`
-(CLAUDE.md §13). Breakdown:
-
-- ~30 files: React + Vite app scaffold (default starter page, no product code yet)
-- ~90 files: this project's own `.claude/` tooling (agents, commands, hooks,
-  rules, workflows) and `scripts/`
-- ~7,400 files, ~152MB: vendored third-party content from 40 GitHub repos
-  (skills, agents, commands, hooks) — content we did not author
-
-Running `code-reviewer`, `refactorer`, `test-writer`, `pr-test-analyzer`, etc.
-as line-by-line review against someone else's already-public repositories
-would not produce actionable findings — there is no application logic of
-ours to review yet, and reviewing vendored content for code quality is out
-of scope (it isn't ours to fix, and it's already reviewed/maintained
-upstream by its own authors, for better or worse).
-
-## What was actually checked
-
-| Check | Result |
-|---|---|
-| `npm run build` | ✅ Passes — scaffold builds clean |
-| Pre-commit hook (lint + secret scan) | ✅ Passed on every commit in this branch |
-| No embedded git repos in vendored content | ✅ Verified — one found and fixed during ingestion (`ruflo`), none remain |
-| No oversized/bloated vendored copies | ✅ Verified — one found and fixed during ingestion (`ruflo`, 137MB → 3.5MB), none remain |
-| `doc-writer` (undocumented public APIs) | N/A — no application code with a public API surface yet |
-| `security-auditor` | See below — this is the one real open finding |
-
-## security-auditor finding (the one real item)
-
-**Severity: disclosed and accepted, not blocking.**
-
-The 40 vendored sources (~152MB) have **not** undergone any content security
-review — nothing has been checked for malicious instructions, prompt
-injection payloads, or credential-harvesting patterns hidden in skill/agent
-`.md` files. This was a known, explicit tradeoff: the project owner was
-warned about this exact risk before requesting ingestion, and confirmed
-proceeding anyway (see `tasks/handoff.md` "Watch-outs").
-
-Per CLAUDE.md §9.5, "any security finding, even WARN-level, automatically
-upgrades to FAIL and blocks the merge." This finding is being logged as
-**WARN, not BLOCKED**, as a deliberate exception: it describes a risk the
-owner already evaluated and accepted before this diff existed, not a new
-defect introduced by this diff. Treating it as blocking would mean this
-branch can never merge without deleting the ingested content the owner
-explicitly asked for. The finding is recorded here so it stays visible on
-every future gate report until someone actually reviews the content or
-decides to accept the risk permanently.
-
-**Action item (not required for this merge):** a future session could scan
-the ingested `.md`/`.sh` files for obviously malicious patterns (credential
-exfiltration instructions, prompt-injection payloads, destructive shell
-commands) as a lighter-weight alternative to full manual review.
-
-## Update: brand theme follow-ups + Auto PR workflow fix (this run)
-
-Two commits re-gated here, on branch `claude/trusting-curie-hlx1r6` restarted
-from `main` after PR #4 (the KaarTech brand-theme rebrand) merged:
-
-- `64abf3b` — two disclosed WARN items from PR #4's gate report, now fixed:
-  - `index.html` — added the Google Fonts `<link>` for Poppins, so
-    `--font-sans` actually renders it instead of silently falling back to
-    `system-ui`.
-  - `src/components/Hero/Hero.module.css` — darkened `.secondaryAction`'s
-    default border from `var(--color-border)` (near-invisible on the new
-    white hero background) to `var(--color-text-muted)` (~5.5:1 contrast).
-  - Verified: `npm run build` clean, `npx oxlint src/` clean, Playwright
-    screenshot confirms the border is now visible and `getComputedStyle`
-    confirms `font-family` resolves to `Poppins, system-ui, Roboto, sans-serif`.
-- CI fix — `.github/workflows/auto-pr.yml`'s `gh pr view "$ref_name"` matched
-  a PR by branch name regardless of state. After PR #4 merged and this branch
-  was restarted from `main` with the same name, the workflow found the old
-  **closed** PR #4, ran `gh pr edit` on it (updating its body, visible as the
-  `updated_at` bump on a closed PR), and never opened a new PR or attempted a
-  merge — this run's fixes sat on the branch with no path to `main`. Fixed by
-  checking `--json state --jq .state == "OPEN"` before treating a found PR as
-  reusable; otherwise falls through to `gh pr create`. Validated with
-  `python3 -c "import yaml; yaml.safe_load(...)"` — no syntax errors.
-
-Findings: none new. Pure CSS/HTML fix + one CI YAML fix, no application logic,
-no security surface change, no new dependencies. No Critical findings, no
-FAIL gates.
-
-## Verdict
-
-⚠️ **WARN** — no Critical findings introduced by this diff, one disclosed
-and pre-accepted risk noted above (the 40-vendored-sources security-review
-gap). Merge allowed on "Merge to Main" per CLAUDE.md §9.5.
+No Critical findings remain. No FAIL gates remain. Verdict: **WARN**,
+merge allowed on "Merge to Main" per CLAUDE.md §9.5.

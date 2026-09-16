@@ -10,9 +10,13 @@ export function toResponse(row) {
 }
 
 export function validateBody(body, { partial = false } = {}) {
+  // express.json() leaves req.body undefined for a request sent without a
+  // JSON content-type — treat that the same as an empty object rather than
+  // throwing a raw TypeError that would surface as a misleading 500.
+  const safeBody = body && typeof body === "object" ? body : {};
   const details = {};
-  if (!partial || body.name !== undefined) {
-    if (typeof body.name !== "string" || body.name.trim().length === 0) {
+  if (!partial || safeBody.name !== undefined) {
+    if (typeof safeBody.name !== "string" || safeBody.name.trim().length === 0) {
       details.name = "name is required and must be a non-empty string.";
     }
   }

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "./db.js";
 import { notFound } from "./errors.js";
 import { toResponse, validateBody } from "./masterDataSchema.js";
+import { requireInternalApiKey } from "./auth.js";
 
 // Shared CRUD behaviour for every master data table (CLAUDE.md request:
 // practices, delivery_centers, skill_sets, modules, resources, departments
@@ -18,8 +19,8 @@ export function createMasterDataRouter(tableName, resourceName) {
 
   router.get("/", async (req, res, next) => {
     try {
-      const limit = Math.min(Number(req.query.limit) || 20, 100);
-      const offset = Number(req.query.offset) || 0;
+      const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+      const offset = Math.max(Number(req.query.offset) || 0, 0);
 
       const [rows, count] = await Promise.all([
         pool.query(
@@ -48,7 +49,7 @@ export function createMasterDataRouter(tableName, resourceName) {
     }
   });
 
-  router.post("/", async (req, res, next) => {
+  router.post("/", requireInternalApiKey, async (req, res, next) => {
     try {
       validateBody(req.body);
       const result = await pool.query(
@@ -61,7 +62,7 @@ export function createMasterDataRouter(tableName, resourceName) {
     }
   });
 
-  router.patch("/:id", async (req, res, next) => {
+  router.patch("/:id", requireInternalApiKey, async (req, res, next) => {
     try {
       validateBody(req.body, { partial: true });
       const existing = await pool.query(
@@ -72,16 +73,17 @@ export function createMasterDataRouter(tableName, resourceName) {
 
       const name = req.body.name ?? existing.rows[0].name;
       const result = await pool.query(
-        `update ${tableName} set name = $1 where id = $2 returning *`,
+        `update ${tableName} set name = $1 where id = $2 and deleted_at is null returning *`,
         [name, req.params.id]
       );
+      if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(result.rows[0]) });
     } catch (err) {
       next(err);
     }
   });
 
-  router.delete("/:id", async (req, res, next) => {
+  router.delete("/:id", requireInternalApiKey, async (req, res, next) => {
     try {
       const result = await pool.query(
         `update ${tableName} set deleted_at = now()
