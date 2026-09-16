@@ -18,7 +18,7 @@ app.use((req, res) => {
 });
 
 // Never expose stack traces, internal paths, or SQL errors to the client (api.md).
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   const status = err.status || 500;
   const code = err.code || "internal_error";
   const message = status === 500 ? "An unexpected error occurred." : err.message;
