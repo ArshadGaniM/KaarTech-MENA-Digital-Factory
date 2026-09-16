@@ -1,8 +1,32 @@
 # Quality Gate Report
 
 **Branch:** `claude/busy-newton-mne2w1` → `main`
-**Diff size:** 7,569 files changed, 1,679,237 insertions (0 deletions)
+**Diff size:** 7,569 files changed, 1,679,310 insertions (0 deletions)
 **Verdict: ⚠️ WARN — merge allowed, one disclosed risk not remediated**
+
+## Update since previous gate run
+
+Two commits landed after the previous gate run, both re-gated here:
+
+- `5f4327a` — this gate report itself (WARN verdict, unchanged reasoning below).
+- `c8871d9` — **CI fix**: `.github/workflows/auto-pr.yml` was using
+  `peter-evans/create-pull-request@v6` with `branch: ${{ github.ref_name }}` —
+  pointing the action at the exact branch it had just checked out. That
+  action rebuilds its target branch from a diff against `base` and
+  force-pushes it; with no working-tree changes to diff, it was recreating
+  this branch from `main` and force-pushing over it, wiping the branch back
+  to `main`'s content **on every push**. This was the confirmed root cause of
+  6 branch-reset incidents this session (previously misattributed to
+  webhooks/rulesets/Apps outside this repo's visibility). Fixed by replacing
+  the action with direct `gh pr create`/`gh pr edit` calls, which only manage
+  the PR object and never rewrite the branch. Verified empirically: the push
+  containing this fix is the first push this session the branch survived.
+  Also added a guard in `autonomous-backlog.yml` so its scheduled runs (which
+  default to checking out `main`, since a `schedule` trigger has no push
+  ref) can never push a commit straight to `main`.
+- Both changed files are GitHub Actions YAML — validated with `yaml.safe_load`,
+  no syntax errors. No application code, no new dependencies, no security
+  surface change. No Critical findings, no FAIL gates from this update.
 
 ## Why the standard 8-agent review doesn't apply here as literal code review
 
