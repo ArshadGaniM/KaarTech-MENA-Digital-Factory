@@ -1,0 +1,83 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brandKaartech {
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--color-primary);
+}
+
+.brandDivider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+}
+
+.brandFactory {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.nav {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.navLink {
+  text-decoration: none;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.navLink:hover {
+  color: var(--color-primary);
+}
+
+.cta {
+  background: var(--color-accent);
+  color: var(--color-primary-dark);
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cta:hover {
+  background: var(--color-accent-dark);
+}
+
+@media (max-width: 720px) {
+  .nav {
+    display: none;
+  }
+  .brandFactory {
+    display: none;
+  }
+}

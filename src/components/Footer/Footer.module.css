@@ -1,0 +1,66 @@
+.footer {
+  background: var(--color-primary-dark);
+  color: rgba(255, 255, 255, 0.85);
+  padding: var(--space-5) var(--space-3) var(--space-3);
+  margin-top: auto;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: var(--space-4);
+  text-align: left;
+}
+
+.brand {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: var(--space-1);
+}
+
+.tagline {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  max-width: 320px;
+}
+
+.about h3,
+.contact h3 {
+  color: #ffffff;
+  font-size: 15px;
+  margin-bottom: var(--space-1);
+}
+
+.about p {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+}
+
+.contact a {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.legal {
+  max-width: 1200px;
+  margin: var(--space-4) auto 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .tagline {
+    margin: 0 auto;
+  }
+}
