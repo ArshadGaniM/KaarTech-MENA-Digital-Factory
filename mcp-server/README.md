@@ -58,10 +58,23 @@ e.g. in `claude_desktop_config.json` (Claude Desktop) or a project's
 ## Tools
 
 For each of `practice`, `delivery_center`, `skill_set`, `module`,
-`resource`, `department`:
+`resource`, `department`, there's an `add_<table>`, `update_<table>`, and
+`delete_<table>` tool. Each table's own fields differ — see
+`src/masterDataTables.js` for the authoritative list — but every
+`add_`/`update_` tool additionally accepts an optional `updatedBy: string`
+(who is performing the write; defaults to `"Arshad Ghani"` if omitted, no
+user/auth system exists yet). On create this sets both `createdBy` and
+`updatedBy`; on update, only `updatedBy` changes.
 
-| Tool | Input | Behaviour |
+| Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `add_<table>` | `{ name: string }` | Creates a record. `created_at`/`updated_at` are set by the database. |
-| `update_<table>` | `{ id: string, name: string }` | Modifies a record's name. `updated_at` is bumped automatically by a database trigger. |
-| `delete_<table>` | `{ id: string }` | Soft-deletes a record (sets `deleted_at`; the row is excluded from all reads afterward, not physically removed). |
+| `practice`, `skill_set`, `module`, `resource`, `department` | `name` | `name` |
+| `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
+
+`add_<table>` creates a record — `created_at`/`updated_at` are set by the
+database, and `delivery_center` additionally gets an auto-generated,
+immutable business code (`DC-001`, ...) it never needs to be told.
+`update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
+`updated_at` is bumped automatically by a database trigger.
+`delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`; the
+row is excluded from all reads afterward, not physically removed).

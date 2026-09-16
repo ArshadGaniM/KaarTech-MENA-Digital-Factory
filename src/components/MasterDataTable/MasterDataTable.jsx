@@ -1,11 +1,14 @@
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
 import styles from './MasterDataTable.module.css';
 
-function formatDate(value) {
-  return new Date(value).toLocaleString();
+const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
+
+function formatCell(column, value) {
+  if (DATE_COLUMN_KEYS.has(column.key)) return new Date(value).toLocaleString();
+  return value;
 }
 
-function MasterDataTable({ route }) {
+function MasterDataTable({ route, columns }) {
   const { data, isLoading, error } = useMasterDataTable(route);
 
   if (isLoading) return <p className={styles.status}>Loading…</p>;
@@ -16,17 +19,17 @@ function MasterDataTable({ route }) {
     <table className={styles.table}>
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Created</th>
-          <th>Last modified</th>
+          {columns.map((column) => (
+            <th key={column.key}>{column.label}</th>
+          ))}
         </tr>
       </thead>
       <tbody>
         {data.map((row) => (
           <tr key={row.id}>
-            <td>{row.name}</td>
-            <td>{formatDate(row.createdAt)}</td>
-            <td>{formatDate(row.updatedAt)}</td>
+            {columns.map((column) => (
+              <td key={column.key}>{formatCell(column, row[column.key])}</td>
+            ))}
           </tr>
         ))}
       </tbody>

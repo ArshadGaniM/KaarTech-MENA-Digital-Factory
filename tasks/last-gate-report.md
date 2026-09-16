@@ -1,103 +1,43 @@
 # Quality Gate Report
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff:** master data framework — 6 Postgres tables, shared backend CRUD
-router, new `mcp-server/` package (18 tools), new frontend view, plus a
-follow-up commit addressing every finding below.
-**Verdict: ⚠️ WARN — merge allowed, all Critical/FAIL findings from the
-first pass remediated; remaining items are disclosed, non-blocking gaps.**
+**Diff:** field-driven master-data framework — created_by/updated_by on
+all 6 tables, real Delivery Center columns (code, locationType, city,
+country), plus a follow-up commit addressing every finding below.
+**Verdict: ⚠️ WARN — merge allowed, the FAIL finding from the first pass
+is remediated; remaining items are disclosed, non-blocking gaps.**
 
 ## First pass (8 gate agents, parallel)
 
 | Agent | Verdict | Key findings |
 |---|---|---|
-| `code-reviewer` | WARN | One false-positive (claimed no `updated_at` trigger exists — it does, live in Supabase, just not as a committed file; see fix below). Real: negative `offset`/`limit` not clamped. |
-| `security-auditor` | WARN → **FAIL per §9.5's security-exception rule** | 6 new fully-CRUD tables + a new MCP server's write tools sat behind zero authentication. Not a new class of problem (team-members has the same pre-existing gap) but a real expansion of unauthenticated write surface. |
-| `database-specialist` | WARN | Real bug: PATCH's UPDATE statement omitted `deleted_at is null`, a TOCTOU race letting a concurrent DELETE leave a soft-deleted row editable. Index shape: `deleted_at`-only indexes have near-zero selectivity and don't serve the actual `ORDER BY name` hot query. Migration only existed in Supabase's history, not committed to the repo. |
-| `refactorer` | PASS | One non-blocking note: `MASTER_DATA_TABLES` is hand-duplicated 3× (backend/mcp-server/frontend) with no workspace link — acceptable at 6 tables, flagged for later. |
-| `silent-failure-hunter` | PASS | One low-severity nit (see debugger row — same issue, not swallowed, just an unclear message). |
-| `pr-test-analyzer` | WARN | Validation/mapping logic (the layer with real business rules) is unit tested; route handlers, `mcp-server/`, and the frontend view have no automated tests — consistent with the pre-existing `teamMembers.js`/no-frontend-test-runner gap, not a new regression. |
-| `doc-writer` | **FAIL** | No README for `mcp-server/` (setup, config, MCP client registration), no REST route inventory anywhere. |
-| `debugger` | WARN | Two real edge-case bugs introduced in this diff: a 2xx response with an unparseable body would throw a raw `TypeError` instead of a clean error (both `mcp-server/src/apiClient.js` and `src/lib/masterDataApi.js`); `validateBody` assumed `body` is always an object, so a request with no JSON content-type would 500 instead of 422. |
+| `code-reviewer` | WARN | `field.required` was defined in `masterDataTables.js` but never read by `validateBody` — every field was validated as required on create regardless of the flag, contradicting the file's own documented contract. |
+| `security-auditor` | PASS | Traced the dynamic column-list SQL construction end to end — identifiers still only ever come from the fixed allow-list, values stay bound-parameterized. `SECURITY DEFINER` trigger's `search_path` is pinned. No XSS/injection/secrets issues. |
+| `database-specialist` | WARN | `created_by`/`updated_by` were unbounded `text` with no length cap anywhere (app or DB). Two non-blocking notes: per-table code-generation (sequence + trigger function) will duplicate if reused on more tables; `CHECK` constraint uses Postgres's default auto-naming instead of an explicit name. |
+| `refactorer` | WARN | Same `field.required` dead-flag finding as code-reviewer (independent confirmation). Reiterated the pre-existing `MASTER_DATA_TABLES` 3-way duplication note, now with more per-table detail to keep in sync — still judged not bad enough to force a workspace/shared-package extraction at 2 non-trivial tables. |
+| `silent-failure-hunter` | PASS | Verified the dynamic SQL construction can't silently drop/misapply a field, the MCP tool's `{ updatedBy, ...fields }` destructuring can't leak `updatedBy` into `fields`, and `code`/`id` can never be overwritten via a stray body key. Independently surfaced the same `required` gap as a minor non-blocking note. |
+| `pr-test-analyzer` | PASS | New validation logic (enum accept/reject, partial-update semantics, all-fields-required-on-create) is unit tested with real assertions. Router-level dynamic SQL construction has no unit test, consistent with this project's established pattern (manual verification against live Supabase, same as the pre-existing `teamMembers.js`/original `masterDataRouter.js`). |
+| `doc-writer` | **FAIL** | Both READMEs were stale — still described every master-data POST/PATCH as `{ name: string }` and didn't mention `createdBy`/`updatedBy`/`code` in the response shape, or the new `updatedBy` param on every MCP tool. |
+| `debugger` | PASS | Manually re-derived the POST/PATCH placeholder-index math (no off-by-one), confirmed the MCP destructuring has no naming collision, confirmed the DB `CHECK` values match the app-layer enum values. |
 
 ## Remediation (follow-up commit, before this report)
 
-Per §9.3 Step 2, smallest fix per Critical/FAIL finding:
-
-- **Security (FAIL → resolved):** added `backend/src/auth.js` —
-  `requireInternalApiKey` middleware, applied only to the 6 master-data
-  tables' POST/PATCH/DELETE routes (reads stay open — the frontend view is
-  a public browser bundle and can never safely hold a real secret). The
-  MCP server now sends `x-internal-api-key` on every write via
-  `INTERNAL_API_KEY`. Verified live: POST without the header → 401, wrong
-  header → 401, correct header → reaches the DB layer, GET still works
-  unauthenticated. 4 new unit tests in `backend/src/auth.test.js`.
-- **Docs (FAIL → resolved):** added `mcp-server/README.md` (setup, env
-  vars, MCP client registration snippet, tool table) and
-  `backend/README.md` (full route inventory for both `team-members` and
-  the 6 master-data resources, schema reference, why reads are
-  unauthenticated and writes aren't).
-- **TOCTOU bug (database-specialist):** `masterDataRouter.js`'s PATCH
-  UPDATE now includes `and deleted_at is null` and 404s if 0 rows
-  affected. Verified live against Supabase with a race simulation
-  (insert → soft-delete → attempt the old UPDATE shape → 0 rows).
-- **Index shape (database-specialist):** new migration
-  `backend/migrations/0002_improve_master_data_indexes.sql` replaces the
-  6 `deleted_at`-only indexes with partial indexes on `name` (`where
-  deleted_at is null`), which serve both the filter and the `ORDER BY`.
-  Verified with `EXPLAIN` that the planner picks the new index.
-- **Migration reproducibility (database-specialist + code-reviewer):**
-  added `backend/migrations/0001_create_master_data_tables.sql` and
-  `0002_improve_master_data_indexes.sql`, committed to the repo (they were
-  previously only in Supabase's migration history).
-- **Negative pagination (code-reviewer):** `limit`/`offset` now clamped
-  with `Math.max`.
-- **Malformed-body 500 (debugger):** `validateBody` now treats a
-  non-object/undefined body as `{}` instead of throwing a raw `TypeError`,
-  returning the intended 422 instead.
-- **Unparseable-response TypeError (debugger):** both `apiClient.js`
-  (mcp-server) and `masterDataApi.js` (frontend) now throw a clear error
-  instead of crashing on `payload.data` when `payload` is `null`.
+- **`required` flag (FAIL-adjacent, 3 agents converged — code-reviewer, refactorer, silent-failure-hunter):** `validateBody` in `masterDataSchema.js` now actually honors `field.required` — a non-required field is only validated when present in the request, on both create and update; a required field is still enforced (missing on create → 422). `mcp-server/src/index.js`'s `fieldSchema` now builds a separate zod shape for `add_` (required fields mandatory, others `.optional()`) vs. `update_` (everything optional). All 6 tables currently have every field `required: true`, so this was a latent bug with no live-data symptom — but it's exactly the scenario the field-driven generalization exists to support, so it needed fixing now rather than when the first optional field is added. 6 new tests cover the fix.
+- **Docs (FAIL → resolved):** rewrote `backend/README.md`'s route table (per-table field list, `updatedBy` semantics, `code` field, migrations 0004-0006 inventory, updated schema SQL block) and `mcp-server/README.md`'s tool table (per-table required/optional fields, `updatedBy` param, code auto-generation note).
+- **`created_by`/`updated_by` length cap (WARN, database-specialist):** added `validateActor()` in `masterDataSchema.js` (255-char cap, same limit now applied to every field via `validateBody`) plus `migrations/0006_add_actor_length_constraints.sql` — a `CHECK (char_length(...) <= 255)` on both columns across all 6 tables, as defense-in-depth alongside the app-layer check. 6 new tests (length-cap accept/reject on both `validateBody` and `validateActor`).
 
 ## Re-verification after fixes
 
-- `cd backend && npm test` — 21/21 pass (17 pre-existing/schema tests + 4
-  new auth tests).
+- `cd backend && npm test` — 32/32 pass (26 from the previous round + 6 new: 2 required-flag semantics, 2 length-cap on fields, 2 length-cap on `validateActor`).
 - `npm run build` (frontend) — clean, 40 modules.
-- `npx oxlint src/ backend/src/ mcp-server/src/` — clean except the
-  pre-existing, non-blocking `react/set-state-in-effect` warning on
-  `useMasterDataTable.js` (standard React data-fetching pattern, exit code
-  0, does not fail CI).
-- Live Supabase verification: insert/update/soft-delete/exclude-from-list
-  cycle, the TOCTOU race fix, and the new partial indexes all confirmed
-  working against the real database.
-- Auth guard verified live: 401 without/with-wrong key, passes through to
-  the DB layer with the correct key, GET unaffected.
+- `npx oxlint src/ backend/src/ mcp-server/src/` — clean except the pre-existing, non-blocking `react/set-state-in-effect` warning.
+- `node --check` on every changed `mcp-server/` file — clean.
 
 ## Disclosed, non-blocking gaps (not remediated — judgment calls, not oversights)
 
-- **No automated tests for route handlers, `mcp-server/`, or the frontend
-  view.** Consistent with pre-existing project state (no test DB, no
-  frontend test runner configured at all). Recommend a backlog item
-  (§16, `--autonomous no` — picking a test stack is a decision) rather
-  than bolting on ad hoc test infrastructure here.
-- **No live end-to-end verification of `mcp-server → backend → Supabase`
-  as a single round trip.** This sandbox has no `DATABASE_URL`/DB
-  password, so the backend was smoke-tested against a deliberately
-  unreachable DB (proving error propagation) and separately against a
-  fake backend (proving the happy path renders); the actual SQL was
-  verified directly against live Supabase. All three pieces are verified
-  individually, not chained together in one process.
-- **`MASTER_DATA_TABLES` duplicated 3× across backend/mcp-server/frontend**
-  (refactorer's note) — no monorepo workspace links the three Node
-  projects. Acceptable at 6 tables with a single field each; revisit if
-  the table count or per-table schema complexity grows.
-- **Full bearer-token auth per `api.md`** ("all routes require a valid
-  bearer token") remains unenforced project-wide — this diff closes the
-  specific write-surface gap it introduced with a scoped shared-secret
-  guard, not the broader pre-existing gap (no user/session model exists
-  anywhere in this app yet). That remains a standing, disclosed condition,
-  same as before this diff.
+- **`MASTER_DATA_TABLES` triplication** (backend/mcp-server/frontend) now carries more per-table detail to keep in sync (field keys, enum values, required-ness) for tables with real columns. Still judged proportionate at 2 non-trivial tables (5 of 6 remain single-field) — revisit if a third table gets its own field set, or extract a shared package at that point.
+- **Per-table code-generation** (sequence + `SECURITY DEFINER` trigger function per table) will duplicate 3 DB objects each time another table needs an auto-generated business code. Not reused yet, so not generalized — a parameterized trigger via `TG_ARGV` is the natural next step if/when a second `hasCode` table arrives.
+- **No route-handler-level (integration) tests** for the dynamic SQL construction in `masterDataRouter.js` — consistent with this project's established pattern (manual verification against live Supabase; no test DB wired up anywhere in the repo, including the original `teamMembers.js`).
 
 No Critical findings remain. No FAIL gates remain. Verdict: **WARN**,
 merge allowed on "Merge to Main" per CLAUDE.md §9.5.
