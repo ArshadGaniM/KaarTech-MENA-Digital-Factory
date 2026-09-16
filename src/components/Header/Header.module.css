@@ -60,7 +60,7 @@
 
 .cta {
   background: var(--color-accent);
-  color: var(--color-primary-dark);
+  color: var(--color-on-primary);
   padding: 10px 20px;
   border-radius: 6px;
   font-weight: 700;
