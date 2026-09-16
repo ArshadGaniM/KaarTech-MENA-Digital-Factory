@@ -1,0 +1,240 @@
+{
+  "agent-browser": {
+    "components": "7 skills (core + 6 specialized)",
+    "last_fetched": "2026-09-16T10:45:24Z",
+    "type": "skills",
+    "url": "https://github.com/vercel-labs/agent-browser"
+  },
+  "agent-reach": {
+    "components": "1 skill (career/dev/finance/search/social/video/web reference lookup)",
+    "last_fetched": "2026-09-16T10:49:06Z",
+    "type": "skills",
+    "url": "https://github.com/Panniantong/Agent-Reach"
+  },
+  "agent-skills": {
+    "components": "24 skills, 4 agents, 8 commands, 4 hooks",
+    "last_fetched": "2026-09-16T10:45:22Z",
+    "type": "skills,agents,commands,hooks",
+    "url": "https://github.com/addyosmani/agent-skills"
+  },
+  "andrej-karpathy-skills": {
+    "components": "1 skill (karpathy-guidelines)",
+    "last_fetched": "2026-09-16T10:45:28Z",
+    "type": "skills",
+    "url": "https://github.com/multica-ai/andrej-karpathy-skills"
+  },
+  "anthropics-skills": {
+    "components": "17 skills (pdf, docx, pptx, xlsx, mcp-builder, canvas-design, webapp-testing, +10)",
+    "last_fetched": "2026-09-16T10:48:10Z",
+    "type": "skills,agents",
+    "url": "https://github.com/anthropics/skills"
+  },
+  "anydoc": {
+    "components": "1 skill (convert-documents-to-markdown)",
+    "last_fetched": "2026-09-16T10:49:03Z",
+    "type": "skills",
+    "url": "https://github.com/firecrawl/anydoc"
+  },
+  "archify": {
+    "components": "1 skill (architecture/dataflow/sequence/lifecycle/workflow diagram renderers)",
+    "last_fetched": "2026-09-16T10:49:05Z",
+    "type": "skills",
+    "url": "https://github.com/tt-a1i/archify"
+  },
+  "awesome-agent-skills": {
+    "components": "curated agent skills list (no extractables)",
+    "last_fetched": "2026-09-16T10:49:01Z",
+    "type": "none",
+    "url": "https://github.com/VoltAgent/awesome-agent-skills"
+  },
+  "awesome-ai-agents": {
+    "components": "curated AI agents directory (no extractables)",
+    "last_fetched": "2026-09-16T10:49:00Z",
+    "type": "none",
+    "url": "https://github.com/e2b-dev/awesome-ai-agents"
+  },
+  "awesome-claude-code": {
+    "components": "evaluate-repository (1)",
+    "last_fetched": "2026-09-16T10:45:10Z",
+    "type": "none",
+    "url": "https://github.com/hesreallyhim/awesome-claude-code.git"
+  },
+  "awesome-claude-code-subagents": {
+    "components": "154 Claude Code subagents across 10 categories",
+    "last_fetched": "2026-09-16T10:49:02Z",
+    "type": "none",
+    "url": "https://github.com/VoltAgent/awesome-claude-code-subagents"
+  },
+  "awesome-claude-design": {
+    "components": "curated Claude design-resource list (no SKILL.md extractables)",
+    "last_fetched": "2026-09-16T10:54:57Z",
+    "type": "none",
+    "url": "https://github.com/VoltAgent/awesome-claude-design"
+  },
+  "awesome-openclaw-skills": {
+    "components": "curated OpenClaw skills list (no SKILL.md extractables)",
+    "last_fetched": "2026-09-16T10:48:22Z",
+    "type": "none",
+    "url": "https://github.com/VoltAgent/awesome-openclaw-skills"
+  },
+  "claude-code": {
+    "components": "10 skills, 14 agents, 16 commands, 7 hooks",
+    "last_fetched": "2026-09-16T10:48:09Z",
+    "type": "skills,agents,commands,hooks",
+    "url": "https://github.com/anthropics/claude-code"
+  },
+  "claude-code-router": {
+    "components": "10 provider-router agent configs",
+    "last_fetched": "2026-09-16T10:50:17Z",
+    "type": "agents",
+    "url": "https://github.com/musistudio/claude-code-router"
+  },
+  "claude-cookbooks": {
+    "components": "1 skill (cookbook-audit), 1 agent, 7 commands, 89 notebooks",
+    "last_fetched": "2026-09-16T10:48:19Z",
+    "type": "skills,agents,commands,hooks",
+    "url": "https://github.com/anthropics/claude-cookbooks"
+  },
+  "claude-mem": {
+    "components": "do, knowledge-agent, make-plan, mem-search, smart-explore, timeline-report, version-bump (7)",
+    "last_fetched": "2026-09-16T10:27:11Z",
+    "type": "skills,commands",
+    "url": "https://github.com/thedotmack/claude-mem.git"
+  },
+  "claude-skills": {
+    "last_fetched": "2026-09-16T10:51:29Z",
+    "type": "skills,agents,commands,hooks",
+    "url": "https://github.com/alirezarezvani/claude-skills"
+  },
+  "codegraph": {
+    "components": "2 skills (agent-eval, add-lang)",
+    "last_fetched": "2026-09-16T10:50:29Z",
+    "type": "skills",
+    "url": "https://github.com/colbymchenry/codegraph"
+  },
+  "context7": {
+    "components": "context7-cli, context7-mcp, find-docs (3 skills); docs-researcher (1 agent); /context7:docs (1 command)",
+    "last_fetched": "2026-09-16T10:27:15Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/upstash/context7.git"
+  },
+  "design-md-chrome": {
+    "components": "Chrome extension project (no SKILL.md extractables)",
+    "last_fetched": "2026-09-16T10:54:58Z",
+    "type": "none",
+    "url": "https://github.com/bergside/design-md-chrome"
+  },
+  "design-motion-principles": {
+    "components": "1 skill (UI motion/animation audit + creation workflow)",
+    "last_fetched": "2026-09-16T10:54:59Z",
+    "type": "skills",
+    "url": "https://github.com/kylezantos/design-motion-principles"
+  },
+  "everything-claude-code": {
+    "components": "34 skills spanning agent tooling, api-design, frontend/backend patterns, research, security-review, tdd-workflow, etc.",
+    "last_fetched": "2026-09-16T10:27:27Z",
+    "type": "skills,agents,commands,hooks",
+    "url": "https://github.com/affaan-m/everything-claude-code.git"
+  },
+  "get-shit-done": {
+    "components": "gsd-planner, gsd-debugger, gsd-code-reviewer, gsd-executor, gsd-roadmapper, gsd-security-auditor, gsd-verifier + 26 more (33 total)",
+    "last_fetched": "2026-09-16T10:27:36Z",
+    "type": "skills,agents,commands,hooks",
+    "url": "https://github.com/gsd-build/get-shit-done.git"
+  },
+  "headroom": {
+    "components": "1 skill, 1 hooks.json, 11 token-optim files",
+    "last_fetched": "2026-09-16T10:45:27Z",
+    "type": "none",
+    "url": "https://github.com/headroomlabs-ai/headroom"
+  },
+  "impeccable": {
+    "components": "1 skill (visual polish/design-critique), 4 agents, 1 command",
+    "last_fetched": "2026-09-16T10:54:55Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/pbakaus/impeccable"
+  },
+  "learn-claude-code": {
+    "components": "4 skills (agent-builder, code-review, mcp-builder, pdf)",
+    "last_fetched": "2026-09-16T10:50:15Z",
+    "type": "skills",
+    "url": "https://github.com/shareAI-lab/learn-claude-code"
+  },
+  "marketingskills": {
+    "components": "~55 marketing skills (SEO, ads, copywriting, CRO, email, social, pricing, retention)",
+    "last_fetched": "2026-09-16T10:50:31Z",
+    "type": "skills",
+    "url": "https://github.com/coreyhaines31/marketingskills"
+  },
+  "n8n-mcp": {
+    "components": "code-reviewer, context-manager, debugger, deployment-engineer, mcp-backend-engineer, n8n-mcp-tester, technical-researcher, test-automator (8)",
+    "last_fetched": "2026-09-16T10:27:33Z",
+    "type": "skills,agents",
+    "url": "https://github.com/czlonkowski/n8n-mcp.git"
+  },
+  "obsidian-skills": {
+    "components": "defuddle, json-canvas, obsidian-bases, obsidian-cli, obsidian-markdown (5)",
+    "last_fetched": "2026-09-16T10:27:13Z",
+    "type": "skills",
+    "url": "https://github.com/kepano/obsidian-skills.git"
+  },
+  "omniroute": {
+    "components": "46 skills (multi-provider LLM routing/proxy CLI toolchain), 1 command",
+    "last_fetched": "2026-09-16T10:55:14Z",
+    "type": "skills,commands",
+    "url": "https://github.com/diegosouzapw/OmniRoute"
+  },
+  "one-skill-to-rule-them-all": {
+    "components": "1 skill",
+    "last_fetched": "2026-09-16T10:55:15Z",
+    "type": "skills",
+    "url": "https://github.com/rebelytics/one-skill-to-rule-them-all"
+  },
+  "openmontage": {
+    "components": "142 skills, 8 agents, 3 commands (video/media generation and editing toolchain)",
+    "last_fetched": "2026-09-16T10:50:01Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/calesthio/OpenMontage"
+  },
+  "orca": {
+    "components": "8 skills (computer-use, orchestration, orca-cli, orca-emulator/-android, orca-linear, linear-tickets, orca-per-workspace-env)",
+    "last_fetched": "2026-09-16T10:50:13Z",
+    "type": "skills",
+    "url": "https://github.com/stablyai/orca"
+  },
+  "repomix": {
+    "components": "5 skills, 7 reviewer agents, 17 commands",
+    "last_fetched": "2026-09-16T10:48:12Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/yamadashy/repomix"
+  },
+  "ruflo": {
+    "last_fetched": "2026-09-16T10:47:19Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/ruvnet/ruflo.git"
+  },
+  "superpowers": {
+    "components": "brainstorming, dispatching-parallel-agents, executing-plans, finishing-a-development-branch, receiving-code-review, requesting-code-review, subagent-driven-development, systematic-debugging, test-driven-development, using-git-worktrees, verification-before-completion, writing-plans, writing-skills (13)",
+    "last_fetched": "2026-09-16T10:19:21Z",
+    "type": "skills,hooks",
+    "url": "https://github.com/obra/superpowers.git"
+  },
+  "system-prompts-leaks": {
+    "components": "3 skills (deep-research, doctor, run-skill-generator)",
+    "last_fetched": "2026-09-16T10:48:21Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/asgeirtj/system_prompts_leaks"
+  },
+  "taste-skill": {
+    "components": "13 design-taste skills",
+    "last_fetched": "2026-09-16T10:54:56Z",
+    "type": "skills",
+    "url": "https://github.com/Leonxlnx/taste-skill"
+  },
+  "ui-ux-pro-max": {
+    "components": "banner-design, brand, design-system, design, slides, ui-styling, ui-ux-pro-max (7)",
+    "last_fetched": "2026-09-16T10:24:21Z",
+    "type": "skills,agents,commands",
+    "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git"
+  }
+}

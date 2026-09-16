@@ -1,0 +1,52 @@
+name: Autonomous Backlog
+
+# Fires on a fixed cadence, picks the next autonomous pending task from
+# tasks/backlog.md, and commits progress to the active dev branch.
+# See CLAUDE.md §16.
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run-backlog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pick next autonomous task
+        id: pick
+        run: python scripts/backlog_run.py
+
+      # NOTE: actual task execution (invoking Claude non-interactively with
+      # the picked task's description/context as the prompt) is intentionally
+      # not wired up here — no such invocation method has been chosen yet for
+      # this project. Wire it in once one is (e.g. `claude -p "<prompt>"`).
+
+      - name: Commit backlog status update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # A `schedule` trigger has no push ref, so the checkout above
+          # defaults to main. Never push a commit straight to main (CLAUDE.md
+          # §9.0) — skip until this workflow targets a real active dev branch.
+          if [ "$(git branch --show-current)" = "main" ]; then
+            echo "Scheduled checkout defaulted to main — skipping push."
+            exit 0
+          fi
+          if ! git diff --quiet -- tasks/backlog.md; then
+            git add tasks/backlog.md
+            git commit -m "chore: autonomous backlog status update"
+            git push
+          fi

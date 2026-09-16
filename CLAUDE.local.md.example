@@ -1,0 +1,13 @@
+# Personal Overrides (local only — gitignored)
+
+Copy this file to `CLAUDE.local.md` and edit freely. It loads alongside
+`CLAUDE.md` every session but never gets committed.
+
+## Shortcuts
+- When I say "ship it" → run the full `/gate` protocol on the current branch.
+
+## Current focus
+- (fill in what you're working on right now)
+
+## Personal paths
+- (any machine-specific paths or tooling notes)
