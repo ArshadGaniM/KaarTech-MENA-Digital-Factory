@@ -34,4 +34,15 @@ npm run preview
 src/        React components and app source
 public/     Static assets
 index.html  App entry point
+.claude/    Claude Code project tooling — agents, commands, hooks, rules
+tasks/      Working state — backlog, pipeline queue, handoff notes
 ```
+
+## Working with Claude Code on this repo
+
+See [`CLAUDE.md`](./CLAUDE.md) for the full development process: the staged
+pipeline every non-trivial change goes through, the quality gate before
+merging to `main`, and all standing conventions. Copy
+`CLAUDE.local.md.example` to `CLAUDE.local.md` and
+`.claude/settings.local.json.example` to `.claude/settings.local.json` for
+personal, gitignored overrides.

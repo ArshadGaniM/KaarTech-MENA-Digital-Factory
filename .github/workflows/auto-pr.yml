@@ -1,0 +1,60 @@
+name: Auto PR
+
+# Opens/updates a PR on push to any branch except main, using
+# tasks/last-gate-report.md as the PR body when present (CLAUDE.md §9.3).
+# Auto-merges only when that push carries a fresh, non-BLOCKED gate report —
+# see CLAUDE.md §9.3 Step 5 for the full contract.
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read gate report if present
+        id: gate
+        run: |
+          if [ -f tasks/last-gate-report.md ]; then
+            echo "has_report=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "body<<GATE_EOF"
+              cat tasks/last-gate-report.md
+              echo "GATE_EOF"
+            } >> "$GITHUB_OUTPUT"
+            if grep -qi "BLOCKED" tasks/last-gate-report.md; then
+              echo "blocked=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "blocked=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            echo "blocked=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update PR
+        id: pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ github.ref_name }}
+          base: main
+          title: "${{ github.ref_name }}"
+          body: ${{ steps.gate.outputs.has_report == 'true' && steps.gate.outputs.body || 'No gate report yet — run the /gate protocol before merging.' }}
+
+      - name: Auto-merge on fresh non-BLOCKED gate report
+        if: steps.gate.outputs.has_report == 'true' && steps.gate.outputs.blocked == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.ref_name }}" --squash --auto || true

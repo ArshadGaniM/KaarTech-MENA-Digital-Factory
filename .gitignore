@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Personal overrides (CLAUDE.md §4) — committed as .example templates instead
+CLAUDE.local.md
+.claude/settings.local.json
+
+.env
+.claude/skills/.last-updated
+.claude/skills/.update-log
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
