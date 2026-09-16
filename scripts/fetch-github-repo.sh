@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # One-shot external repo ingestion. See CLAUDE.md §13.2.
-#   scripts/fetch-github-repo.sh <github-url>
+#   scripts/fetch-github-repo.sh <github-url> [slug]
+#
+# The optional [slug] overrides the auto-derived slug (the URL's basename,
+# lowercased extension stripped). Pass it whenever the repo is already
+# registered in .claude/github-repos.json under a curated slug that differs
+# from its raw repo name (e.g. "ui-ux-pro-max" for a repo literally named
+# "ui-ux-pro-max-skill") — otherwise this creates a second, mismatched entry
+# instead of updating the one you already curated.
 set -euo pipefail
 
-REPO_URL="${1:?Usage: fetch-github-repo.sh <github-url>}"
-SLUG=$(basename "$REPO_URL" .git)
+REPO_URL="${1:?Usage: fetch-github-repo.sh <github-url> [slug]}"
+SLUG="${2:-$(basename "$REPO_URL" .git)}"
 REGISTRY=".claude/github-repos.json"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT

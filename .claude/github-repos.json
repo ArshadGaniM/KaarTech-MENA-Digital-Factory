@@ -235,8 +235,8 @@
   },
   "ui-ux-pro-max": {
     "components": "banner-design, brand, design-system, design, slides, ui-styling, ui-ux-pro-max (7)",
-    "last_fetched": null,
-    "type": "skills",
+    "last_fetched": "2026-09-16T10:24:21Z",
+    "type": "skills,agents,commands",
     "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git"
   }
 }

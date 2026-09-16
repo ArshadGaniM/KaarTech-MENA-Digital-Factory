@@ -96,5 +96,54 @@
     "slug": "writing-skills",
     "source_repo": "https://github.com/obra/superpowers.git",
     "source_slug": "superpowers"
+  },
+  "ui-ux-pro-max/banner-design": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/banner-design/SKILL.md",
+    "slug": "banner-design",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
+  },
+  "ui-ux-pro-max/brand": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/brand/SKILL.md",
+    "slug": "brand",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
+  },
+  "ui-ux-pro-max/design": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/design/SKILL.md",
+    "slug": "design",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
+  },
+  "ui-ux-pro-max/design-system": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/design-system/SKILL.md",
+    "slug": "design-system",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
+  },
+  "ui-ux-pro-max/slides": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/slides/SKILL.md",
+    "slug": "slides",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
+  },
+  "ui-ux-pro-max/ui-styling": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/ui-styling/SKILL.md",
+    "slug": "ui-styling",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
+  },
+  "ui-ux-pro-max/ui-ux-pro-max": {
+    "category": "other",
+    "path": ".claude/skills/ui-ux-pro-max/ui-ux-pro-max/SKILL.md",
+    "slug": "ui-ux-pro-max",
+    "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+    "source_slug": "ui-ux-pro-max"
   }
 }

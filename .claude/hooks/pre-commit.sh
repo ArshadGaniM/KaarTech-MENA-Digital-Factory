@@ -11,8 +11,19 @@ if [[ -f "tsconfig.json" ]]; then
   npx --no-install tsc --noEmit || FAIL=1
 fi
 
+# Vendored content ingested via /fetch-github-repo (CLAUDE.md §13) isn't code
+# we wrote or maintain — it doesn't owe this project's lint bar. Exclude
+# .claude/skills/** entirely, and .claude/agents/** except our own
+# dev-team/ pipeline agents (agent files copied straight into
+# .claude/agents/<source-slug>/ are vendored; .claude/agents/dev-team/ and
+# top-level .claude/agents/*.md are first-party).
+IS_VENDORED='^\.claude/skills/|^\.claude/agents/[^/]+/[^/]'
+
 # 2. Lint staged frontend files
-STAGED_FRONTEND=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || true)
+STAGED_FRONTEND=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(js|jsx|ts|tsx)$' \
+  | grep -Ev "$IS_VENDORED" \
+  || true)
 if [[ -n "$STAGED_FRONTEND" ]]; then
   echo "Linting staged frontend files..."
   # If the linter runs from inside a subdirectory, strip the prefix before
@@ -23,7 +34,10 @@ else
 fi
 
 # 3. Lint staged backend files (no-op until a backend exists)
-STAGED_BACKEND=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+STAGED_BACKEND=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.py$' \
+  | grep -Ev "$IS_VENDORED" \
+  || true)
 if [[ -n "$STAGED_BACKEND" ]]; then
   if command -v ruff >/dev/null 2>&1; then
     echo "Linting staged backend files..."
