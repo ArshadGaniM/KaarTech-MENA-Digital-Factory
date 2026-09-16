@@ -1,4 +1,256 @@
 {
+  "agent-browser/agent-browser": {
+    "category": "development",
+    "path": ".claude/skills/agent-browser/agent-browser/SKILL.md",
+    "slug": "agent-browser",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/agentcore": {
+    "category": "development",
+    "path": ".claude/skills/agent-browser/agentcore/SKILL.md",
+    "slug": "agentcore",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/core": {
+    "category": "other",
+    "path": ".claude/skills/agent-browser/core/SKILL.md",
+    "slug": "core",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/derive-client": {
+    "category": "other",
+    "path": ".claude/skills/agent-browser/derive-client/SKILL.md",
+    "slug": "derive-client",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/dogfood": {
+    "category": "other",
+    "path": ".claude/skills/agent-browser/dogfood/SKILL.md",
+    "slug": "dogfood",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/electron": {
+    "category": "other",
+    "path": ".claude/skills/agent-browser/electron/SKILL.md",
+    "slug": "electron",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/protected-vercel-deployments": {
+    "category": "other",
+    "path": ".claude/skills/agent-browser/protected-vercel-deployments/SKILL.md",
+    "slug": "protected-vercel-deployments",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/slack": {
+    "category": "other",
+    "path": ".claude/skills/agent-browser/slack/SKILL.md",
+    "slug": "slack",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/vercel-sandbox": {
+    "category": "data",
+    "path": ".claude/skills/agent-browser/vercel-sandbox/SKILL.md",
+    "slug": "vercel-sandbox",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-browser/webmcp-gen": {
+    "category": "development",
+    "path": ".claude/skills/agent-browser/webmcp-gen/SKILL.md",
+    "slug": "webmcp-gen",
+    "source_repo": "https://github.com/vercel-labs/agent-browser",
+    "source_slug": "agent-browser"
+  },
+  "agent-skills/api-and-interface-design": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/api-and-interface-design/SKILL.md",
+    "slug": "api-and-interface-design",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/browser-testing-with-devtools": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/browser-testing-with-devtools/SKILL.md",
+    "slug": "browser-testing-with-devtools",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/ci-cd-and-automation": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/ci-cd-and-automation/SKILL.md",
+    "slug": "ci-cd-and-automation",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/code-review-and-quality": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/code-review-and-quality/SKILL.md",
+    "slug": "code-review-and-quality",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/code-simplification": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/code-simplification/SKILL.md",
+    "slug": "code-simplification",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/constraint-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/constraint-driven-development/SKILL.md",
+    "slug": "constraint-driven-development",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/context-engineering": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/context-engineering/SKILL.md",
+    "slug": "context-engineering",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/debugging-and-error-recovery": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/debugging-and-error-recovery/SKILL.md",
+    "slug": "debugging-and-error-recovery",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/deprecation-and-migration": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/deprecation-and-migration/SKILL.md",
+    "slug": "deprecation-and-migration",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/documentation-and-adrs": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/documentation-and-adrs/SKILL.md",
+    "slug": "documentation-and-adrs",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/doubt-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/doubt-driven-development/SKILL.md",
+    "slug": "doubt-driven-development",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/frontend-ui-engineering": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/frontend-ui-engineering/SKILL.md",
+    "slug": "frontend-ui-engineering",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/git-workflow-and-versioning": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/git-workflow-and-versioning/SKILL.md",
+    "slug": "git-workflow-and-versioning",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/idea-refine": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/idea-refine/SKILL.md",
+    "slug": "idea-refine",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/incremental-implementation": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/incremental-implementation/SKILL.md",
+    "slug": "incremental-implementation",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/interview-me": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/interview-me/SKILL.md",
+    "slug": "interview-me",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/observability-and-instrumentation": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/observability-and-instrumentation/SKILL.md",
+    "slug": "observability-and-instrumentation",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/performance-optimization": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/performance-optimization/SKILL.md",
+    "slug": "performance-optimization",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/planning-and-task-breakdown": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/planning-and-task-breakdown/SKILL.md",
+    "slug": "planning-and-task-breakdown",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/security-and-hardening": {
+    "category": "security",
+    "path": ".claude/skills/agent-skills/security-and-hardening/SKILL.md",
+    "slug": "security-and-hardening",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/shipping-and-launch": {
+    "category": "other",
+    "path": ".claude/skills/agent-skills/shipping-and-launch/SKILL.md",
+    "slug": "shipping-and-launch",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/source-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/source-driven-development/SKILL.md",
+    "slug": "source-driven-development",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/spec-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/spec-driven-development/SKILL.md",
+    "slug": "spec-driven-development",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/test-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/test-driven-development/SKILL.md",
+    "slug": "test-driven-development",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "agent-skills/using-agent-skills": {
+    "category": "development",
+    "path": ".claude/skills/agent-skills/using-agent-skills/SKILL.md",
+    "slug": "using-agent-skills",
+    "source_repo": "https://github.com/addyosmani/agent-skills",
+    "source_slug": "agent-skills"
+  },
+  "andrej-karpathy-skills/karpathy-guidelines": {
+    "category": "other",
+    "path": ".claude/skills/andrej-karpathy-skills/karpathy-guidelines/SKILL.md",
+    "slug": "karpathy-guidelines",
+    "source_repo": "https://github.com/multica-ai/andrej-karpathy-skills",
+    "source_slug": "andrej-karpathy-skills"
+  },
   "claude-mem/babysit": {
     "category": "other",
     "path": ".claude/skills/claude-mem/babysit/SKILL.md",
@@ -2399,6 +2651,1994 @@
     "slug": "obsidian-markdown",
     "source_repo": "https://github.com/kepano/obsidian-skills.git",
     "source_slug": "obsidian-skills"
+  },
+  "ruflo": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/SKILL.md",
+    "slug": "ruflo",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/add-model-descriptions": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/add-model-descriptions/SKILL.md",
+    "slug": "add-model-descriptions",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/adr-create": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/adr-create/SKILL.md",
+    "slug": "adr-create",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/adr-index": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/adr-index/SKILL.md",
+    "slug": "adr-index",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/adr-reindex": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/adr-reindex/SKILL.md",
+    "slug": "adr-reindex",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/adr-review": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/adr-review/SKILL.md",
+    "slug": "adr-review",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/adr-verify": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/adr-verify/SKILL.md",
+    "slug": "adr-verify",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-adaptive-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-adaptive-coordinator/SKILL.md",
+    "slug": "agent-adaptive-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-agent": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-agent/SKILL.md",
+    "slug": "agent-agent",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-agentic-payments": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-agentic-payments/SKILL.md",
+    "slug": "agent-agentic-payments",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-analyze-code-quality": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-analyze-code-quality/SKILL.md",
+    "slug": "agent-analyze-code-quality",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-app-store": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-app-store/SKILL.md",
+    "slug": "agent-app-store",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-arch-system-design": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-arch-system-design/SKILL.md",
+    "slug": "agent-arch-system-design",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-architecture": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-architecture/SKILL.md",
+    "slug": "agent-architecture",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-authentication": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-authentication/SKILL.md",
+    "slug": "agent-authentication",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-automation-smart-agent": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-automation-smart-agent/SKILL.md",
+    "slug": "agent-automation-smart-agent",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-base-template-generator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-base-template-generator/SKILL.md",
+    "slug": "agent-base-template-generator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-benchmark-suite": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-benchmark-suite/SKILL.md",
+    "slug": "agent-benchmark-suite",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-byzantine-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-byzantine-coordinator/SKILL.md",
+    "slug": "agent-byzantine-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-challenges": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-challenges/SKILL.md",
+    "slug": "agent-challenges",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-code-analyzer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-code-analyzer/SKILL.md",
+    "slug": "agent-code-analyzer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-code-goal-planner": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-code-goal-planner/SKILL.md",
+    "slug": "agent-code-goal-planner",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-code-review-swarm": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-code-review-swarm/SKILL.md",
+    "slug": "agent-code-review-swarm",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-coder": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-coder/SKILL.md",
+    "slug": "agent-coder",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-collective-intelligence-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-collective-intelligence-coordinator/SKILL.md",
+    "slug": "agent-collective-intelligence-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-consensus-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-consensus-coordinator/SKILL.md",
+    "slug": "agent-consensus-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-coordination": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-coordination/SKILL.md",
+    "slug": "agent-coordination",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-coordinator-swarm-init": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-coordinator-swarm-init/SKILL.md",
+    "slug": "agent-coordinator-swarm-init",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-crdt-synchronizer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-crdt-synchronizer/SKILL.md",
+    "slug": "agent-crdt-synchronizer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-data-ml-model": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-data-ml-model/SKILL.md",
+    "slug": "agent-data-ml-model",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-dev-backend-api": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-dev-backend-api/SKILL.md",
+    "slug": "agent-dev-backend-api",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-docs-api-openapi": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-docs-api-openapi/SKILL.md",
+    "slug": "agent-docs-api-openapi",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-github-modes": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-github-modes/SKILL.md",
+    "slug": "agent-github-modes",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-github-pr-manager": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-github-pr-manager/SKILL.md",
+    "slug": "agent-github-pr-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-goal-planner": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-goal-planner/SKILL.md",
+    "slug": "agent-goal-planner",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-gossip-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-gossip-coordinator/SKILL.md",
+    "slug": "agent-gossip-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-hierarchical-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-hierarchical-coordinator/SKILL.md",
+    "slug": "agent-hierarchical-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-implementer-sparc-coder": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-implementer-sparc-coder/SKILL.md",
+    "slug": "agent-implementer-sparc-coder",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-issue-tracker": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-issue-tracker/SKILL.md",
+    "slug": "agent-issue-tracker",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-load-balancer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-load-balancer/SKILL.md",
+    "slug": "agent-load-balancer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-matrix-optimizer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-matrix-optimizer/SKILL.md",
+    "slug": "agent-matrix-optimizer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-memory-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-memory-coordinator/SKILL.md",
+    "slug": "agent-memory-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-mesh-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-mesh-coordinator/SKILL.md",
+    "slug": "agent-mesh-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-migration-plan": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-migration-plan/SKILL.md",
+    "slug": "agent-migration-plan",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-multi-repo-swarm": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-multi-repo-swarm/SKILL.md",
+    "slug": "agent-multi-repo-swarm",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-neural-network": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-neural-network/SKILL.md",
+    "slug": "agent-neural-network",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-ops-cicd-github": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-ops-cicd-github/SKILL.md",
+    "slug": "agent-ops-cicd-github",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-orchestrator-task": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-orchestrator-task/SKILL.md",
+    "slug": "agent-orchestrator-task",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-pagerank-analyzer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-pagerank-analyzer/SKILL.md",
+    "slug": "agent-pagerank-analyzer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-payments": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-payments/SKILL.md",
+    "slug": "agent-payments",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-performance-analyzer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-performance-analyzer/SKILL.md",
+    "slug": "agent-performance-analyzer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-performance-benchmarker": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-performance-benchmarker/SKILL.md",
+    "slug": "agent-performance-benchmarker",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-performance-monitor": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-performance-monitor/SKILL.md",
+    "slug": "agent-performance-monitor",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-performance-optimizer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-performance-optimizer/SKILL.md",
+    "slug": "agent-performance-optimizer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-planner": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-planner/SKILL.md",
+    "slug": "agent-planner",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-pr-manager": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-pr-manager/SKILL.md",
+    "slug": "agent-pr-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-production-validator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-production-validator/SKILL.md",
+    "slug": "agent-production-validator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-project-board-sync": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-project-board-sync/SKILL.md",
+    "slug": "agent-project-board-sync",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-pseudocode": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-pseudocode/SKILL.md",
+    "slug": "agent-pseudocode",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-queen-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-queen-coordinator/SKILL.md",
+    "slug": "agent-queen-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-quorum-manager": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-quorum-manager/SKILL.md",
+    "slug": "agent-quorum-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-raft-manager": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-raft-manager/SKILL.md",
+    "slug": "agent-raft-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-refinement": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-refinement/SKILL.md",
+    "slug": "agent-refinement",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-release-manager": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-release-manager/SKILL.md",
+    "slug": "agent-release-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-release-swarm": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-release-swarm/SKILL.md",
+    "slug": "agent-release-swarm",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-repo-architect": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-repo-architect/SKILL.md",
+    "slug": "agent-repo-architect",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-researcher": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-researcher/SKILL.md",
+    "slug": "agent-researcher",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-resource-allocator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-resource-allocator/SKILL.md",
+    "slug": "agent-resource-allocator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-reviewer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-reviewer/SKILL.md",
+    "slug": "agent-reviewer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-safla-neural": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-safla-neural/SKILL.md",
+    "slug": "agent-safla-neural",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-sandbox": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-sandbox/SKILL.md",
+    "slug": "agent-sandbox",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-scout-explorer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-scout-explorer/SKILL.md",
+    "slug": "agent-scout-explorer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-security-manager": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/agent-security-manager/SKILL.md",
+    "slug": "agent-security-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-sona-learning-optimizer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-sona-learning-optimizer/SKILL.md",
+    "slug": "agent-sona-learning-optimizer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-sparc-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-sparc-coordinator/SKILL.md",
+    "slug": "agent-sparc-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-spec-mobile-react-native": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-spec-mobile-react-native/SKILL.md",
+    "slug": "agent-spec-mobile-react-native",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-specification": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-specification/SKILL.md",
+    "slug": "agent-specification",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-swarm": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-swarm/SKILL.md",
+    "slug": "agent-swarm",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-swarm-issue": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-swarm-issue/SKILL.md",
+    "slug": "agent-swarm-issue",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-swarm-memory-manager": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-swarm-memory-manager/SKILL.md",
+    "slug": "agent-swarm-memory-manager",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-swarm-pr": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-swarm-pr/SKILL.md",
+    "slug": "agent-swarm-pr",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-sync-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-sync-coordinator/SKILL.md",
+    "slug": "agent-sync-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-tdd-london-swarm": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-tdd-london-swarm/SKILL.md",
+    "slug": "agent-tdd-london-swarm",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-test-long-runner": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-test-long-runner/SKILL.md",
+    "slug": "agent-test-long-runner",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-tester": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-tester/SKILL.md",
+    "slug": "agent-tester",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-topology-optimizer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-topology-optimizer/SKILL.md",
+    "slug": "agent-topology-optimizer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-trading-predictor": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-trading-predictor/SKILL.md",
+    "slug": "agent-trading-predictor",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-user-tools": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-user-tools/SKILL.md",
+    "slug": "agent-user-tools",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-v3-integration-architect": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-v3-integration-architect/SKILL.md",
+    "slug": "agent-v3-integration-architect",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-v3-memory-specialist": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-v3-memory-specialist/SKILL.md",
+    "slug": "agent-v3-memory-specialist",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-v3-performance-engineer": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-v3-performance-engineer/SKILL.md",
+    "slug": "agent-v3-performance-engineer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-v3-queen-coordinator": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-v3-queen-coordinator/SKILL.md",
+    "slug": "agent-v3-queen-coordinator",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-v3-security-architect": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/agent-v3-security-architect/SKILL.md",
+    "slug": "agent-v3-security-architect",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-worker-specialist": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-worker-specialist/SKILL.md",
+    "slug": "agent-worker-specialist",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-workflow": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-workflow/SKILL.md",
+    "slug": "agent-workflow",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agent-workflow-automation": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agent-workflow-automation/SKILL.md",
+    "slug": "agent-workflow-automation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentdb-advanced": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentdb-advanced/SKILL.md",
+    "slug": "agentdb-advanced",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentdb-learning": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentdb-learning/SKILL.md",
+    "slug": "agentdb-learning",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentdb-memory-patterns": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentdb-memory-patterns/SKILL.md",
+    "slug": "agentdb-memory-patterns",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentdb-optimization": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentdb-optimization/SKILL.md",
+    "slug": "agentdb-optimization",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentdb-query": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentdb-query/SKILL.md",
+    "slug": "agentdb-query",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentdb-vector-search": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentdb-vector-search/SKILL.md",
+    "slug": "agentdb-vector-search",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agentic-jujutsu": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/agentic-jujutsu/SKILL.md",
+    "slug": "agentic-jujutsu",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/agntcy-status": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/agntcy-status/SKILL.md",
+    "slug": "agntcy-status",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/api-docs": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/api-docs/SKILL.md",
+    "slug": "api-docs",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/autopilot-loop": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/autopilot-loop/SKILL.md",
+    "slug": "autopilot-loop",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/autopilot-predict": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/autopilot-predict/SKILL.md",
+    "slug": "autopilot-predict",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser/SKILL.md",
+    "slug": "browser",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-auth-flow": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-auth-flow/SKILL.md",
+    "slug": "browser-auth-flow",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-extract": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-extract/SKILL.md",
+    "slug": "browser-extract",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-form-fill": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-form-fill/SKILL.md",
+    "slug": "browser-form-fill",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-intent": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-intent/SKILL.md",
+    "slug": "browser-intent",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-login": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-login/SKILL.md",
+    "slug": "browser-login",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-record": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-record/SKILL.md",
+    "slug": "browser-record",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-replay": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-replay/SKILL.md",
+    "slug": "browser-replay",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-scrape": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-scrape/SKILL.md",
+    "slug": "browser-scrape",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-screenshot-diff": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/browser-screenshot-diff/SKILL.md",
+    "slug": "browser-screenshot-diff",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/browser-test": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/browser-test/SKILL.md",
+    "slug": "browser-test",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/chat-format": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/chat-format/SKILL.md",
+    "slug": "chat-format",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/claims": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/claims/SKILL.md",
+    "slug": "claims",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cognitive-pattern": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cognitive-pattern/SKILL.md",
+    "slug": "cognitive-pattern",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-anomaly": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-anomaly/SKILL.md",
+    "slug": "cost-anomaly",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-benchmark": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-benchmark/SKILL.md",
+    "slug": "cost-benchmark",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-booster-edit": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-booster-edit/SKILL.md",
+    "slug": "cost-booster-edit",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-booster-route": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-booster-route/SKILL.md",
+    "slug": "cost-booster-route",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-budget-check": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-budget-check/SKILL.md",
+    "slug": "cost-budget-check",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-burn": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-burn/SKILL.md",
+    "slug": "cost-burn",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-compact-context": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-compact-context/SKILL.md",
+    "slug": "cost-compact-context",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-conversation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-conversation/SKILL.md",
+    "slug": "cost-conversation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-counterfactual": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-counterfactual/SKILL.md",
+    "slug": "cost-counterfactual",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-diff": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-diff/SKILL.md",
+    "slug": "cost-diff",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-export": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-export/SKILL.md",
+    "slug": "cost-export",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-federation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-federation/SKILL.md",
+    "slug": "cost-federation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-health": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-health/SKILL.md",
+    "slug": "cost-health",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-optimize": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-optimize/SKILL.md",
+    "slug": "cost-optimize",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-projection": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-projection/SKILL.md",
+    "slug": "cost-projection",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-report": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-report/SKILL.md",
+    "slug": "cost-report",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-session": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-session/SKILL.md",
+    "slug": "cost-session",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-summary": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-summary/SKILL.md",
+    "slug": "cost-summary",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-track": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-track/SKILL.md",
+    "slug": "cost-track",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cost-trend": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cost-trend/SKILL.md",
+    "slug": "cost-trend",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/create-plugin": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/create-plugin/SKILL.md",
+    "slug": "create-plugin",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cron-schedule": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cron-schedule/SKILL.md",
+    "slug": "cron-schedule",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/cross-host-federation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/cross-host-federation/SKILL.md",
+    "slug": "cross-host-federation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/daa-agent": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/daa-agent/SKILL.md",
+    "slug": "daa-agent",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/ddd-aggregate": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/ddd-aggregate/SKILL.md",
+    "slug": "ddd-aggregate",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/ddd-context": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/ddd-context/SKILL.md",
+    "slug": "ddd-context",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/ddd-validate": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/ddd-validate/SKILL.md",
+    "slug": "ddd-validate",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/deep-research": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/deep-research/SKILL.md",
+    "slug": "deep-research",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/deepseek-chat": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/deepseek-chat/SKILL.md",
+    "slug": "deepseek-chat",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/deepseek-reason": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/deepseek-reason/SKILL.md",
+    "slug": "deepseek-reason",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/dependency-check": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/dependency-check/SKILL.md",
+    "slug": "dependency-check",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/diff-analyze": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/diff-analyze/SKILL.md",
+    "slug": "diff-analyze",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/discover-plugins": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/discover-plugins/SKILL.md",
+    "slug": "discover-plugins",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/doc-gen": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/doc-gen/SKILL.md",
+    "slug": "doc-gen",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/dossier-collect": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/dossier-collect/SKILL.md",
+    "slug": "dossier-collect",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/embeddings": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/embeddings/SKILL.md",
+    "slug": "embeddings",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/federation-audit": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/federation-audit/SKILL.md",
+    "slug": "federation-audit",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/federation-init": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/federation-init/SKILL.md",
+    "slug": "federation-init",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/federation-status": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/federation-status/SKILL.md",
+    "slug": "federation-status",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/flow-nexus-neural": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/flow-nexus-neural/SKILL.md",
+    "slug": "flow-nexus-neural",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/flow-nexus-platform": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/flow-nexus-platform/SKILL.md",
+    "slug": "flow-nexus-platform",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/flow-nexus-swarm": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/flow-nexus-swarm/SKILL.md",
+    "slug": "flow-nexus-swarm",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/gaia-architecture-comparison": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/gaia-architecture-comparison/SKILL.md",
+    "slug": "gaia-architecture-comparison",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/gaia-debugging": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/gaia-debugging/SKILL.md",
+    "slug": "gaia-debugging",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/gaia-submission": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/gaia-submission/SKILL.md",
+    "slug": "gaia-submission",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/git-workflow": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/git-workflow/SKILL.md",
+    "slug": "git-workflow",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/github-automation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/github-automation/SKILL.md",
+    "slug": "github-automation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/github-code-review": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/github-code-review/SKILL.md",
+    "slug": "github-code-review",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/github-multi-repo": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/github-multi-repo/SKILL.md",
+    "slug": "github-multi-repo",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/github-project-management": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/github-project-management/SKILL.md",
+    "slug": "github-project-management",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/github-release-management": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/github-release-management/SKILL.md",
+    "slug": "github-release-management",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/github-workflow-automation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/github-workflow-automation/SKILL.md",
+    "slug": "github-workflow-automation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/goal-plan": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/goal-plan/SKILL.md",
+    "slug": "goal-plan",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-bench": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-bench/SKILL.md",
+    "slug": "harness-bench",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-drift-from-history": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-drift-from-history/SKILL.md",
+    "slug": "harness-drift-from-history",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-evolve": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-evolve/SKILL.md",
+    "slug": "harness-evolve",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-genome": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-genome/SKILL.md",
+    "slug": "harness-genome",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-gepa": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-gepa/SKILL.md",
+    "slug": "harness-gepa",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-learn": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-learn/SKILL.md",
+    "slug": "harness-learn",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-mcp-scan": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/harness-mcp-scan/SKILL.md",
+    "slug": "harness-mcp-scan",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-mint": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-mint/SKILL.md",
+    "slug": "harness-mint",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-oia-audit": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/harness-oia-audit/SKILL.md",
+    "slug": "harness-oia-audit",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-score": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-score/SKILL.md",
+    "slug": "harness-score",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-security-bench": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/harness-security-bench/SKILL.md",
+    "slug": "harness-security-bench",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-similarity": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-similarity/SKILL.md",
+    "slug": "harness-similarity",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/harness-threat-model": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/harness-threat-model/SKILL.md",
+    "slug": "harness-threat-model",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/hive-mind": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/hive-mind/SKILL.md",
+    "slug": "hive-mind",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/hive-mind-advanced": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/hive-mind-advanced/SKILL.md",
+    "slug": "hive-mind-advanced",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/hooks-automation": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/hooks-automation/SKILL.md",
+    "slug": "hooks-automation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/horizon-track": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/horizon-track/SKILL.md",
+    "slug": "horizon-track",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/init-project": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/init-project/SKILL.md",
+    "slug": "init-project",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/intelligence-route": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/intelligence-route/SKILL.md",
+    "slug": "intelligence-route",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/intelligence-transfer": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/intelligence-transfer/SKILL.md",
+    "slug": "intelligence-transfer",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/iot-anomalies": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/iot-anomalies/SKILL.md",
+    "slug": "iot-anomalies",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/iot-firmware": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/iot-firmware/SKILL.md",
+    "slug": "iot-firmware",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/iot-fleet": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/iot-fleet/SKILL.md",
+    "slug": "iot-fleet",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/iot-register": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/iot-register/SKILL.md",
+    "slug": "iot-register",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/iot-witness-verify": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/iot-witness-verify/SKILL.md",
+    "slug": "iot-witness-verify",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/kg-extract": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/kg-extract/SKILL.md",
+    "slug": "kg-extract",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/kg-traverse": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/kg-traverse/SKILL.md",
+    "slug": "kg-traverse",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/llm-config": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/llm-config/SKILL.md",
+    "slug": "llm-config",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/loop-worker": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/loop-worker/SKILL.md",
+    "slug": "loop-worker",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/managed-agent": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/managed-agent/SKILL.md",
+    "slug": "managed-agent",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/market-ingest": {
+    "category": "data",
+    "path": ".claude/skills/ruflo/market-ingest/SKILL.md",
+    "slug": "market-ingest",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/market-pattern": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/market-pattern/SKILL.md",
+    "slug": "market-pattern",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/memory-bridge": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/memory-bridge/SKILL.md",
+    "slug": "memory-bridge",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/memory-management": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/memory-management/SKILL.md",
+    "slug": "memory-management",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/memory-search": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/memory-search/SKILL.md",
+    "slug": "memory-search",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/migrate-create": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/migrate-create/SKILL.md",
+    "slug": "migrate-create",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/migrate-validate": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/migrate-validate/SKILL.md",
+    "slug": "migrate-validate",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/monitor-stream": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/monitor-stream/SKILL.md",
+    "slug": "monitor-stream",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-connect": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-connect/SKILL.md",
+    "slug": "music-connect",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-generate": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-generate/SKILL.md",
+    "slug": "music-generate",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-get": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-get/SKILL.md",
+    "slug": "music-get",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-list": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-list/SKILL.md",
+    "slug": "music-list",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-master": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-master/SKILL.md",
+    "slug": "music-master",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-midi": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-midi/SKILL.md",
+    "slug": "music-midi",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/music-stems": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/music-stems/SKILL.md",
+    "slug": "music-stems",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/nested-subagents": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/nested-subagents/SKILL.md",
+    "slug": "nested-subagents",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/neural-train": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/neural-train/SKILL.md",
+    "slug": "neural-train",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/neural-training": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/neural-training/SKILL.md",
+    "slug": "neural-training",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/observe-metrics": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/observe-metrics/SKILL.md",
+    "slug": "observe-metrics",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/observe-trace": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/observe-trace/SKILL.md",
+    "slug": "observe-trace",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/open-federation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/open-federation/SKILL.md",
+    "slug": "open-federation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/pair-programming": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/pair-programming/SKILL.md",
+    "slug": "pair-programming",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/performance-analysis": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/performance-analysis/SKILL.md",
+    "slug": "performance-analysis",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/pii-detect": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/pii-detect/SKILL.md",
+    "slug": "pii-detect",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/pod-sales": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/pod-sales/SKILL.md",
+    "slug": "pod-sales",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/reasoningbank-agentdb": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/reasoningbank-agentdb/SKILL.md",
+    "slug": "reasoningbank-agentdb",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/reasoningbank-intelligence": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/reasoningbank-intelligence/SKILL.md",
+    "slug": "reasoningbank-intelligence",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/research-synthesize": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/research-synthesize/SKILL.md",
+    "slug": "research-synthesize",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/ruflo-doctor": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/ruflo-doctor/SKILL.md",
+    "slug": "ruflo-doctor",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/ruflo-status": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/ruflo-status/SKILL.md",
+    "slug": "ruflo-status",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/rvf-manage": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/rvf-manage/SKILL.md",
+    "slug": "rvf-manage",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/safety-scan": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/safety-scan/SKILL.md",
+    "slug": "safety-scan",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/security-audit": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/security-audit/SKILL.md",
+    "slug": "security-audit",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/security-scan": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/security-scan/SKILL.md",
+    "slug": "security-scan",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/session-persist": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/session-persist/SKILL.md",
+    "slug": "session-persist",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/skill-builder": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/skill-builder/SKILL.md",
+    "slug": "skill-builder",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/sparc-implement": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/sparc-implement/SKILL.md",
+    "slug": "sparc-implement",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/sparc-methodology": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/sparc-methodology/SKILL.md",
+    "slug": "sparc-methodology",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/sparc-refine": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/sparc-refine/SKILL.md",
+    "slug": "sparc-refine",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/sparc-spec": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/sparc-spec/SKILL.md",
+    "slug": "sparc-spec",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/stream-chain": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/stream-chain/SKILL.md",
+    "slug": "stream-chain",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/swarm-advanced": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/swarm-advanced/SKILL.md",
+    "slug": "swarm-advanced",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/swarm-init": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/swarm-init/SKILL.md",
+    "slug": "swarm-init",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/swarm-orchestration": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/swarm-orchestration/SKILL.md",
+    "slug": "swarm-orchestration",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/tdd-repair": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/tdd-repair/SKILL.md",
+    "slug": "tdd-repair",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/tdd-workflow": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/tdd-workflow/SKILL.md",
+    "slug": "tdd-workflow",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/test-gaps": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/test-gaps/SKILL.md",
+    "slug": "test-gaps",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-backtest": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/trader-backtest/SKILL.md",
+    "slug": "trader-backtest",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-cloud-backtest": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/trader-cloud-backtest/SKILL.md",
+    "slug": "trader-cloud-backtest",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-explain": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-explain/SKILL.md",
+    "slug": "trader-explain",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-portfolio": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-portfolio/SKILL.md",
+    "slug": "trader-portfolio",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-portfolio-cg": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-portfolio-cg/SKILL.md",
+    "slug": "trader-portfolio-cg",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-regime": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-regime/SKILL.md",
+    "slug": "trader-regime",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-risk": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-risk/SKILL.md",
+    "slug": "trader-risk",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-signal": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-signal/SKILL.md",
+    "slug": "trader-signal",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/trader-train": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/trader-train/SKILL.md",
+    "slug": "trader-train",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-cli-modernization": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-cli-modernization/SKILL.md",
+    "slug": "v3-cli-modernization",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-core-implementation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-core-implementation/SKILL.md",
+    "slug": "v3-core-implementation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-ddd-architecture": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-ddd-architecture/SKILL.md",
+    "slug": "v3-ddd-architecture",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-integration-deep": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-integration-deep/SKILL.md",
+    "slug": "v3-integration-deep",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-mcp-optimization": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/v3-mcp-optimization/SKILL.md",
+    "slug": "v3-mcp-optimization",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-memory-unification": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-memory-unification/SKILL.md",
+    "slug": "v3-memory-unification",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-performance-optimization": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-performance-optimization/SKILL.md",
+    "slug": "v3-performance-optimization",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-security-overhaul": {
+    "category": "security",
+    "path": ".claude/skills/ruflo/v3-security-overhaul/SKILL.md",
+    "slug": "v3-security-overhaul",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/v3-swarm-coordination": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/v3-swarm-coordination/SKILL.md",
+    "slug": "v3-swarm-coordination",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/validate-plugin": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/validate-plugin/SKILL.md",
+    "slug": "validate-plugin",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/vector-cluster": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/vector-cluster/SKILL.md",
+    "slug": "vector-cluster",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/vector-embed": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/vector-embed/SKILL.md",
+    "slug": "vector-embed",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/vector-hyperbolic": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/vector-hyperbolic/SKILL.md",
+    "slug": "vector-hyperbolic",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/vector-search": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/vector-search/SKILL.md",
+    "slug": "vector-search",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/vector-setup": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/vector-setup/SKILL.md",
+    "slug": "vector-setup",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/verification-quality": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/verification-quality/SKILL.md",
+    "slug": "verification-quality",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/wasm-agent": {
+    "category": "development",
+    "path": ".claude/skills/ruflo/wasm-agent/SKILL.md",
+    "slug": "wasm-agent",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/wasm-gallery": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/wasm-gallery/SKILL.md",
+    "slug": "wasm-gallery",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/witness": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/witness/SKILL.md",
+    "slug": "witness",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/worker-benchmarks": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/worker-benchmarks/SKILL.md",
+    "slug": "worker-benchmarks",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/worker-integration": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/worker-integration/SKILL.md",
+    "slug": "worker-integration",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/workflow-automation": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/workflow-automation/SKILL.md",
+    "slug": "workflow-automation",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/workflow-create": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/workflow-create/SKILL.md",
+    "slug": "workflow-create",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
+  },
+  "ruflo/workflow-run": {
+    "category": "other",
+    "path": ".claude/skills/ruflo/workflow-run/SKILL.md",
+    "slug": "workflow-run",
+    "source_repo": "https://github.com/ruvnet/ruflo.git",
+    "source_slug": "ruflo"
   },
   "superpowers/brainstorming": {
     "category": "other",

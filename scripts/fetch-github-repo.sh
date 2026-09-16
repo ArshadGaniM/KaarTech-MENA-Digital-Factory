@@ -37,9 +37,22 @@ if has_match "$TMP_DIR/$SLUG" -iname "SKILL.md" -o -ipath "*/skills/*"; then
   mkdir -p ".claude/skills/$SLUG"
   while IFS= read -r -d '' skill_md; do
     skill_dir=$(dirname "$skill_md")
-    dest_name=$(basename "$skill_dir")
-    mkdir -p ".claude/skills/$SLUG/$dest_name"
-    cp -r "$skill_dir/." ".claude/skills/$SLUG/$dest_name/"
+    if [[ "$skill_dir" == "$TMP_DIR/$SLUG" ]]; then
+      # SKILL.md sits at the repo root — this is a whole-project meta-skill,
+      # not "the entire repo is skill content". Copying the containing dir
+      # here would mean copying the whole clone (source, build artifacts,
+      # .git, binaries — this bit us on ruflo: a 137MB copy for one skill).
+      # Just take the SKILL.md itself.
+      cp "$skill_md" ".claude/skills/$SLUG/SKILL.md"
+    else
+      dest_name=$(basename "$skill_dir")
+      mkdir -p ".claude/skills/$SLUG/$dest_name"
+      cp -r "$skill_dir/." ".claude/skills/$SLUG/$dest_name/"
+      # A skill's own subdirectory should never itself be a git repo (that
+      # happens if a maintainer vendored something in-place) — strip it so
+      # git doesn't record a broken embedded-repo gitlink.
+      rm -rf ".claude/skills/$SLUG/$dest_name/.git"
+    fi
   done < <(find "$TMP_DIR/$SLUG" -iname "SKILL.md" -print0 2>/dev/null)
   COMPONENTS+=("skills")
 fi
