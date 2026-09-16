@@ -164,6 +164,19 @@ test("validateBody still validates a non-required field when present but blank",
   });
 });
 
+test("validateBody accepts an explicit null for a non-required field (clearing it)", () => {
+  assert.doesNotThrow(() =>
+    validateBody(TABLE_WITH_OPTIONAL_FIELD, { name: "SAP", notes: null }, { partial: true })
+  );
+});
+
+test("validateBody rejects an explicit null for a required field", () => {
+  assert.throws(() => validateBody(SIMPLE_TABLE, { name: null }), (err) => {
+    assert.ok(err.details.name);
+    return true;
+  });
+});
+
 test("validateBody rejects a field longer than 255 characters", () => {
   assert.throws(() => validateBody(SIMPLE_TABLE, { name: "x".repeat(256) }), (err) => {
     assert.ok(err.details.name);

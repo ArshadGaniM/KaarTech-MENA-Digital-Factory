@@ -35,6 +35,9 @@ export function validateBody(table, body, { partial = false } = {}) {
     if (!mustValidate) continue;
 
     const value = safeBody[field.key];
+    // A non-required field sent as null is an explicit "clear this" —
+    // valid, not a type error. A required field can never be nulled.
+    if (value === null && !field.required) continue;
     if (typeof value !== "string" || value.trim().length === 0) {
       details[field.key] = field.required
         ? `${field.key} is required and must be a non-empty string.`
