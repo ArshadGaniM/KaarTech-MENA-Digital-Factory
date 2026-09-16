@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { pool } from "./db.js";
 import { notFound } from "./errors.js";
-import { toResponse, validateBody } from "./masterDataSchema.js";
+import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
 // No user/auth system exists yet — createdBy/updatedBy is caller-supplied
@@ -64,6 +64,7 @@ export function createMasterDataRouter(table) {
     try {
       validateBody(table, req.body);
       const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
+      validateActor(actor);
 
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
@@ -90,6 +91,7 @@ export function createMasterDataRouter(table) {
 
       const current = existing.rows[0];
       const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
+      validateActor(actor);
 
       const columns = [...fields.map((f) => f.column), "updated_by"];
       const values = [...fields.map((f) => req.body[f.key] ?? current[f.column]), actor];

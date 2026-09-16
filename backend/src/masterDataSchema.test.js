@@ -1,9 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toResponse, validateBody } from "./masterDataSchema.js";
+import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
 
 const SIMPLE_TABLE = {
   fields: [{ key: "name", column: "name", required: true, type: "string" }],
+};
+
+const TABLE_WITH_OPTIONAL_FIELD = {
+  fields: [
+    { key: "name", column: "name", required: true, type: "string" },
+    { key: "notes", column: "notes", required: false, type: "string" },
+  ],
 };
 
 const DELIVERY_CENTER_TABLE = {
@@ -117,4 +124,38 @@ test("validateBody requires all fields on create, not just name", () => {
 
 test("validateBody partial mode only validates fields present in the body", () => {
   assert.doesNotThrow(() => validateBody(DELIVERY_CENTER_TABLE, { city: "Riyadh" }, { partial: true }));
+});
+
+test("validateBody does not require a non-required field on create when omitted", () => {
+  assert.doesNotThrow(() => validateBody(TABLE_WITH_OPTIONAL_FIELD, { name: "SAP" }));
+});
+
+test("validateBody still validates a non-required field when present but blank", () => {
+  assert.throws(() => validateBody(TABLE_WITH_OPTIONAL_FIELD, { name: "SAP", notes: "" }), (err) => {
+    assert.ok(err.details.notes);
+    return true;
+  });
+});
+
+test("validateBody rejects a field longer than 255 characters", () => {
+  assert.throws(() => validateBody(SIMPLE_TABLE, { name: "x".repeat(256) }), (err) => {
+    assert.ok(err.details.name);
+    return true;
+  });
+});
+
+test("validateBody accepts a field exactly at the 255-character limit", () => {
+  assert.doesNotThrow(() => validateBody(SIMPLE_TABLE, { name: "x".repeat(255) }));
+});
+
+test("validateActor accepts a normal actor name", () => {
+  assert.doesNotThrow(() => validateActor("Arshad Ghani"));
+});
+
+test("validateActor rejects an actor name longer than 255 characters", () => {
+  assert.throws(() => validateActor("x".repeat(256)), (err) => {
+    assert.equal(err.status, 422);
+    assert.ok(err.details.updatedBy);
+    return true;
+  });
 });

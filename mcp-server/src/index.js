@@ -25,7 +25,13 @@ const UPDATED_BY_DESCRIPTION =
   "Who is performing this change. Defaults to \"Arshad Ghani\" if omitted.";
 
 for (const table of MASTER_DATA_TABLES) {
-  const fieldEntries = table.fields.map((f) => [f.key, fieldSchema(f)]);
+  // add_ only requires fields the backend actually requires on create;
+  // update_ always makes every field optional (only what's passed changes).
+  const addFieldEntries = table.fields.map((f) => [
+    f.key,
+    f.required ? fieldSchema(f) : fieldSchema(f).optional(),
+  ]);
+  const updateFieldEntries = table.fields.map((f) => [f.key, fieldSchema(f).optional()]);
 
   server.tool(
     `add_${table.slug}`,
@@ -34,7 +40,7 @@ for (const table of MASTER_DATA_TABLES) {
       " created_at/updated_at are set automatically, and created_by/updated_by" +
       " are set from updatedBy (or default to Arshad Ghani).",
     {
-      ...Object.fromEntries(fieldEntries),
+      ...Object.fromEntries(addFieldEntries),
       updatedBy: z.string().min(1).optional().describe(UPDATED_BY_DESCRIPTION),
     },
     async (input) => {
@@ -53,7 +59,7 @@ for (const table of MASTER_DATA_TABLES) {
       "Bumps updated_at automatically; updated_by is set from updatedBy (or defaults to Arshad Ghani).",
     {
       id: z.string().uuid().describe(`The ${table.label}'s id.`),
-      ...Object.fromEntries(fieldEntries.map(([key, schema]) => [key, schema.optional()])),
+      ...Object.fromEntries(updateFieldEntries),
       updatedBy: z.string().min(1).optional().describe(UPDATED_BY_DESCRIPTION),
     },
     async ({ id, updatedBy, ...fields }) => {

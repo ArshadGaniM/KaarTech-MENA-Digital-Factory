@@ -30,19 +30,38 @@ npm run dev
 
 ### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/skill-sets`, `/v1/modules`, `/v1/resources`, `/v1/departments`
 
-All six routes share one identical shape (`src/masterDataRouter.js`):
+All six routes share the same shape (`src/masterDataRouter.js`), but each
+table's own business fields differ — see `src/masterDataTables.js` for the
+authoritative per-table field list (key, required, type).
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|
 | GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). Excludes soft-deleted rows. |
 | GET | `/v1/<table>/:id` | — | none | 404 if soft-deleted or missing. |
-| POST | `/v1/<table>` | `{ name: string }` | `x-internal-api-key` | 201 with the created record. |
-| PATCH | `/v1/<table>/:id` | `{ name: string }` | `x-internal-api-key` | 404 if soft-deleted or missing. |
+| POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
+| PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing. |
 | DELETE | `/v1/<table>/:id` | — | `x-internal-api-key` | Soft delete — sets `deleted_at`, does not remove the row. 204 on success. |
 
-Every record has `id`, `name`, `createdAt`, `updatedAt` (camelCase in
-responses, snake_case in the database). `updatedAt` is bumped automatically
-by a Postgres trigger on every UPDATE, not by application code.
+Per-table fields, as of this writing:
+
+| Table | Fields |
+|---|---|
+| `practices`, `skill-sets`, `modules`, `resources`, `departments` | `name` (required) |
+| `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) |
+
+Every record's response includes `id`, the table's own fields, `createdBy`,
+`createdAt`, `updatedBy`, `updatedAt` (camelCase in responses, snake_case in
+the database) — plus `code` for `delivery-centers` (an auto-generated,
+immutable business identifier like `DC-001`, distinct from `id`).
+`updatedAt` is bumped automatically by a Postgres trigger on every UPDATE,
+not by application code.
+
+**`updatedBy`** (optional on every POST/PATCH): who is performing the
+write. Defaults server-side to `"Arshad Ghani"` if omitted — no user/auth
+system exists yet. On create, this sets both `createdBy` and `updatedBy`;
+on update, only `updatedBy` changes. Capped at 255 characters (both in
+`validateActor()`/`validateBody()` and as a DB `CHECK` constraint,
+`migrations/0006`).
 
 **Why GET is unauthenticated but writes require a key:** the frontend's
 "Master Data" view is a public browser bundle — it can never safely hold a
@@ -51,16 +70,28 @@ real secret, so reads stay open. Writes go only through the
 client that sends `INTERNAL_API_KEY` on every call.
 
 Reused across all six routers is the shared factory
-`createMasterDataRouter(tableName, resourceName)` in
-`src/masterDataRouter.js`, since all 6 tables have the identical
-`id`/`name`/`created_at`/`updated_at`/`deleted_at` shape — see
-`src/masterDataTables.js` for the fixed table/route allow-list.
+`createMasterDataRouter(table)` in `src/masterDataRouter.js`: it builds its
+SQL column lists, `INSERT`/`UPDATE` statements, and validation from
+`table.fields` rather than hardcoding a single `name` column, so a table
+can carry its own real business columns (as `delivery-centers` now does)
+without a bespoke router.
 
 ## Database schema
 
 See `migrations/` — applied to Supabase via the Supabase MCP tool
-(`apply_migration`), then committed here for reproducibility. Each of the
-6 master data tables has the same shape:
+(`apply_migration`), then committed here for reproducibility.
+
+| Migration | What it does |
+|---|---|
+| `0001_create_master_data_tables.sql` | The 6 tables: `id`/`name`/`created_at`/`updated_at`/`deleted_at`, `set_updated_at` trigger, RLS enabled with zero policies. |
+| `0002_improve_master_data_indexes.sql` | Replaces the `deleted_at`-only indexes with partial indexes on `name`. |
+| `0003_create_backend_app_role.sql` | The least-privilege `backend_app` role the backend actually connects as. |
+| `0004_add_created_by_updated_by.sql` | Adds `created_by`/`updated_by` (text, not null) to all 6 tables. |
+| `0005_add_delivery_center_columns.sql` | `delivery_centers`-specific: `code` (auto-generated via trigger, immutable), `location_type` (`CHECK`-constrained enum), `city`, `country`. |
+| `0006_add_actor_length_constraints.sql` | 255-char `CHECK` constraint on `created_by`/`updated_by`, matching the app-layer cap. |
+
+Base shape shared by all 6 tables (real per-table columns come from later
+migrations — see `src/masterDataTables.js` for the current field list):
 
 ```sql
 create table public.<table> (
@@ -68,7 +99,9 @@ create table public.<table> (
   name text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  created_by text not null,
+  updated_by text not null
 );
 
 create trigger trg_<table>_updated_at before update on public.<table>
@@ -80,6 +113,11 @@ alter table public.<table> enable row level security;
 -- backend connects with a role that bypasses RLS); this is not
 -- PostgREST-facing.
 ```
+
+`delivery_centers` additionally has `code text` (auto-generated by a
+`BEFORE INSERT` trigger + sequence, e.g. `DC-001`; never included in any
+`UPDATE`, so it's immutable), `location_type text` (`CHECK`-constrained to
+`onshore`/`offshore`), `city text`, `country text`.
 
 Per database.md, never edit a committed migration — add a new one instead
 (see `migrations/0002_improve_master_data_indexes.sql` for an example: it
