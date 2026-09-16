@@ -8,13 +8,22 @@ const AUDIT_COLUMNS = [
   { key: "createdAt", label: "Created" },
   { key: "updatedBy", label: "Modified By" },
   { key: "updatedAt", label: "Modified" },
+  { key: "markedDeleted", label: "Marked Deleted" },
 ];
 
 export const MASTER_DATA_TABLES = [
   {
     route: "practices",
     label: "Practices",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "code", label: "Practice ID" },
+      { key: "name", label: "Practice Name" },
+      { key: "createdBy", label: "Created By" },
+      { key: "createdAt", label: "Created At" },
+      { key: "updatedBy", label: "Updated By" },
+      { key: "updatedAt", label: "Updated At" },
+      { key: "markedDeleted", label: "Marked Deleted" },
+    ],
   },
   {
     route: "delivery-centers",
@@ -36,7 +45,17 @@ export const MASTER_DATA_TABLES = [
   {
     route: "modules",
     label: "Modules",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "code", label: "Module ID" },
+      { key: "moduleCode", label: "Module Code" },
+      { key: "name", label: "Module Name" },
+      { key: "practiceId", label: "Practice" },
+      { key: "createdBy", label: "Created By" },
+      { key: "createdAt", label: "Created At" },
+      { key: "updatedBy", label: "Updated By" },
+      { key: "updatedAt", label: "Updated At" },
+      { key: "markedDeleted", label: "Marked Deleted" },
+    ],
   },
   {
     route: "resources",
@@ -53,6 +72,7 @@ export const MASTER_DATA_TABLES = [
       { key: "createdAt", label: "Created At" },
       { key: "updatedBy", label: "Updated By" },
       { key: "updatedAt", label: "Updated At" },
+      { key: "markedDeleted", label: "Marked Deleted" },
     ],
   },
 ];

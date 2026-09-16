@@ -31,6 +31,7 @@ test("toResponse maps snake_case db columns to camelCase fields (simple table)",
     created_at: "2026-01-01T00:00:00Z",
     updated_by: "Arshad Gani",
     updated_at: "2026-01-02T00:00:00Z",
+    deleted_at: null,
   };
   assert.deepEqual(toResponse(SIMPLE_TABLE, row), {
     id: "1",
@@ -39,7 +40,33 @@ test("toResponse maps snake_case db columns to camelCase fields (simple table)",
     createdAt: "2026-01-01T00:00:00Z",
     updatedBy: "Arshad Gani",
     updatedAt: "2026-01-02T00:00:00Z",
+    markedDeleted: "No",
   });
+});
+
+test("toResponse reports markedDeleted: 'Yes' for a soft-deleted row", () => {
+  const row = {
+    id: "1",
+    name: "SAP",
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-02T00:00:00Z",
+    deleted_at: "2026-01-03T00:00:00Z",
+  };
+  assert.equal(toResponse(SIMPLE_TABLE, row).markedDeleted, "Yes");
+});
+
+test("toResponse treats a missing deleted_at the same as null (not deleted)", () => {
+  const row = {
+    id: "1",
+    name: "SAP",
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-02T00:00:00Z",
+  };
+  assert.equal(toResponse(SIMPLE_TABLE, row).markedDeleted, "No");
 });
 
 test("toResponse includes code for a hasCode table", () => {

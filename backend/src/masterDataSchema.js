@@ -12,6 +12,10 @@ export function toResponse(table, row) {
   response.createdAt = row.created_at;
   response.updatedBy = row.updated_by;
   response.updatedAt = row.updated_at;
+  // Derived from deleted_at (the actual soft-delete flag) rather than its
+  // own stored column, so there's one source of truth for delete state —
+  // a separate persisted Yes/No column could drift out of sync with it.
+  response.markedDeleted = row.deleted_at != null ? "Yes" : "No";
   return response;
 }
 

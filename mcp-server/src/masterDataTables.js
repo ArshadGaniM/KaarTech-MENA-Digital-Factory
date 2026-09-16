@@ -12,6 +12,7 @@ export const MASTER_DATA_TABLES = [
     slug: "practice",
     route: "practices",
     label: "Practice",
+    hasCode: true,
     fields: [{ key: "name", label: "name", required: true, type: "string" }],
   },
   {
@@ -41,7 +42,17 @@ export const MASTER_DATA_TABLES = [
     slug: "module",
     route: "modules",
     label: "Module",
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    hasCode: true,
+    fields: [
+      { key: "moduleCode", label: "module code (manually assigned, distinct from the auto-generated id)", required: true, type: "string" },
+      { key: "name", label: "name", required: true, type: "string" },
+      {
+        key: "practiceId",
+        label: "the linked Practice's id (from the Practices table) — optional, not validated against Practices, can be set later via update_module",
+        required: false,
+        type: "string",
+      },
+    ],
   },
   {
     slug: "resource",
