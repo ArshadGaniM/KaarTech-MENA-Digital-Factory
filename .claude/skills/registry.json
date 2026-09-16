@@ -69,6 +69,13 @@
     "source_repo": "https://github.com/vercel-labs/agent-browser",
     "source_slug": "agent-browser"
   },
+  "agent-reach/skill": {
+    "category": "development",
+    "path": ".claude/skills/agent-reach/skill/SKILL.md",
+    "slug": "skill",
+    "source_repo": "https://github.com/Panniantong/Agent-Reach",
+    "source_slug": "agent-reach"
+  },
   "agent-skills/api-and-interface-design": {
     "category": "other",
     "path": ".claude/skills/agent-skills/api-and-interface-design/SKILL.md",
@@ -390,6 +397,27 @@
     "slug": "xlsx",
     "source_repo": "https://github.com/anthropics/skills",
     "source_slug": "anthropics-skills"
+  },
+  "anydoc/convert-documents-to-markdown": {
+    "category": "other",
+    "path": ".claude/skills/anydoc/convert-documents-to-markdown/SKILL.md",
+    "slug": "convert-documents-to-markdown",
+    "source_repo": "https://github.com/firecrawl/anydoc",
+    "source_slug": "anydoc"
+  },
+  "archify/archify": {
+    "category": "other",
+    "path": ".claude/skills/archify/archify/SKILL.md",
+    "slug": "archify",
+    "source_repo": "https://github.com/tt-a1i/archify",
+    "source_slug": "archify"
+  },
+  "archify/archify-review": {
+    "category": "development",
+    "path": ".claude/skills/archify/archify-review/SKILL.md",
+    "slug": "archify-review",
+    "source_repo": "https://github.com/tt-a1i/archify",
+    "source_slug": "archify"
   },
   "claude-code/agent-development": {
     "category": "development",

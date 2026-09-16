@@ -7,7 +7,7 @@
   },
   "agent-reach": {
     "components": "1 skill (career/dev/finance/search/social/video/web reference lookup)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:49:06Z",
     "type": "skills",
     "url": "https://github.com/Panniantong/Agent-Reach"
   },
@@ -31,26 +31,26 @@
   },
   "anydoc": {
     "components": "1 skill (convert-documents-to-markdown)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:49:03Z",
     "type": "skills",
     "url": "https://github.com/firecrawl/anydoc"
   },
   "archify": {
     "components": "1 skill (architecture/dataflow/sequence/lifecycle/workflow diagram renderers)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:49:05Z",
     "type": "skills",
     "url": "https://github.com/tt-a1i/archify"
   },
   "awesome-agent-skills": {
     "components": "curated agent skills list (no extractables)",
-    "last_fetched": null,
-    "type": "reference",
+    "last_fetched": "2026-09-16T10:49:01Z",
+    "type": "none",
     "url": "https://github.com/VoltAgent/awesome-agent-skills"
   },
   "awesome-ai-agents": {
     "components": "curated AI agents directory (no extractables)",
-    "last_fetched": null,
-    "type": "reference",
+    "last_fetched": "2026-09-16T10:49:00Z",
+    "type": "none",
     "url": "https://github.com/e2b-dev/awesome-ai-agents"
   },
   "awesome-claude-code": {
@@ -61,8 +61,8 @@
   },
   "awesome-claude-code-subagents": {
     "components": "154 Claude Code subagents across 10 categories",
-    "last_fetched": null,
-    "type": "agents",
+    "last_fetched": "2026-09-16T10:49:02Z",
+    "type": "none",
     "url": "https://github.com/VoltAgent/awesome-claude-code-subagents"
   },
   "awesome-claude-design": {
