@@ -1,8 +1,35 @@
 # Quality Gate Report
 
 **Branch:** `claude/busy-newton-mne2w1` → `main`
-**Diff size:** 7,573 files changed
+**Diff size:** 21 files changed (this update — see below); 7,573 files on the full branch diff
 **Verdict: ⚠️ WARN — merge allowed, one disclosed risk not remediated**
+
+## Update: KaarTech MENA Digital Factory landing page (this run)
+
+One commit re-gated here: `661ff78` — replaces the Vite starter page with
+the actual landing page (Header, Hero, ServicesSection, DeliveryCenters,
+Footer). Frontend-only, no backend/schema changes.
+
+| Gate | Result |
+|---|---|
+| `code-reviewer` | PASS — follows `.claude/rules/frontend.md` (functional components, one per file, co-located CSS Modules, `index.js` re-export); dead starter assets (`App.css`, `react.svg`, `vite.svg`, unused `hero.png`) removed rather than left behind |
+| `security-auditor` | PASS — static content only, no `dangerouslySetInnerHTML`, no user input, no new dependencies |
+| `debugger` | PASS — `npm run build` succeeds, dev server boots and renders without console errors |
+| `test-writer` | N/A — `.claude/rules/frontend.md` requires integration tests for interactive components (forms, buttons, inputs); this page has none, only static content and anchor navigation |
+| `refactorer` | PASS — clean section-per-component decomposition, no duplication |
+| `doc-writer` | N/A — no public API surface |
+| `silent-failure-hunter` | N/A — no async/error-prone logic in these components |
+| `pr-test-analyzer` | N/A — no tests required per above |
+
+**Known content gaps, disclosed, not blocking:**
+- Brand palette is a placeholder (navy/amber) — the live kaartech.com site
+  isn't reachable from this sandbox's network policy, so exact brand colors
+  are still pending either a user-supplied screenshot/hex values or a
+  session in an environment with broader network access.
+- Footer contact email (`mena-factory@kaartech.com`) is a placeholder,
+  not a verified real address.
+
+No Critical findings, no FAIL gates. Verdict stays **WARN**.
 
 ## Update: INDEX regeneration + backend scaffold (this run)
 
