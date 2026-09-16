@@ -7,7 +7,18 @@
 
 ## 0. Product
 
-KaarTech MENA Digital Factory is a web application. Current stack:
+KaarTech MENA Digital Factory is an internal management application for an
+IT development "digital factory" — an organization that runs software
+delivery as an ongoing production operation rather than one-off projects.
+The app's job is to manage:
+
+- **Resources** — people, tools, and capacity available to the factory
+- **Process** — how work moves through the factory (workflow/pipeline stages,
+  handoffs, status)
+- **Team setup** — org structure, roles, team composition
+
+Concrete scope (specific modules, data model, user roles, screens) is not
+yet defined — see §23. Current stack:
 
 - **Frontend:** React 19 + Vite 8, JavaScript (ES modules), CSS Modules-ready
 - **Linting:** oxlint
@@ -16,8 +27,8 @@ KaarTech MENA Digital Factory is a web application. Current stack:
   below are the standing conventions to follow **once** a backend is added.
   Until then they are forward-looking, not currently enforced.
 
-Business domains, specific integrations, and production infrastructure are
-not yet defined — fill in as they are decided. Everything below this point is
+Specific integrations and production infrastructure are not yet defined —
+fill in as they are decided. Everything below this point is
 the tooling/process layer and applies regardless of feature domain.
 
 ---
@@ -806,7 +817,10 @@ Never hard-code secrets. Add new vars to `.env.example` alongside the actual `.e
 These are the placeholders this template intentionally leaves for a new project,
 still unresolved here — fill in as decided:
 
-- [ ] Business domains and their agents (none defined yet — currently a blank React app)
+- [ ] Concrete feature scope for the factory-management product (§0): which
+      modules come first (resource management? team/org directory? process/
+      workflow tracking?), user roles, data model. Business domain itself is
+      now known — this is about turning it into a buildable first feature.
 - [ ] Backend framework, database, and hosting choice
 - [ ] API endpoint list, data models, integration specifics
 - [ ] Deployment platform and its MCP tooling
