@@ -497,11 +497,17 @@ performance, and testing conventions. Applies now — this is a React + Vite pro
 `.claude/github-repos.json` is the single source of truth for every external repo
 ever ingested. Columns: `Slug | Repo URL | Type | Components | Last Fetched`.
 
-**Current state:** 40 sources are registered (metadata only — `last_fetched: null`
-for all of them). None have actually been cloned/ingested into `.claude/skills/`
-or `.claude/agents/` yet. Registering the URL and running `/fetch-github-repo`
-against it are two separate steps — see §23 for why ingestion was deliberately
-held off pending owner sign-off on which sources to actually pull in.
+**Current state:** all 40 registered sources have been ingested (`last_fetched`
+set on every entry). This was done at the owner's explicit request, without a
+security review pass of the ingested content — see §23 for that accepted
+tradeoff and its effect on the pre-commit secret scanner's scope. A handful
+of sources extracted nothing (curated reference/awesome-lists with no
+SKILL.md/agents/commands, or repos using a structural convention our generic
+detection patterns don't match — e.g. agents under `categories/` instead of
+`agents/`); that's a legitimate outcome, not a fetch failure. `.claude/agents/INDEX.md`
+and `.claude/skills/INDEX.md` still only describe this project's own
+first-party agents/skills and have not been regenerated to include the 40
+ingested sources — pending.
 
 ### 13.2 The `/fetch-github-repo` command
 
@@ -808,10 +814,17 @@ still unresolved here — fill in as decided:
 - [ ] Whether the 30-step dev-team pipeline (§7) should run in full for this
       project's scale, or a lighter subset — currently scaffolded but not yet
       exercised end-to-end
-- [ ] Which of the 40 registered external sources (§13.1) to actually ingest via
-      `/fetch-github-repo` — several (`ruflo`: ~230 skills/107 agents,
-      `claude-skills`: hundreds of files, `openmontage`: 142 skills) would
-      dwarf this project's own tooling if pulled in wholesale, and none have
-      been reviewed for trustworthiness/relevance yet. Recommend ingesting
-      selectively (e.g. `anthropics-skills`, `ui-ux-pro-max` for a
-      React/Vite frontend) rather than fetching all 40 at once.
+- [ ] All 40 registered external sources have been ingested (~152MB across
+      `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, `.claude/hooks/`),
+      at the owner's explicit request, without any content security review —
+      none of it has been checked for malicious or low-quality instructions.
+      The pre-commit secret scanner was narrowed to first-party files only as
+      a direct consequence (vendored security-scanning skills' own test
+      fixtures/pattern definitions made both the heuristic and "unambiguous"
+      credential patterns unusable against vendored content — see
+      `.claude/hooks/pre-commit.sh`). A real leaked credential or a malicious
+      instruction buried in the 40 sources would not be caught by anything in
+      this repo today.
+- [ ] `.claude/agents/INDEX.md` and `.claude/skills/INDEX.md` predate the
+      40-source ingestion and only describe first-party content — not
+      regenerated to route across the newly ingested sources.
