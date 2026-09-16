@@ -19,6 +19,7 @@ export const MASTER_DATA_TABLES = [
     route: "practices",
     tableName: "practices",
     resourceName: "practice",
+    hasCode: true,
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
   {

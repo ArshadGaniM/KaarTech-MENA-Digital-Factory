@@ -14,7 +14,14 @@ export const MASTER_DATA_TABLES = [
   {
     route: "practices",
     label: "Practices",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "code", label: "Practice ID" },
+      { key: "name", label: "Practice Name" },
+      { key: "createdBy", label: "Created By" },
+      { key: "createdAt", label: "Created At" },
+      { key: "updatedBy", label: "Updated By" },
+      { key: "updatedAt", label: "Updated At" },
+    ],
   },
   {
     route: "delivery-centers",

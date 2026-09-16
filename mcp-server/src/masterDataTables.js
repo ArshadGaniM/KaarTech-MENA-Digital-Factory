@@ -12,6 +12,7 @@ export const MASTER_DATA_TABLES = [
     slug: "practice",
     route: "practices",
     label: "Practice",
+    hasCode: true,
     fields: [{ key: "name", label: "name", required: true, type: "string" }],
   },
   {
