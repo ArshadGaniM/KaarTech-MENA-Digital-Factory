@@ -497,6 +497,12 @@ performance, and testing conventions. Applies now — this is a React + Vite pro
 `.claude/github-repos.json` is the single source of truth for every external repo
 ever ingested. Columns: `Slug | Repo URL | Type | Components | Last Fetched`.
 
+**Current state:** 40 sources are registered (metadata only — `last_fetched: null`
+for all of them). None have actually been cloned/ingested into `.claude/skills/`
+or `.claude/agents/` yet. Registering the URL and running `/fetch-github-repo`
+against it are two separate steps — see §23 for why ingestion was deliberately
+held off pending owner sign-off on which sources to actually pull in.
+
 ### 13.2 The `/fetch-github-repo` command
 
 **Trigger:**
@@ -802,3 +808,10 @@ still unresolved here — fill in as decided:
 - [ ] Whether the 30-step dev-team pipeline (§7) should run in full for this
       project's scale, or a lighter subset — currently scaffolded but not yet
       exercised end-to-end
+- [ ] Which of the 40 registered external sources (§13.1) to actually ingest via
+      `/fetch-github-repo` — several (`ruflo`: ~230 skills/107 agents,
+      `claude-skills`: hundreds of files, `openmontage`: 142 skills) would
+      dwarf this project's own tooling if pulled in wholesale, and none have
+      been reviewed for trustworthiness/relevance yet. Recommend ingesting
+      selectively (e.g. `anthropics-skills`, `ui-ux-pro-max` for a
+      React/Vite frontend) rather than fetching all 40 at once.
