@@ -28,9 +28,9 @@ npm run dev
 | PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
 | DELETE | `/v1/team-members/:id` | — | Hard delete |
 
-### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`
+### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`
 
-All six routes share the same shape (`src/masterDataRouter.js`), but each
+All nine routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
 authoritative per-table field list (key, required, type).
 
@@ -46,7 +46,7 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `competencies`, `resources` | `name` (required) |
+| `competencies`, `resources`, `resource-cost`, `teams`, `resource-deployment` | `name` (required) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
@@ -105,6 +105,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0008_rename_skill_sets_to_competencies.sql` | Renames `skill_sets` to `competencies` (and its index/constraint/trigger names) — no column changes. |
 | `0009_add_practice_code.sql` | `practices`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`/`departments`). |
 | `0010_add_module_columns.sql` | `modules`-specific: `code` (auto-generated via trigger), `module_code` (human-assigned, required), `practice_id` (nullable `uuid`, indexed but **not** a foreign key — deliberately unenforced so a module can be inserted before its Practice is decided). |
+| `0011_create_additional_master_data_tables.sql` | 3 new tables (`resource_cost`, `teams`, `resource_deployment`), created directly with the full shape the original 6 accumulated (name-only, same starting point `practices`/`competencies`/etc. had before their own follow-up migrations). |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

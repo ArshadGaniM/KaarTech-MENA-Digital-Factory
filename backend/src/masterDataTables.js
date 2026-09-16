@@ -70,4 +70,22 @@ export const MASTER_DATA_TABLES = [
     hasCode: true,
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
+  {
+    route: "resource-cost",
+    tableName: "resource_cost",
+    resourceName: "resource_cost",
+    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+  },
+  {
+    route: "teams",
+    tableName: "teams",
+    resourceName: "team",
+    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+  },
+  {
+    route: "resource-deployment",
+    tableName: "resource_deployment",
+    resourceName: "resource_deployment",
+    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+  },
 ];
