@@ -84,3 +84,27 @@ alter table public.<table> enable row level security;
 Per database.md, never edit a committed migration — add a new one instead
 (see `migrations/0002_improve_master_data_indexes.sql` for an example: it
 replaces `0001`'s `deleted_at` indexes rather than rewriting that file).
+
+## Production database connection
+
+Deployed on Render (`kaartech-mena-digital-factory-api`) as
+`DATABASE_URL`, pointed at Supabase's **session pooler**, not the direct
+connection — the direct host (`db.<ref>.supabase.co:5432`) only resolves
+to an IPv6 address on Supabase's free tier, and Render's outbound network
+is IPv4-only, so the direct connection is unreachable from there. The
+pooler host (`aws-0-<region>.pooler.supabase.com:5432`) resolves to IPv4
+and proxies straight through to Postgres (Supavisor), so `pg`'s
+prepared-statement usage still works — the transaction-mode pooler
+(`:6543`) does not support that and would break the app's queries.
+
+The connection uses a dedicated `backend_app` role (see
+`migrations/0003_create_backend_app_role.sql`), not the `postgres`
+superuser — Supabase's managed Postgres blocks `ALTER ROLE postgres`
+outright ("only superusers can alter privileged roles"), and handing the
+backend superuser credentials would be worse practice anyway. `backend_app`
+has `BYPASSRLS` (required — with RLS enabled and zero policies on every
+table, a non-bypassing role gets zero rows on every read and a
+`42501 insufficient_privilege` on every write) plus explicit
+`SELECT`/`INSERT`/`UPDATE`/`DELETE` on the 7 application tables.
+
+Connection string shape: `postgres://backend_app.<project_ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`
