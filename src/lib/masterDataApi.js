@@ -15,5 +15,8 @@ export async function fetchMasterDataTable(route) {
   if (!res.ok) {
     throw new Error(payload?.error?.message || `Failed to load ${route}`);
   }
+  if (payload === null) {
+    throw new Error(`${route} returned a malformed response.`);
+  }
   return payload.data;
 }
