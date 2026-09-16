@@ -25,8 +25,8 @@
   },
   "anthropics-skills": {
     "components": "17 skills (pdf, docx, pptx, xlsx, mcp-builder, canvas-design, webapp-testing, +10)",
-    "last_fetched": null,
-    "type": "skills",
+    "last_fetched": "2026-09-16T10:48:10Z",
+    "type": "skills,agents",
     "url": "https://github.com/anthropics/skills"
   },
   "anydoc": {
@@ -73,14 +73,14 @@
   },
   "awesome-openclaw-skills": {
     "components": "curated OpenClaw skills list (no SKILL.md extractables)",
-    "last_fetched": null,
-    "type": "reference",
+    "last_fetched": "2026-09-16T10:48:22Z",
+    "type": "none",
     "url": "https://github.com/VoltAgent/awesome-openclaw-skills"
   },
   "claude-code": {
     "components": "10 skills, 14 agents, 16 commands, 7 hooks",
-    "last_fetched": null,
-    "type": "skills+agents+commands+hooks",
+    "last_fetched": "2026-09-16T10:48:09Z",
+    "type": "skills,agents,commands,hooks",
     "url": "https://github.com/anthropics/claude-code"
   },
   "claude-code-router": {
@@ -91,8 +91,8 @@
   },
   "claude-cookbooks": {
     "components": "1 skill (cookbook-audit), 1 agent, 7 commands, 89 notebooks",
-    "last_fetched": null,
-    "type": "skills+agents+commands",
+    "last_fetched": "2026-09-16T10:48:19Z",
+    "type": "skills,agents,commands,hooks",
     "url": "https://github.com/anthropics/claude-cookbooks"
   },
   "claude-mem": {
@@ -205,8 +205,8 @@
   },
   "repomix": {
     "components": "5 skills, 7 reviewer agents, 17 commands",
-    "last_fetched": null,
-    "type": "skills+agents+commands",
+    "last_fetched": "2026-09-16T10:48:12Z",
+    "type": "skills,agents,commands",
     "url": "https://github.com/yamadashy/repomix"
   },
   "ruflo": {
@@ -222,8 +222,8 @@
   },
   "system-prompts-leaks": {
     "components": "3 skills (deep-research, doctor, run-skill-generator)",
-    "last_fetched": null,
-    "type": "skills",
+    "last_fetched": "2026-09-16T10:48:21Z",
+    "type": "skills,agents,commands",
     "url": "https://github.com/asgeirtj/system_prompts_leaks"
   },
   "taste-skill": {

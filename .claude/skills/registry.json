@@ -251,6 +251,279 @@
     "source_repo": "https://github.com/multica-ai/andrej-karpathy-skills",
     "source_slug": "andrej-karpathy-skills"
   },
+  "anthropics-skills/academy-guide": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/academy-guide/SKILL.md",
+    "slug": "academy-guide",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/algorithmic-art": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/algorithmic-art/SKILL.md",
+    "slug": "algorithmic-art",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/brand-guidelines": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/brand-guidelines/SKILL.md",
+    "slug": "brand-guidelines",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/canvas-design": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/canvas-design/SKILL.md",
+    "slug": "canvas-design",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/claude-api": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/claude-api/SKILL.md",
+    "slug": "claude-api",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/discernment-nudge": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/discernment-nudge/SKILL.md",
+    "slug": "discernment-nudge",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/doc-coauthoring": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/doc-coauthoring/SKILL.md",
+    "slug": "doc-coauthoring",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/docx": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/docx/SKILL.md",
+    "slug": "docx",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/frontend-design": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/frontend-design/SKILL.md",
+    "slug": "frontend-design",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/internal-comms": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/internal-comms/SKILL.md",
+    "slug": "internal-comms",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/mcp-builder": {
+    "category": "development",
+    "path": ".claude/skills/anthropics-skills/mcp-builder/SKILL.md",
+    "slug": "mcp-builder",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/pdf": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/pdf/SKILL.md",
+    "slug": "pdf",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/pptx": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/pptx/SKILL.md",
+    "slug": "pptx",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/skill-creator": {
+    "category": "development",
+    "path": ".claude/skills/anthropics-skills/skill-creator/SKILL.md",
+    "slug": "skill-creator",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/slack-gif-creator": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/slack-gif-creator/SKILL.md",
+    "slug": "slack-gif-creator",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/template": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/template/SKILL.md",
+    "slug": "template",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/theme-factory": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/theme-factory/SKILL.md",
+    "slug": "theme-factory",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/web-artifacts-builder": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/web-artifacts-builder/SKILL.md",
+    "slug": "web-artifacts-builder",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/webapp-testing": {
+    "category": "development",
+    "path": ".claude/skills/anthropics-skills/webapp-testing/SKILL.md",
+    "slug": "webapp-testing",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "anthropics-skills/xlsx": {
+    "category": "other",
+    "path": ".claude/skills/anthropics-skills/xlsx/SKILL.md",
+    "slug": "xlsx",
+    "source_repo": "https://github.com/anthropics/skills",
+    "source_slug": "anthropics-skills"
+  },
+  "claude-code/agent-development": {
+    "category": "development",
+    "path": ".claude/skills/claude-code/agent-development/SKILL.md",
+    "slug": "agent-development",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/claude-opus-4-5-migration": {
+    "category": "other",
+    "path": ".claude/skills/claude-code/claude-opus-4-5-migration/SKILL.md",
+    "slug": "claude-opus-4-5-migration",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/command-development": {
+    "category": "development",
+    "path": ".claude/skills/claude-code/command-development/SKILL.md",
+    "slug": "command-development",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/frontend-design": {
+    "category": "other",
+    "path": ".claude/skills/claude-code/frontend-design/SKILL.md",
+    "slug": "frontend-design",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/hook-development": {
+    "category": "development",
+    "path": ".claude/skills/claude-code/hook-development/SKILL.md",
+    "slug": "hook-development",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/mcp-integration": {
+    "category": "development",
+    "path": ".claude/skills/claude-code/mcp-integration/SKILL.md",
+    "slug": "mcp-integration",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/plugin-settings": {
+    "category": "other",
+    "path": ".claude/skills/claude-code/plugin-settings/SKILL.md",
+    "slug": "plugin-settings",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/plugin-structure": {
+    "category": "other",
+    "path": ".claude/skills/claude-code/plugin-structure/SKILL.md",
+    "slug": "plugin-structure",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/skill-development": {
+    "category": "development",
+    "path": ".claude/skills/claude-code/skill-development/SKILL.md",
+    "slug": "skill-development",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-code/writing-rules": {
+    "category": "other",
+    "path": ".claude/skills/claude-code/writing-rules/SKILL.md",
+    "slug": "writing-rules",
+    "source_repo": "https://github.com/anthropics/claude-code",
+    "source_slug": "claude-code"
+  },
+  "claude-cookbooks/analyzing-financial-statements": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/analyzing-financial-statements/SKILL.md",
+    "slug": "analyzing-financial-statements",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/applying-brand-guidelines": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/applying-brand-guidelines/SKILL.md",
+    "slug": "applying-brand-guidelines",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/cma-mcp": {
+    "category": "development",
+    "path": ".claude/skills/claude-cookbooks/cma-mcp/skill.md",
+    "slug": "cma-mcp",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/cookbook-audit": {
+    "category": "security",
+    "path": ".claude/skills/claude-cookbooks/cookbook-audit/SKILL.md",
+    "slug": "cookbook-audit",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/creating-financial-models": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/creating-financial-models/SKILL.md",
+    "slug": "creating-financial-models",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/linear": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/linear/skill.md",
+    "slug": "linear",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/roadtrip_planner": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/roadtrip_planner/skill.md",
+    "slug": "roadtrip_planner",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/sentry": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/sentry/skill.md",
+    "slug": "sentry",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
+  "claude-cookbooks/slack": {
+    "category": "other",
+    "path": ".claude/skills/claude-cookbooks/slack/skill.md",
+    "slug": "slack",
+    "source_repo": "https://github.com/anthropics/claude-cookbooks",
+    "source_slug": "claude-cookbooks"
+  },
   "claude-mem/babysit": {
     "category": "other",
     "path": ".claude/skills/claude-mem/babysit/SKILL.md",
@@ -2652,6 +2925,48 @@
     "source_repo": "https://github.com/kepano/obsidian-skills.git",
     "source_slug": "obsidian-skills"
   },
+  "repomix/agent-carnet": {
+    "category": "development",
+    "path": ".claude/skills/repomix/agent-carnet/SKILL.md",
+    "slug": "agent-carnet",
+    "source_repo": "https://github.com/yamadashy/repomix",
+    "source_slug": "repomix"
+  },
+  "repomix/browser-extension-developer": {
+    "category": "development",
+    "path": ".claude/skills/repomix/browser-extension-developer/SKILL.md",
+    "slug": "browser-extension-developer",
+    "source_repo": "https://github.com/yamadashy/repomix",
+    "source_slug": "repomix"
+  },
+  "repomix/clawhub": {
+    "category": "other",
+    "path": ".claude/skills/repomix/clawhub/SKILL.md",
+    "slug": "clawhub",
+    "source_repo": "https://github.com/yamadashy/repomix",
+    "source_slug": "repomix"
+  },
+  "repomix/contextual-commit": {
+    "category": "other",
+    "path": ".claude/skills/repomix/contextual-commit/SKILL.md",
+    "slug": "contextual-commit",
+    "source_repo": "https://github.com/yamadashy/repomix",
+    "source_slug": "repomix"
+  },
+  "repomix/repomix-explorer": {
+    "category": "other",
+    "path": ".claude/skills/repomix/repomix-explorer/SKILL.md",
+    "slug": "repomix-explorer",
+    "source_repo": "https://github.com/yamadashy/repomix",
+    "source_slug": "repomix"
+  },
+  "repomix/website-maintainer": {
+    "category": "other",
+    "path": ".claude/skills/repomix/website-maintainer/SKILL.md",
+    "slug": "website-maintainer",
+    "source_repo": "https://github.com/yamadashy/repomix",
+    "source_slug": "repomix"
+  },
   "ruflo": {
     "category": "other",
     "path": ".claude/skills/ruflo/SKILL.md",
@@ -4737,6 +5052,370 @@
     "slug": "writing-skills",
     "source_repo": "https://github.com/obra/superpowers.git",
     "source_slug": "superpowers"
+  },
+  "system-prompts-leaks/3d-object": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/3d-object/SKILL.md",
+    "slug": "3d-object",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/animated-video": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/animated-video/SKILL.md",
+    "slug": "animated-video",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/artifact-capabilities": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/artifact-capabilities/SKILL.md",
+    "slug": "artifact-capabilities",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/artifact-design": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/artifact-design/SKILL.md",
+    "slug": "artifact-design",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/artifact-diagramming": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/artifact-diagramming/SKILL.md",
+    "slug": "artifact-diagramming",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/batch": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/batch/SKILL.md",
+    "slug": "batch",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/claude-api": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/claude-api/SKILL.md",
+    "slug": "claude-api",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/claude-api-in-prototypes": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/claude-api-in-prototypes/SKILL.md",
+    "slug": "claude-api-in-prototypes",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/claude-in-chrome": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/claude-in-chrome/SKILL.md",
+    "slug": "claude-in-chrome",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/code-review": {
+    "category": "development",
+    "path": ".claude/skills/system-prompts-leaks/code-review/SKILL.md",
+    "slug": "code-review",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/create-design-system": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/create-design-system/SKILL.md",
+    "slug": "create-design-system",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/dataviz": {
+    "category": "data",
+    "path": ".claude/skills/system-prompts-leaks/dataviz/SKILL.md",
+    "slug": "dataviz",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/debug": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/debug/SKILL.md",
+    "slug": "debug",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/deep-research": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/deep-research/SKILL.md",
+    "slug": "deep-research",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/design": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/design/SKILL.md",
+    "slug": "design",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/design-sync": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/design-sync/SKILL.md",
+    "slug": "design-sync",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/doctor": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/doctor/SKILL.md",
+    "slug": "doctor",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/export-as-pptx-editable": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/export-as-pptx-editable/SKILL.md",
+    "slug": "export-as-pptx-editable",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/export-as-pptx-screenshots": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/export-as-pptx-screenshots/SKILL.md",
+    "slug": "export-as-pptx-screenshots",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/fewer-permission-prompts": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/fewer-permission-prompts/SKILL.md",
+    "slug": "fewer-permission-prompts",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/flier": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/flier/SKILL.md",
+    "slug": "flier",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/frontend-design": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/frontend-design/SKILL.md",
+    "slug": "frontend-design",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/handoff-to-claude-code": {
+    "category": "development",
+    "path": ".claude/skills/system-prompts-leaks/handoff-to-claude-code/SKILL.md",
+    "slug": "handoff-to-claude-code",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/hi-fi-design": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/hi-fi-design/SKILL.md",
+    "slug": "hi-fi-design",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/html-email": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/html-email/SKILL.md",
+    "slug": "html-email",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/init": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/init/SKILL.md",
+    "slug": "init",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/init-new": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/init-new/SKILL.md",
+    "slug": "init-new",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/interactive-prototype": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/interactive-prototype/SKILL.md",
+    "slug": "interactive-prototype",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/keybindings-help": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/keybindings-help/SKILL.md",
+    "slug": "keybindings-help",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/loop": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/loop/SKILL.md",
+    "slug": "loop",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/make-a-deck": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/make-a-deck/SKILL.md",
+    "slug": "make-a-deck",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/make-a-doc": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/make-a-doc/SKILL.md",
+    "slug": "make-a-doc",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/make-tweakable": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/make-tweakable/SKILL.md",
+    "slug": "make-tweakable",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/maps-geography": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/maps-geography/SKILL.md",
+    "slug": "maps-geography",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/non-storybook": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/design-sync/non-storybook/SKILL.md",
+    "slug": "non-storybook",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/options": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/options/SKILL.md",
+    "slug": "options",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/plugin-authoring": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/plugin-authoring/SKILL.md",
+    "slug": "plugin-authoring",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/run": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/run/SKILL.md",
+    "slug": "run",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/run-skill-generator": {
+    "category": "development",
+    "path": ".claude/skills/system-prompts-leaks/run-skill-generator/SKILL.md",
+    "slug": "run-skill-generator",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/save-as-pdf": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/save-as-pdf/SKILL.md",
+    "slug": "save-as-pdf",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/save-as-standalone-html": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/save-as-standalone-html/SKILL.md",
+    "slug": "save-as-standalone-html",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/schedule": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/schedule/SKILL.md",
+    "slug": "schedule",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/security-review": {
+    "category": "security",
+    "path": ".claude/skills/system-prompts-leaks/security-review/SKILL.md",
+    "slug": "security-review",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/setup-cowork": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/setup-cowork/SKILL.md",
+    "slug": "setup-cowork",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/setup-writing-style": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/setup-writing-style/SKILL.md",
+    "slug": "setup-writing-style",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/simplify": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/simplify/SKILL.md",
+    "slug": "simplify",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/storybook": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/design-sync/storybook/SKILL.md",
+    "slug": "storybook",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/update-config": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/update-config/SKILL.md",
+    "slug": "update-config",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/verify": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/verify/SKILL.md",
+    "slug": "verify",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/web-research": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/web-research/SKILL.md",
+    "slug": "web-research",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/wireframe": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/wireframe/SKILL.md",
+    "slug": "wireframe",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
+  },
+  "system-prompts-leaks/workflow-authoring": {
+    "category": "other",
+    "path": ".claude/skills/system-prompts-leaks/workflow-authoring/SKILL.md",
+    "slug": "workflow-authoring",
+    "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
+    "source_slug": "system-prompts-leaks"
   },
   "ui-ux-pro-max/banner-design": {
     "category": "other",
