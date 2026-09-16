@@ -43,7 +43,16 @@ export const MASTER_DATA_TABLES = [
   {
     route: "modules",
     label: "Modules",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "code", label: "Module ID" },
+      { key: "moduleCode", label: "Module Code" },
+      { key: "name", label: "Module Name" },
+      { key: "practiceId", label: "Practice" },
+      { key: "createdBy", label: "Created By" },
+      { key: "createdAt", label: "Created At" },
+      { key: "updatedBy", label: "Updated By" },
+      { key: "updatedAt", label: "Updated At" },
+    ],
   },
   {
     route: "resources",

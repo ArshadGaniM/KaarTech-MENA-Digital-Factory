@@ -46,16 +46,17 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `competencies`, `modules`, `resources` | `name` (required) |
+| `competencies`, `resources` | `name` (required) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
+| `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** validated against `practices`; can be set/changed later via PATCH) — plus an auto-generated `code` (`MOD-001`, ...) |
 
 Every record's response includes `id`, the table's own fields, `createdBy`,
 `createdAt`, `updatedBy`, `updatedAt` (camelCase in responses, snake_case in
-the database) — plus `code` for `delivery-centers`, `departments`, and
-`practices` (an auto-generated, immutable business identifier, distinct
-from `id`).
+the database) — plus `code` for `delivery-centers`, `departments`,
+`practices`, and `modules` (an auto-generated, immutable business
+identifier, distinct from `id`).
 `updatedAt` is bumped automatically by a Postgres trigger on every UPDATE,
 not by application code.
 
@@ -95,6 +96,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0007_add_department_code.sql` | `departments`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`). |
 | `0008_rename_skill_sets_to_competencies.sql` | Renames `skill_sets` to `competencies` (and its index/constraint/trigger names) — no column changes. |
 | `0009_add_practice_code.sql` | `practices`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`/`departments`). |
+| `0010_add_module_columns.sql` | `modules`-specific: `code` (auto-generated via trigger), `module_code` (human-assigned, required), `practice_id` (nullable `uuid`, indexed but **not** a foreign key — deliberately unenforced so a module can be inserted before its Practice is decided). |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

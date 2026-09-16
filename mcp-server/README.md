@@ -68,14 +68,22 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency`, `module`, `resource` | `name` | `name` |
+| `competency`, `resource` | `name` | `name` |
 | `practice`, `department` | `name` | `name` |
+| `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
 
 `add_<table>` creates a record — `created_at`/`updated_at` are set by the
-database, and `delivery_center`/`department`/`practice` additionally get
-an auto-generated, immutable business code (`DC-001`.../`DEPT-001`.../`PRAC-001`...)
-they never need to be told.
+database, and `delivery_center`/`department`/`practice`/`module`
+additionally get an auto-generated, immutable business code
+(`DC-001`.../`DEPT-001`.../`PRAC-001`.../`MOD-001`...) they never need to
+be told. `module`'s `moduleCode` is a separate, human-assigned code —
+distinct from the auto-generated one.
+
+**`module`'s `practiceId`** links to a `practice`'s `id` (not its `code`).
+It's optional on `add_module` and unvalidated — a module can be created
+without a Practice, or with one that doesn't exist yet, and mapped later
+via `update_module`.
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
 `delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`; the

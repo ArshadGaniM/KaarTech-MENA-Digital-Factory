@@ -50,7 +50,12 @@ export const MASTER_DATA_TABLES = [
     route: "modules",
     tableName: "modules",
     resourceName: "module",
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    hasCode: true,
+    fields: [
+      { key: "moduleCode", column: "module_code", required: true, type: "string" },
+      { key: "name", column: "name", required: true, type: "string" },
+      { key: "practiceId", column: "practice_id", required: false, type: "string" },
+    ],
   },
   {
     route: "resources",
