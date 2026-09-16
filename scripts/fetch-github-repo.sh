@@ -47,7 +47,17 @@ if has_match "$TMP_DIR/$SLUG" -iname "SKILL.md" -o -ipath "*/skills/*"; then
     else
       dest_name=$(basename "$skill_dir")
       mkdir -p ".claude/skills/$SLUG/$dest_name"
-      cp -r "$skill_dir/." ".claude/skills/$SLUG/$dest_name/"
+      # A single bad file (a dangling symlink, a permission-denied device
+      # node) must not kill the whole ingestion under `set -e` — that
+      # silently drops every skill after it in this repo (found on
+      # claude-skills: a dangling symlink partway through the run aborted
+      # the script with only 459 of its skills copied and the registry
+      # never updated). Copy what's copyable and warn on what isn't.
+      if ! cp -r "$skill_dir/." ".claude/skills/$SLUG/$dest_name/" 2>/tmp/fetch-repo-cp-err.$$; then
+        echo "WARNING: some files in $dest_name failed to copy (see below) — continuing with the rest of this repo." >&2
+        cat /tmp/fetch-repo-cp-err.$$ >&2
+      fi
+      rm -f /tmp/fetch-repo-cp-err.$$
       # A skill's own subdirectory should never itself be a git repo (that
       # happens if a maintainer vendored something in-place) — strip it so
       # git doesn't record a broken embedded-repo gitlink.

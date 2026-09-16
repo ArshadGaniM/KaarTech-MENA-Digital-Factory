@@ -85,7 +85,7 @@
   },
   "claude-code-router": {
     "components": "10 provider-router agent configs",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:50:17Z",
     "type": "agents",
     "url": "https://github.com/musistudio/claude-code-router"
   },
@@ -102,14 +102,13 @@
     "url": "https://github.com/thedotmack/claude-mem.git"
   },
   "claude-skills": {
-    "components": "Large mixed pack \u2014 hundreds of skills/agents/commands across roles, plus 5 hooks",
-    "last_fetched": null,
-    "type": "skills+agents+commands+hooks",
+    "last_fetched": "2026-09-16T10:51:29Z",
+    "type": "skills,agents,commands,hooks",
     "url": "https://github.com/alirezarezvani/claude-skills"
   },
   "codegraph": {
     "components": "2 skills (agent-eval, add-lang)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:50:29Z",
     "type": "skills",
     "url": "https://github.com/colbymchenry/codegraph"
   },
@@ -157,13 +156,13 @@
   },
   "learn-claude-code": {
     "components": "4 skills (agent-builder, code-review, mcp-builder, pdf)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:50:15Z",
     "type": "skills",
     "url": "https://github.com/shareAI-lab/learn-claude-code"
   },
   "marketingskills": {
     "components": "~55 marketing skills (SEO, ads, copywriting, CRO, email, social, pricing, retention)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:50:31Z",
     "type": "skills",
     "url": "https://github.com/coreyhaines31/marketingskills"
   },
@@ -193,13 +192,13 @@
   },
   "openmontage": {
     "components": "142 skills, 8 agents, 3 commands (video/media generation and editing toolchain)",
-    "last_fetched": null,
-    "type": "skills+agents+commands",
+    "last_fetched": "2026-09-16T10:50:01Z",
+    "type": "skills,agents,commands",
     "url": "https://github.com/calesthio/OpenMontage"
   },
   "orca": {
     "components": "8 skills (computer-use, orchestration, orca-cli, orca-emulator/-android, orca-linear, linear-tickets, orca-per-workspace-env)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:50:13Z",
     "type": "skills",
     "url": "https://github.com/stablyai/orca"
   },

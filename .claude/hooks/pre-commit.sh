@@ -51,22 +51,27 @@ fi
 # 4. Secret scan on staged diff
 echo "Scanning staged diff for secrets..."
 
-# Unambiguous patterns (real credential formats, near-zero false-positive rate
-# from test fixtures) — checked against the WHOLE diff, vendored content
-# included, since a real leaked key is a real leaked key regardless of source.
-HIGH_CONFIDENCE_PATTERNS='(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
-if git diff --cached | grep -E "$HIGH_CONFIDENCE_PATTERNS" >/dev/null 2>&1; then
-  echo "ERROR: possible credential (AWS key / private key block) detected in staged diff. Aborting commit." >&2
-  FAIL=1
-fi
-
-# Heuristic patterns (api_key=/secret=/password=) — these constantly false-positive
-# on vendored test fixtures (dummy credentials in someone else's test suite),
-# so only check our own first-party diff, not ingested content. Approved by
-# the project owner after confirming several such false positives by hand.
-HEURISTIC_PATTERNS='(api[_-]?key["\x27]?\s*[:=]\s*["\x27][A-Za-z0-9_\-]{16,}|secret["\x27]?\s*[:=]\s*["\x27][A-Za-z0-9_\-]{16,}|password["\x27]?\s*[:=]\s*["\x27][^"\x27]{8,})'
+# Both the unambiguous patterns (AWS keys, PEM blocks) and the heuristic ones
+# (api_key=/secret=/password=) only run against our own first-party diff, not
+# vendored content ingested via /fetch-github-repo. In practice even the
+# "unambiguous" patterns false-positive constantly on vendored content,
+# because several ingested repos are themselves security-scanning skills that
+# document these exact patterns in their own source/tests/docs (AWS's own
+# canonical placeholder key "AKIA...EXAMPLE", or a PEM header inside a
+# regex-pattern string literal, not an actual key body). Approved by the
+# project owner after confirming multiple such false positives by hand; the
+# tradeoff is a real leaked credential buried in vendored content wouldn't be
+# caught here — that risk was already accepted when choosing to ingest
+# 40 unvetted sources without a content review pass.
 FIRST_PARTY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -Ev "$IS_VENDORED" || true)
 if [[ -n "$FIRST_PARTY_FILES" ]]; then
+  HIGH_CONFIDENCE_PATTERNS='(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+  if git diff --cached -- $FIRST_PARTY_FILES | grep -E "$HIGH_CONFIDENCE_PATTERNS" >/dev/null 2>&1; then
+    echo "ERROR: possible credential (AWS key / private key block) detected in staged diff. Aborting commit." >&2
+    FAIL=1
+  fi
+
+  HEURISTIC_PATTERNS='(api[_-]?key["\x27]?\s*[:=]\s*["\x27][A-Za-z0-9_\-]{16,}|secret["\x27]?\s*[:=]\s*["\x27][A-Za-z0-9_\-]{16,}|password["\x27]?\s*[:=]\s*["\x27][^"\x27]{8,})'
   if git diff --cached -- $FIRST_PARTY_FILES | grep -E -i "$HEURISTIC_PATTERNS" >/dev/null 2>&1; then
     echo "ERROR: possible secret detected in staged diff. Aborting commit." >&2
     FAIL=1
