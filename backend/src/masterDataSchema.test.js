@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
+import { isUniqueViolation, duplicateFieldError } from "./errors.js";
 
 const SIMPLE_TABLE = {
   fields: [{ key: "name", column: "name", required: true, type: "string" }],
@@ -10,6 +11,14 @@ const TABLE_WITH_OPTIONAL_FIELD = {
   fields: [
     { key: "name", column: "name", required: true, type: "string" },
     { key: "notes", column: "notes", required: false, type: "string" },
+  ],
+};
+
+const RESOURCE_LIKE_TABLE = {
+  fields: [
+    { key: "employeeId", column: "employee_id", required: true, type: "number" },
+    { key: "sapExperience", column: "sap_experience", required: false, type: "number" },
+    { key: "skill", column: "skill", required: false, type: "string", maxLength: 20000 },
   ],
 };
 
@@ -198,4 +207,61 @@ test("validateActor rejects an actor name longer than 255 characters", () => {
     assert.ok(err.details.updatedBy);
     return true;
   });
+});
+
+test("validateBody accepts a valid number field", () => {
+  assert.doesNotThrow(() => validateBody(RESOURCE_LIKE_TABLE, { employeeId: 42 }, { partial: true }));
+});
+
+test("validateBody rejects a non-number value for a number field", () => {
+  assert.throws(() => validateBody(RESOURCE_LIKE_TABLE, { employeeId: "42" }), (err) => {
+    assert.ok(err.details.employeeId);
+    return true;
+  });
+});
+
+test("validateBody rejects NaN/Infinity for a number field", () => {
+  assert.throws(() => validateBody(RESOURCE_LIKE_TABLE, { employeeId: Infinity }), (err) => {
+    assert.ok(err.details.employeeId);
+    return true;
+  });
+});
+
+test("validateBody skips length/enum checks for a number field", () => {
+  // A number field should never hit the string-length branch, even at 0.
+  assert.doesNotThrow(() => validateBody(RESOURCE_LIKE_TABLE, { employeeId: 0 }, { partial: true }));
+});
+
+test("validateBody accepts an explicit null for a non-required number field (clearing it)", () => {
+  assert.doesNotThrow(() =>
+    validateBody(RESOURCE_LIKE_TABLE, { sapExperience: null }, { partial: true })
+  );
+});
+
+test("validateBody honors a field's maxLength override", () => {
+  assert.doesNotThrow(() =>
+    validateBody(RESOURCE_LIKE_TABLE, { skill: "x".repeat(20000) }, { partial: true })
+  );
+  assert.throws(
+    () => validateBody(RESOURCE_LIKE_TABLE, { skill: "x".repeat(20001) }, { partial: true }),
+    (err) => {
+      assert.ok(err.details.skill);
+      return true;
+    }
+  );
+});
+
+test("duplicateFieldError names the field whose unique constraint was violated", () => {
+  const err = duplicateFieldError(
+    { constraint: "resources_employee_id_unique" },
+    [{ key: "employeeId", column: "employee_id" }]
+  );
+  assert.equal(err.status, 422);
+  assert.ok(err.details.employeeId);
+});
+
+test("isUniqueViolation matches Postgres error code 23505 only", () => {
+  assert.equal(isUniqueViolation({ code: "23505" }), true);
+  assert.equal(isUniqueViolation({ code: "23502" }), false);
+  assert.equal(isUniqueViolation({}), false);
 });

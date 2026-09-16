@@ -46,11 +46,23 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `competencies`, `resources`, `resource-cost`, `teams`, `resource-deployment` | `name` (required) |
+| `competencies`, `resource-cost`, `teams`, `resource-deployment` | `name` (required) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** validated against `practices`; can be set/changed later via PATCH) — plus an auto-generated `code` (`MOD-001`, ...) |
+| `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
+
+**Field types beyond `string`/`enum`:** a field's `type` can also be
+`"number"` (a finite JS number — no length/enum checks apply), and any
+`"string"` field can set `maxLength` to override the default 255-char cap
+(`resources.skill` uses `maxLength: 20000`, since real skill lists run
+past 12,000 characters).
+
+**Duplicate unique values** (e.g. two `resources` with the same
+`employeeId`) return a 422 `validation_error` naming the offending field,
+not a raw 500 — see `isUniqueViolation`/`duplicateFieldError` in
+`src/errors.js`.
 
 Every record's response includes `id`, the table's own fields, `createdBy`,
 `createdAt`, `updatedBy`, `updatedAt`, and `markedDeleted` (camelCase in
@@ -106,6 +118,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0009_add_practice_code.sql` | `practices`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`/`departments`). |
 | `0010_add_module_columns.sql` | `modules`-specific: `code` (auto-generated via trigger), `module_code` (human-assigned, required), `practice_id` (nullable `uuid`, indexed but **not** a foreign key — deliberately unenforced so a module can be inserted before its Practice is decided). |
 | `0011_create_additional_master_data_tables.sql` | 3 new tables (`resource_cost`, `teams`, `resource_deployment`), created directly with the full shape the original 6 accumulated (name-only, same starting point `practices`/`competencies`/etc. had before their own follow-up migrations). |
+| `0012_add_resource_columns.sql` | `resources`-specific: 16 real columns imported from an HR export, including `employee_id integer unique not null` — the first caller-supplied (not auto-generated) unique identifier in this schema — and a `location_type` `CHECK` constraint (`Onsite`/`Offshore`, matching the source data's casing). |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

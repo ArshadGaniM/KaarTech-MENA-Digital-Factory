@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { pool } from "./db.js";
-import { notFound } from "./errors.js";
+import { notFound, isUniqueViolation, duplicateFieldError } from "./errors.js";
 import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
@@ -79,7 +79,7 @@ export function createMasterDataRouter(table) {
       );
       res.status(201).json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(err);
+      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
     }
   });
 
@@ -116,7 +116,7 @@ export function createMasterDataRouter(table) {
       if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(err);
+      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
     }
   });
 

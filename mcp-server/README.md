@@ -70,10 +70,11 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency`, `resource`, `resource_cost`, `team`, `resource_deployment` | `name` | `name` |
+| `competency`, `resource_cost`, `team`, `resource_deployment` | `name` | `name` |
 | `practice`, `department` | `name` | `name` |
 | `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
+| `resource` | `employeeId`, `name`, `employmentStatus`, `employmentType`, `subDivision`, `position`, `locationType` (`Onsite` \| `Offshore`), `designation`, `geBatch`, `kaarExperience`, `totalExperience` | all of the above, plus `orgChart`, `region`, `onsiteLocation`, `offshoreLocation`, `skill`, `sapExperience` |
 
 `add_<table>` creates a record — `created_at`/`updated_at` are set by the
 database, and `delivery_center`/`department`/`practice`/`module`
@@ -86,6 +87,14 @@ distinct from the auto-generated one.
 It's optional on `add_module` and unvalidated — a module can be created
 without a Practice, or with one that doesn't exist yet, and mapped later
 via `update_module`.
+
+**`resource`'s `employeeId`** is unlike every other table's identifier —
+it's a required number **you supply**, not auto-generated, and must be
+unique. `add_resource` with a duplicate `employeeId` fails with a 422
+naming the field, not an auto-generated code collision. `resource`'s
+`skill` field accepts up to 20000 characters (other string fields cap at
+255) and numeric fields (`kaarExperience`, `sapExperience`,
+`totalExperience`) take a JS number, not a string.
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
 `delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`, not
