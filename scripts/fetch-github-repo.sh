@@ -12,30 +12,52 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 echo "Cloning $REPO_URL into $TMP_DIR..."
 git clone --depth 1 "$REPO_URL" "$TMP_DIR/$SLUG"
 
+# Existence check that survives `set -o pipefail`: a plain `find ... | grep -q .`
+# is unsafe here — grep -q exits after the first match, and if find is still
+# writing when that happens it gets SIGPIPE, which pipefail then reports as the
+# whole check failing even though a match WAS found. `-print -quit` makes find
+# itself stop after the first hit, so there's no pipe left open to break.
+has_match() {
+  [[ -n "$(find "$1" \( "${@:2}" \) -print -quit 2>/dev/null)" ]]
+}
+
 COMPONENTS=()
 
-# Skills
-if find "$TMP_DIR/$SLUG" -iname "SKILL.md" -o -ipath "*/skills/*" | grep -q .; then
+# Skills — copy each skill's whole containing directory (not just SKILL.md) so
+# per-skill reference files/scripts survive, and so multiple skills never
+# collide by sharing the basename "SKILL.md".
+if has_match "$TMP_DIR/$SLUG" -iname "SKILL.md" -o -ipath "*/skills/*"; then
   mkdir -p ".claude/skills/$SLUG"
-  find "$TMP_DIR/$SLUG" -iname "SKILL.md" -exec cp {} ".claude/skills/$SLUG/" \; 2>/dev/null || true
+  while IFS= read -r -d '' skill_md; do
+    skill_dir=$(dirname "$skill_md")
+    dest_name=$(basename "$skill_dir")
+    mkdir -p ".claude/skills/$SLUG/$dest_name"
+    cp -r "$skill_dir/." ".claude/skills/$SLUG/$dest_name/"
+  done < <(find "$TMP_DIR/$SLUG" -iname "SKILL.md" -print0 2>/dev/null)
   COMPONENTS+=("skills")
 fi
 
-# Agents
-if find "$TMP_DIR/$SLUG" -ipath "*/agents/*.md" | grep -q .; then
+# Agents — same collision risk as skills if two source subdirectories have a
+# same-named file, so preserve the path relative to the matched "agents/" dir.
+if has_match "$TMP_DIR/$SLUG" -ipath "*/agents/*.md"; then
   mkdir -p ".claude/agents/$SLUG"
-  find "$TMP_DIR/$SLUG" -ipath "*/agents/*.md" -exec cp {} ".claude/agents/$SLUG/" \; 2>/dev/null || true
+  while IFS= read -r -d '' agent_md; do
+    rel=${agent_md#"$TMP_DIR/$SLUG/"}
+    dest=".claude/agents/$SLUG/${rel#*agents/}"
+    mkdir -p "$(dirname "$dest")"
+    cp "$agent_md" "$dest"
+  done < <(find "$TMP_DIR/$SLUG" -ipath "*/agents/*.md" -print0 2>/dev/null)
   COMPONENTS+=("agents")
 fi
 
 # Commands
-if find "$TMP_DIR/$SLUG" -ipath "*/commands/*.md" | grep -q .; then
+if has_match "$TMP_DIR/$SLUG" -ipath "*/commands/*.md"; then
   find "$TMP_DIR/$SLUG" -ipath "*/commands/*.md" -exec sh -c 'cp "$1" ".claude/commands/'"$SLUG"'_$(basename "$1")"' _ {} \; 2>/dev/null || true
   COMPONENTS+=("commands")
 fi
 
 # Hooks
-if find "$TMP_DIR/$SLUG" -ipath "*/hooks/*.sh" | grep -q .; then
+if has_match "$TMP_DIR/$SLUG" -ipath "*/hooks/*.sh"; then
   find "$TMP_DIR/$SLUG" -ipath "*/hooks/*.sh" -exec sh -c 'cp "$1" ".claude/hooks/'"$SLUG"'_$(basename "$1")"' _ {} \; 2>/dev/null || true
   COMPONENTS+=("hooks")
 fi
@@ -52,11 +74,13 @@ if os.path.exists(registry_path):
     with open(registry_path) as f:
         data = json.load(f)
 
-data[slug] = {
-    "url": url,
-    "type": type_,
-    "last_fetched": now,
-}
+# Merge rather than replace: keep any pre-existing "components" description
+# (the human-curated summary) and only update url/type/last_fetched.
+existing = data.get(slug, {})
+existing["url"] = url
+existing["type"] = type_
+existing["last_fetched"] = now
+data[slug] = existing
 
 os.makedirs(os.path.dirname(registry_path), exist_ok=True)
 with open(registry_path, "w") as f:

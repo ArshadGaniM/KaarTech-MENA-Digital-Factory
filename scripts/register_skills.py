@@ -50,25 +50,38 @@ def main():
         return
 
     entries = {}
-    for slug in sorted(os.listdir(args.skills_dir)):
-        skill_dir = os.path.join(args.skills_dir, slug)
-        if not os.path.isdir(skill_dir):
-            continue
-        skill_md = None
-        for candidate in ("SKILL.md", "skill.md"):
-            path = os.path.join(skill_dir, candidate)
-            if os.path.exists(path):
-                skill_md = path
-                break
-        if not skill_md:
+    for source_slug in sorted(os.listdir(args.skills_dir)):
+        source_dir = os.path.join(args.skills_dir, source_slug)
+        if not os.path.isdir(source_dir):
             continue
 
-        entries[slug] = {
-            "slug": slug,
-            "category": infer_category(slug),
-            "source_repo": load_source_repo(slug, args.registry),
-            "path": skill_md,
-        }
+        # A source can package one skill directly at <source_slug>/SKILL.md,
+        # or many skills each in their own subdirectory
+        # (<source_slug>/<skill_slug>/SKILL.md, from a multi-skill repo) —
+        # walk the whole tree so a multi-skill source doesn't collapse to one entry.
+        for root, _dirs, files in os.walk(source_dir):
+            skill_md = None
+            for candidate in ("SKILL.md", "skill.md"):
+                if candidate in files:
+                    skill_md = os.path.join(root, candidate)
+                    break
+            if not skill_md:
+                continue
+
+            if root == source_dir:
+                key = source_slug
+                skill_slug = source_slug
+            else:
+                skill_slug = os.path.basename(root)
+                key = f"{source_slug}/{skill_slug}"
+
+            entries[key] = {
+                "slug": skill_slug,
+                "source_slug": source_slug,
+                "category": infer_category(skill_slug),
+                "source_repo": load_source_repo(source_slug, args.registry),
+                "path": skill_md,
+            }
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w") as f:

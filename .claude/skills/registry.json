@@ -1,0 +1,100 @@
+{
+  "superpowers/brainstorming": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/brainstorming/SKILL.md",
+    "slug": "brainstorming",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/dispatching-parallel-agents": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/dispatching-parallel-agents/SKILL.md",
+    "slug": "dispatching-parallel-agents",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/executing-plans": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/executing-plans/SKILL.md",
+    "slug": "executing-plans",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/finishing-a-development-branch": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/finishing-a-development-branch/SKILL.md",
+    "slug": "finishing-a-development-branch",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/receiving-code-review": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/receiving-code-review/SKILL.md",
+    "slug": "receiving-code-review",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/requesting-code-review": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/requesting-code-review/SKILL.md",
+    "slug": "requesting-code-review",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/subagent-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/subagent-driven-development/SKILL.md",
+    "slug": "subagent-driven-development",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/systematic-debugging": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/systematic-debugging/SKILL.md",
+    "slug": "systematic-debugging",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/test-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/test-driven-development/SKILL.md",
+    "slug": "test-driven-development",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/using-git-worktrees": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/using-git-worktrees/SKILL.md",
+    "slug": "using-git-worktrees",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/using-superpowers": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/using-superpowers/SKILL.md",
+    "slug": "using-superpowers",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/verification-before-completion": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/verification-before-completion/SKILL.md",
+    "slug": "verification-before-completion",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/writing-plans": {
+    "category": "other",
+    "path": ".claude/skills/superpowers/writing-plans/SKILL.md",
+    "slug": "writing-plans",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  },
+  "superpowers/writing-skills": {
+    "category": "development",
+    "path": ".claude/skills/superpowers/writing-skills/SKILL.md",
+    "slug": "writing-skills",
+    "source_repo": "https://github.com/obra/superpowers.git",
+    "source_slug": "superpowers"
+  }
+}
