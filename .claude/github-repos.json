@@ -97,8 +97,8 @@
   },
   "claude-mem": {
     "components": "do, knowledge-agent, make-plan, mem-search, smart-explore, timeline-report, version-bump (7)",
-    "last_fetched": null,
-    "type": "skills",
+    "last_fetched": "2026-09-16T10:27:11Z",
+    "type": "skills,commands",
     "url": "https://github.com/thedotmack/claude-mem.git"
   },
   "claude-skills": {
@@ -115,8 +115,8 @@
   },
   "context7": {
     "components": "context7-cli, context7-mcp, find-docs (3 skills); docs-researcher (1 agent); /context7:docs (1 command)",
-    "last_fetched": null,
-    "type": "skills+agents+commands",
+    "last_fetched": "2026-09-16T10:27:15Z",
+    "type": "skills,agents,commands",
     "url": "https://github.com/upstash/context7.git"
   },
   "design-md-chrome": {
@@ -133,14 +133,14 @@
   },
   "everything-claude-code": {
     "components": "34 skills spanning agent tooling, api-design, frontend/backend patterns, research, security-review, tdd-workflow, etc.",
-    "last_fetched": null,
-    "type": "skills",
+    "last_fetched": "2026-09-16T10:27:27Z",
+    "type": "skills,agents,commands,hooks",
     "url": "https://github.com/affaan-m/everything-claude-code.git"
   },
   "get-shit-done": {
     "components": "gsd-planner, gsd-debugger, gsd-code-reviewer, gsd-executor, gsd-roadmapper, gsd-security-auditor, gsd-verifier + 26 more (33 total)",
-    "last_fetched": null,
-    "type": "agents",
+    "last_fetched": "2026-09-16T10:27:36Z",
+    "type": "skills,agents,commands,hooks",
     "url": "https://github.com/gsd-build/get-shit-done.git"
   },
   "headroom": {
@@ -169,13 +169,13 @@
   },
   "n8n-mcp": {
     "components": "code-reviewer, context-manager, debugger, deployment-engineer, mcp-backend-engineer, n8n-mcp-tester, technical-researcher, test-automator (8)",
-    "last_fetched": null,
-    "type": "agents",
+    "last_fetched": "2026-09-16T10:27:33Z",
+    "type": "skills,agents",
     "url": "https://github.com/czlonkowski/n8n-mcp.git"
   },
   "obsidian-skills": {
     "components": "defuddle, json-canvas, obsidian-bases, obsidian-cli, obsidian-markdown (5)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:27:13Z",
     "type": "skills",
     "url": "https://github.com/kepano/obsidian-skills.git"
   },

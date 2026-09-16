@@ -1,4 +1,2405 @@
 {
+  "claude-mem/babysit": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/babysit/SKILL.md",
+    "slug": "babysit",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/ccs-align": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/ccs-align/SKILL.md",
+    "slug": "ccs-align",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/cloud-sync": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/cloud-sync/SKILL.md",
+    "slug": "cloud-sync",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/design-is": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/design-is/SKILL.md",
+    "slug": "design-is",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/do": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/do/SKILL.md",
+    "slug": "do",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/host-observer": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/host-observer/SKILL.md",
+    "slug": "host-observer",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/how-it-works": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/how-it-works/SKILL.md",
+    "slug": "how-it-works",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/install": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/install/SKILL.md",
+    "slug": "install",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/knowledge-agent": {
+    "category": "development",
+    "path": ".claude/skills/claude-mem/knowledge-agent/SKILL.md",
+    "slug": "knowledge-agent",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/learn-codebase": {
+    "category": "development",
+    "path": ".claude/skills/claude-mem/learn-codebase/SKILL.md",
+    "slug": "learn-codebase",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/make-plan": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/openclaw/skills/make-plan/SKILL.md",
+    "slug": "make-plan",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/mem-search": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/mem-search/SKILL.md",
+    "slug": "mem-search",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/mem-setup": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/mem-setup/SKILL.md",
+    "slug": "mem-setup",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/mode-creator": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/mode-creator/SKILL.md",
+    "slug": "mode-creator",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/oh-my-issues": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/oh-my-issues/SKILL.md",
+    "slug": "oh-my-issues",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/openclaw": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/openclaw/SKILL.md",
+    "slug": "openclaw",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/pathfinder": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/pathfinder/SKILL.md",
+    "slug": "pathfinder",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/smart-explore": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/smart-explore/SKILL.md",
+    "slug": "smart-explore",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/standup": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/standup/SKILL.md",
+    "slug": "standup",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/timeline-report": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/timeline-report/SKILL.md",
+    "slug": "timeline-report",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/version-bump": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/version-bump/SKILL.md",
+    "slug": "version-bump",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/weekly-digests": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/weekly-digests/SKILL.md",
+    "slug": "weekly-digests",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/what-the": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/what-the/SKILL.md",
+    "slug": "what-the",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "claude-mem/wowerpoint": {
+    "category": "other",
+    "path": ".claude/skills/claude-mem/wowerpoint/SKILL.md",
+    "slug": "wowerpoint",
+    "source_repo": "https://github.com/thedotmack/claude-mem.git",
+    "source_slug": "claude-mem"
+  },
+  "context7/context7-cli": {
+    "category": "other",
+    "path": ".claude/skills/context7/context7-cli/SKILL.md",
+    "slug": "context7-cli",
+    "source_repo": "https://github.com/upstash/context7.git",
+    "source_slug": "context7"
+  },
+  "context7/context7-docs": {
+    "category": "other",
+    "path": ".claude/skills/context7/context7-docs/SKILL.md",
+    "slug": "context7-docs",
+    "source_repo": "https://github.com/upstash/context7.git",
+    "source_slug": "context7"
+  },
+  "context7/context7-mcp": {
+    "category": "development",
+    "path": ".claude/skills/context7/context7-mcp/SKILL.md",
+    "slug": "context7-mcp",
+    "source_repo": "https://github.com/upstash/context7.git",
+    "source_slug": "context7"
+  },
+  "context7/find-docs": {
+    "category": "other",
+    "path": ".claude/skills/context7/find-docs/SKILL.md",
+    "slug": "find-docs",
+    "source_repo": "https://github.com/upstash/context7.git",
+    "source_slug": "context7"
+  },
+  "everything-claude-code/accessibility": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/accessibility/SKILL.md",
+    "slug": "accessibility",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-architecture-audit": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/agent-architecture-audit/SKILL.md",
+    "slug": "agent-architecture-audit",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-eval": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agent-eval/SKILL.md",
+    "slug": "agent-eval",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-harness-construction": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agent-harness-construction/SKILL.md",
+    "slug": "agent-harness-construction",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-introspection-debugging": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agent-introspection-debugging/SKILL.md",
+    "slug": "agent-introspection-debugging",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-payment-x402": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agent-payment-x402/SKILL.md",
+    "slug": "agent-payment-x402",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-self-evaluation": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agent-self-evaluation/SKILL.md",
+    "slug": "agent-self-evaluation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agent-sort": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agent-sort/SKILL.md",
+    "slug": "agent-sort",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agentic-engineering": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agentic-engineering/SKILL.md",
+    "slug": "agentic-engineering",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/agentic-os": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/agentic-os/SKILL.md",
+    "slug": "agentic-os",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ai-first-engineering": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ai-first-engineering/SKILL.md",
+    "slug": "ai-first-engineering",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ai-regression-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/ai-regression-testing/SKILL.md",
+    "slug": "ai-regression-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/android-clean-architecture": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/android-clean-architecture/SKILL.md",
+    "slug": "android-clean-architecture",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/angular-developer": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/angular-developer/SKILL.md",
+    "slug": "angular-developer",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/api-connector-builder": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/api-connector-builder/SKILL.md",
+    "slug": "api-connector-builder",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/api-design": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/api-design/SKILL.md",
+    "slug": "api-design",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/architecture-decision-records": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/architecture-decision-records/SKILL.md",
+    "slug": "architecture-decision-records",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/article-writing": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/article-writing/SKILL.md",
+    "slug": "article-writing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/automation-audit-ops": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/automation-audit-ops/SKILL.md",
+    "slug": "automation-audit-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/autonomous-agent-harness": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/autonomous-agent-harness/SKILL.md",
+    "slug": "autonomous-agent-harness",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/autonomous-loops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/autonomous-loops/SKILL.md",
+    "slug": "autonomous-loops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/backend-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/backend-patterns/SKILL.md",
+    "slug": "backend-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/benchmark": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/benchmark/SKILL.md",
+    "slug": "benchmark",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/benchmark-methodology": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/benchmark-methodology/SKILL.md",
+    "slug": "benchmark-methodology",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/benchmark-optimization-loop": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/benchmark-optimization-loop/SKILL.md",
+    "slug": "benchmark-optimization-loop",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/blender-motion-state-inspection": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/blender-motion-state-inspection/SKILL.md",
+    "slug": "blender-motion-state-inspection",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/blueprint": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/blueprint/SKILL.md",
+    "slug": "blueprint",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/brand-discovery": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/brand-discovery/SKILL.md",
+    "slug": "brand-discovery",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/brand-voice": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/brand-voice/SKILL.md",
+    "slug": "brand-voice",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/browser-qa": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/browser-qa/SKILL.md",
+    "slug": "browser-qa",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/bun-runtime": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/bun-runtime/SKILL.md",
+    "slug": "bun-runtime",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/canary-watch": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/canary-watch/SKILL.md",
+    "slug": "canary-watch",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/carrier-relationship-management": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/carrier-relationship-management/SKILL.md",
+    "slug": "carrier-relationship-management",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/cisco-ios-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/cisco-ios-patterns/SKILL.md",
+    "slug": "cisco-ios-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ck": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ck/SKILL.md",
+    "slug": "ck",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/claude-devfleet": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/claude-devfleet/SKILL.md",
+    "slug": "claude-devfleet",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/click-path-audit": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/click-path-audit/SKILL.md",
+    "slug": "click-path-audit",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/clickhouse-io": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/clickhouse-io/SKILL.md",
+    "slug": "clickhouse-io",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/code-tour": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/code-tour/SKILL.md",
+    "slug": "code-tour",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/codebase-onboarding": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/codebase-onboarding/SKILL.md",
+    "slug": "codebase-onboarding",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/codehealth-mcp": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/codehealth-mcp/SKILL.md",
+    "slug": "codehealth-mcp",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/coding-standards": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/coding-standards/SKILL.md",
+    "slug": "coding-standards",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/competitive-platform-analysis": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/competitive-platform-analysis/SKILL.md",
+    "slug": "competitive-platform-analysis",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/competitive-report-structure": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/competitive-report-structure/SKILL.md",
+    "slug": "competitive-report-structure",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/compose-multiplatform-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/compose-multiplatform-patterns/SKILL.md",
+    "slug": "compose-multiplatform-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/config-gc": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/config-gc/SKILL.md",
+    "slug": "config-gc",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/configure-ecc": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/configure-ecc/SKILL.md",
+    "slug": "configure-ecc",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/connections-optimizer": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/connections-optimizer/SKILL.md",
+    "slug": "connections-optimizer",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/content-engine": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/content-engine/SKILL.md",
+    "slug": "content-engine",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/content-hash-cache-pattern": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/content-hash-cache-pattern/SKILL.md",
+    "slug": "content-hash-cache-pattern",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/context-budget": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/context-budget/SKILL.md",
+    "slug": "context-budget",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/continuous-agent-loop": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/continuous-agent-loop/SKILL.md",
+    "slug": "continuous-agent-loop",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/continuous-learning": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/continuous-learning/SKILL.md",
+    "slug": "continuous-learning",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/continuous-learning-v2": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/continuous-learning-v2/SKILL.md",
+    "slug": "continuous-learning-v2",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/contract-first": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/contract-first/SKILL.md",
+    "slug": "contract-first",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/cost-aware-llm-pipeline": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/cost-aware-llm-pipeline/SKILL.md",
+    "slug": "cost-aware-llm-pipeline",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/cost-tracking": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/cost-tracking/SKILL.md",
+    "slug": "cost-tracking",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/council": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/council/SKILL.md",
+    "slug": "council",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/council-multi-model": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/council-multi-model/SKILL.md",
+    "slug": "council-multi-model",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/counterparty-channel-discipline": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/counterparty-channel-discipline/SKILL.md",
+    "slug": "counterparty-channel-discipline",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/cpp-coding-standards": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/cpp-coding-standards/SKILL.md",
+    "slug": "cpp-coding-standards",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/cpp-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/cpp-testing/SKILL.md",
+    "slug": "cpp-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/crosspost": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/crosspost/SKILL.md",
+    "slug": "crosspost",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/csharp-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/csharp-testing/SKILL.md",
+    "slug": "csharp-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/customer-billing-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/customer-billing-ops/SKILL.md",
+    "slug": "customer-billing-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/customs-trade-compliance": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/customs-trade-compliance/SKILL.md",
+    "slug": "customs-trade-compliance",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/dart-flutter-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/dart-flutter-patterns/SKILL.md",
+    "slug": "dart-flutter-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/dashboard-builder": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/dashboard-builder/SKILL.md",
+    "slug": "dashboard-builder",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/data-scraper-agent": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/data-scraper-agent/SKILL.md",
+    "slug": "data-scraper-agent",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/data-throughput-accelerator": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/data-throughput-accelerator/SKILL.md",
+    "slug": "data-throughput-accelerator",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/database-migrations": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/database-migrations/SKILL.md",
+    "slug": "database-migrations",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/deep-research": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/deep-research/SKILL.md",
+    "slug": "deep-research",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/defi-amm-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/defi-amm-security/SKILL.md",
+    "slug": "defi-amm-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/delivery-gate": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/delivery-gate/SKILL.md",
+    "slug": "delivery-gate",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/deployment-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/deployment-patterns/SKILL.md",
+    "slug": "deployment-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/design-system": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/design-system/SKILL.md",
+    "slug": "design-system",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/dev-team": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/dev-team/SKILL.md",
+    "slug": "dev-team",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/django-celery": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/django-celery/SKILL.md",
+    "slug": "django-celery",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/django-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/django-patterns/SKILL.md",
+    "slug": "django-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/django-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/django-security/SKILL.md",
+    "slug": "django-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/django-tdd": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/django-tdd/SKILL.md",
+    "slug": "django-tdd",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/django-verification": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/django-verification/SKILL.md",
+    "slug": "django-verification",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/dmux-workflows": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/dmux-workflows/SKILL.md",
+    "slug": "dmux-workflows",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/docker-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/docker-patterns/SKILL.md",
+    "slug": "docker-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/documentation-lookup": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/documentation-lookup/SKILL.md",
+    "slug": "documentation-lookup",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/dotnet-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/dotnet-patterns/SKILL.md",
+    "slug": "dotnet-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/dynamic-workflow-mode": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/dynamic-workflow-mode/SKILL.md",
+    "slug": "dynamic-workflow-mode",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/e2e-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/e2e-testing/SKILL.md",
+    "slug": "e2e-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ecc-guide": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ecc-guide/SKILL.md",
+    "slug": "ecc-guide",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ecc-recipes": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ecc-recipes/SKILL.md",
+    "slug": "ecc-recipes",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ecc-tools-cost-audit": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/ecc-tools-cost-audit/SKILL.md",
+    "slug": "ecc-tools-cost-audit",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/email-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/email-ops/SKILL.md",
+    "slug": "email-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/energy-procurement": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/energy-procurement/SKILL.md",
+    "slug": "energy-procurement",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/enterprise-agent-ops": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/enterprise-agent-ops/SKILL.md",
+    "slug": "enterprise-agent-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/error-handling": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/error-handling/SKILL.md",
+    "slug": "error-handling",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/esign-field-placement": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/esign-field-placement/SKILL.md",
+    "slug": "esign-field-placement",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/eval-harness": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/eval-harness/SKILL.md",
+    "slug": "eval-harness",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/everything-claude-code": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/everything-claude-code/SKILL.md",
+    "slug": "everything-claude-code",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/evm-token-decimals": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/evm-token-decimals/SKILL.md",
+    "slug": "evm-token-decimals",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/exa-search": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/exa-search/SKILL.md",
+    "slug": "exa-search",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/fal-ai-media": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/fal-ai-media/SKILL.md",
+    "slug": "fal-ai-media",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/fastapi-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/fastapi-patterns/SKILL.md",
+    "slug": "fastapi-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/finance-billing-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/finance-billing-ops/SKILL.md",
+    "slug": "finance-billing-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/flox-environments": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/flox-environments/SKILL.md",
+    "slug": "flox-environments",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/flutter-dart-code-review": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/flutter-dart-code-review/SKILL.md",
+    "slug": "flutter-dart-code-review",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/foundation-models-on-device": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/foundation-models-on-device/SKILL.md",
+    "slug": "foundation-models-on-device",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/frontend-a11y": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/frontend-a11y/SKILL.md",
+    "slug": "frontend-a11y",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/frontend-design-direction": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/frontend-design-direction/SKILL.md",
+    "slug": "frontend-design-direction",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/frontend-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/frontend-patterns/SKILL.md",
+    "slug": "frontend-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/frontend-slides": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/frontend-slides/SKILL.md",
+    "slug": "frontend-slides",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/fsharp-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/fsharp-testing/SKILL.md",
+    "slug": "fsharp-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/gan-style-harness": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/gan-style-harness/SKILL.md",
+    "slug": "gan-style-harness",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/gateguard": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/gateguard/SKILL.md",
+    "slug": "gateguard",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/generating-python-installer": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/generating-python-installer/SKILL.md",
+    "slug": "generating-python-installer",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/git-workflow": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/git-workflow/SKILL.md",
+    "slug": "git-workflow",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/github-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/github-ops/SKILL.md",
+    "slug": "github-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/golang-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/golang-patterns/SKILL.md",
+    "slug": "golang-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/golang-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/golang-testing/SKILL.md",
+    "slug": "golang-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/google-workspace-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/google-workspace-ops/SKILL.md",
+    "slug": "google-workspace-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/growth-log": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/growth-log/SKILL.md",
+    "slug": "growth-log",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/healthcare-cdss-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/healthcare-cdss-patterns/SKILL.md",
+    "slug": "healthcare-cdss-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/healthcare-emr-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/healthcare-emr-patterns/SKILL.md",
+    "slug": "healthcare-emr-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/healthcare-eval-harness": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/healthcare-eval-harness/SKILL.md",
+    "slug": "healthcare-eval-harness",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/healthcare-phi-compliance": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/healthcare-phi-compliance/SKILL.md",
+    "slug": "healthcare-phi-compliance",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/hermes-imports": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/hermes-imports/SKILL.md",
+    "slug": "hermes-imports",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/hexagonal-architecture": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/hexagonal-architecture/SKILL.md",
+    "slug": "hexagonal-architecture",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/hipaa-compliance": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/hipaa-compliance/SKILL.md",
+    "slug": "hipaa-compliance",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/homelab-network-readiness": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/homelab-network-readiness/SKILL.md",
+    "slug": "homelab-network-readiness",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/homelab-network-setup": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/homelab-network-setup/SKILL.md",
+    "slug": "homelab-network-setup",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/homelab-pihole-dns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/homelab-pihole-dns/SKILL.md",
+    "slug": "homelab-pihole-dns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/homelab-vlan-segmentation": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/homelab-vlan-segmentation/SKILL.md",
+    "slug": "homelab-vlan-segmentation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/homelab-wireguard-vpn": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/homelab-wireguard-vpn/SKILL.md",
+    "slug": "homelab-wireguard-vpn",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/hookify-rules": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/hookify-rules/SKILL.md",
+    "slug": "hookify-rules",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/inherit-legacy-style": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/inherit-legacy-style/SKILL.md",
+    "slug": "inherit-legacy-style",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/intent-driven-development": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/intent-driven-development/SKILL.md",
+    "slug": "intent-driven-development",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/inventory-demand-planning": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/inventory-demand-planning/SKILL.md",
+    "slug": "inventory-demand-planning",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/investor-materials": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/investor-materials/SKILL.md",
+    "slug": "investor-materials",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/investor-outreach": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/investor-outreach/SKILL.md",
+    "slug": "investor-outreach",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ios-icon-gen": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ios-icon-gen/SKILL.md",
+    "slug": "ios-icon-gen",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/iterative-retrieval": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/iterative-retrieval/SKILL.md",
+    "slug": "iterative-retrieval",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ito-baskets": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ito-baskets/SKILL.md",
+    "slug": "ito-baskets",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ito-compute": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ito-compute/SKILL.md",
+    "slug": "ito-compute",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ito-inference": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ito-inference/SKILL.md",
+    "slug": "ito-inference",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ito-training": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ito-training/SKILL.md",
+    "slug": "ito-training",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/java-coding-standards": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/java-coding-standards/SKILL.md",
+    "slug": "java-coding-standards",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/jira-integration": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/jira-integration/SKILL.md",
+    "slug": "jira-integration",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/jpa-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/jpa-patterns/SKILL.md",
+    "slug": "jpa-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/knowledge-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/knowledge-ops/SKILL.md",
+    "slug": "knowledge-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/kotlin-coroutines-flows": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/kotlin-coroutines-flows/SKILL.md",
+    "slug": "kotlin-coroutines-flows",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/kotlin-exposed-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/kotlin-exposed-patterns/SKILL.md",
+    "slug": "kotlin-exposed-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/kotlin-ktor-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/kotlin-ktor-patterns/SKILL.md",
+    "slug": "kotlin-ktor-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/kotlin-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/kotlin-patterns/SKILL.md",
+    "slug": "kotlin-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/kotlin-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/kotlin-testing/SKILL.md",
+    "slug": "kotlin-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/kubernetes-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/kubernetes-patterns/SKILL.md",
+    "slug": "kubernetes-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/laravel-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/laravel-patterns/SKILL.md",
+    "slug": "laravel-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/laravel-plugin-discovery": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/laravel-plugin-discovery/SKILL.md",
+    "slug": "laravel-plugin-discovery",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/laravel-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/laravel-security/SKILL.md",
+    "slug": "laravel-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/laravel-tdd": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/laravel-tdd/SKILL.md",
+    "slug": "laravel-tdd",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/laravel-verification": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/laravel-verification/SKILL.md",
+    "slug": "laravel-verification",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/latency-critical-systems": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/latency-critical-systems/SKILL.md",
+    "slug": "latency-critical-systems",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/lead-intelligence": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/lead-intelligence/SKILL.md",
+    "slug": "lead-intelligence",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/liquid-glass-design": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/liquid-glass-design/SKILL.md",
+    "slug": "liquid-glass-design",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/living-docs-governance": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/living-docs-governance/SKILL.md",
+    "slug": "living-docs-governance",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/llm-trading-agent-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/llm-trading-agent-security/SKILL.md",
+    "slug": "llm-trading-agent-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/logistics-exception-management": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/logistics-exception-management/SKILL.md",
+    "slug": "logistics-exception-management",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/loop-design-check": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/loop-design-check/SKILL.md",
+    "slug": "loop-design-check",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/mailtrap-email-integration": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/mailtrap-email-integration/SKILL.md",
+    "slug": "mailtrap-email-integration",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/make-interfaces-feel-better": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/make-interfaces-feel-better/SKILL.md",
+    "slug": "make-interfaces-feel-better",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/manim-video": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/manim-video/SKILL.md",
+    "slug": "manim-video",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/market-research": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/market-research/SKILL.md",
+    "slug": "market-research",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/marketing-campaign": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/marketing-campaign/SKILL.md",
+    "slug": "marketing-campaign",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/master-agreement-generator": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/master-agreement-generator/SKILL.md",
+    "slug": "master-agreement-generator",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/mcp-server-patterns": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/mcp-server-patterns/SKILL.md",
+    "slug": "mcp-server-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/messages-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/messages-ops/SKILL.md",
+    "slug": "messages-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ml-adoption-playbook": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ml-adoption-playbook/SKILL.md",
+    "slug": "ml-adoption-playbook",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/mle-workflow": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/mle-workflow/SKILL.md",
+    "slug": "mle-workflow",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/motion-advanced": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/motion-advanced/SKILL.md",
+    "slug": "motion-advanced",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/motion-foundations": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/motion-foundations/SKILL.md",
+    "slug": "motion-foundations",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/motion-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/motion-patterns/SKILL.md",
+    "slug": "motion-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/mysql-patterns": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/mysql-patterns/SKILL.md",
+    "slug": "mysql-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nanoclaw-repl": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nanoclaw-repl/SKILL.md",
+    "slug": "nanoclaw-repl",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nasiko-control-plane": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nasiko-control-plane/SKILL.md",
+    "slug": "nasiko-control-plane",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nestjs-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nestjs-patterns/SKILL.md",
+    "slug": "nestjs-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/netmiko-ssh-automation": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/netmiko-ssh-automation/SKILL.md",
+    "slug": "netmiko-ssh-automation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/network-bgp-diagnostics": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/network-bgp-diagnostics/SKILL.md",
+    "slug": "network-bgp-diagnostics",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/network-config-validation": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/network-config-validation/SKILL.md",
+    "slug": "network-config-validation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/network-interface-health": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/network-interface-health/SKILL.md",
+    "slug": "network-interface-health",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nextjs-turbopack": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nextjs-turbopack/SKILL.md",
+    "slug": "nextjs-turbopack",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nodejs-keccak256": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nodejs-keccak256/SKILL.md",
+    "slug": "nodejs-keccak256",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nutrient-document-processing": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nutrient-document-processing/SKILL.md",
+    "slug": "nutrient-document-processing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/nuxt4-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/nuxt4-patterns/SKILL.md",
+    "slug": "nuxt4-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/openclaw-persona-forge": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/openclaw-persona-forge/SKILL.md",
+    "slug": "openclaw-persona-forge",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/opensource-pipeline": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/opensource-pipeline/SKILL.md",
+    "slug": "opensource-pipeline",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/operator-approval-loop": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/operator-approval-loop/SKILL.md",
+    "slug": "operator-approval-loop",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/orch-add-feature": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/orch-add-feature/SKILL.md",
+    "slug": "orch-add-feature",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/orch-build-mvp": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/orch-build-mvp/SKILL.md",
+    "slug": "orch-build-mvp",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/orch-change-feature": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/orch-change-feature/SKILL.md",
+    "slug": "orch-change-feature",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/orch-fix-defect": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/orch-fix-defect/SKILL.md",
+    "slug": "orch-fix-defect",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/orch-pipeline": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/orch-pipeline/SKILL.md",
+    "slug": "orch-pipeline",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/orch-refine-code": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/orch-refine-code/SKILL.md",
+    "slug": "orch-refine-code",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/parallel-execution-optimizer": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/parallel-execution-optimizer/SKILL.md",
+    "slug": "parallel-execution-optimizer",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/perl-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/perl-patterns/SKILL.md",
+    "slug": "perl-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/perl-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/perl-security/SKILL.md",
+    "slug": "perl-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/perl-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/perl-testing/SKILL.md",
+    "slug": "perl-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/plan-canvas": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/plan-canvas/SKILL.md",
+    "slug": "plan-canvas",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/plan-orchestrate": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/plan-orchestrate/SKILL.md",
+    "slug": "plan-orchestrate",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/plankton-code-quality": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/plankton-code-quality/SKILL.md",
+    "slug": "plankton-code-quality",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/postgres-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/postgres-patterns/SKILL.md",
+    "slug": "postgres-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/prediction-market-oracle-research": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/prediction-market-oracle-research/SKILL.md",
+    "slug": "prediction-market-oracle-research",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/prediction-market-risk-review": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/prediction-market-risk-review/SKILL.md",
+    "slug": "prediction-market-risk-review",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/prisma-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/prisma-patterns/SKILL.md",
+    "slug": "prisma-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/product-capability": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/product-capability/SKILL.md",
+    "slug": "product-capability",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/product-lens": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/product-lens/SKILL.md",
+    "slug": "product-lens",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/production-audit": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/production-audit/SKILL.md",
+    "slug": "production-audit",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/production-scheduling": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/production-scheduling/SKILL.md",
+    "slug": "production-scheduling",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/project-flow-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/project-flow-ops/SKILL.md",
+    "slug": "project-flow-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/project-guidelines-example": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/project-guidelines-example/SKILL.md",
+    "slug": "project-guidelines-example",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/prompt-optimizer": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/prompt-optimizer/SKILL.md",
+    "slug": "prompt-optimizer",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/python-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/python-patterns/SKILL.md",
+    "slug": "python-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/python-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/python-testing/SKILL.md",
+    "slug": "python-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/pytorch-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/pytorch-patterns/SKILL.md",
+    "slug": "pytorch-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/quality-nonconformance": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/quality-nonconformance/SKILL.md",
+    "slug": "quality-nonconformance",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/quarkus-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/quarkus-patterns/SKILL.md",
+    "slug": "quarkus-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/quarkus-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/quarkus-security/SKILL.md",
+    "slug": "quarkus-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/quarkus-tdd": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/quarkus-tdd/SKILL.md",
+    "slug": "quarkus-tdd",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/quarkus-verification": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/quarkus-verification/SKILL.md",
+    "slug": "quarkus-verification",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/rails-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/rails-patterns/SKILL.md",
+    "slug": "rails-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ralphinho-rfc-pipeline": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/ralphinho-rfc-pipeline/SKILL.md",
+    "slug": "ralphinho-rfc-pipeline",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/react-native-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/react-native-patterns/SKILL.md",
+    "slug": "react-native-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/react-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/react-patterns/SKILL.md",
+    "slug": "react-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/react-performance": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/react-performance/SKILL.md",
+    "slug": "react-performance",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/react-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/react-testing/SKILL.md",
+    "slug": "react-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/recsys-pipeline-architect": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/recsys-pipeline-architect/SKILL.md",
+    "slug": "recsys-pipeline-architect",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/recursive-decision-ledger": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/recursive-decision-ledger/SKILL.md",
+    "slug": "recursive-decision-ledger",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/redis-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/redis-patterns/SKILL.md",
+    "slug": "redis-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/regex-vs-llm-structured-text": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/regex-vs-llm-structured-text/SKILL.md",
+    "slug": "regex-vs-llm-structured-text",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/remotion-video-creation": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/remotion-video-creation/SKILL.md",
+    "slug": "remotion-video-creation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/repo-scan": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/repo-scan/SKILL.md",
+    "slug": "repo-scan",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/research-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/research-ops/SKILL.md",
+    "slug": "research-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/returns-reverse-logistics": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/returns-reverse-logistics/SKILL.md",
+    "slug": "returns-reverse-logistics",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/rules-distill": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/rules-distill/SKILL.md",
+    "slug": "rules-distill",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/rust-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/rust-patterns/SKILL.md",
+    "slug": "rust-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/rust-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/rust-testing/SKILL.md",
+    "slug": "rust-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/safety-guard": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/safety-guard/SKILL.md",
+    "slug": "safety-guard",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/santa-method": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/santa-method/SKILL.md",
+    "slug": "santa-method",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/scientific-db-pubmed-database": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/scientific-db-pubmed-database/SKILL.md",
+    "slug": "scientific-db-pubmed-database",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/scientific-db-uspto-database": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/scientific-db-uspto-database/SKILL.md",
+    "slug": "scientific-db-uspto-database",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/scientific-pkg-gget": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/scientific-pkg-gget/SKILL.md",
+    "slug": "scientific-pkg-gget",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/scientific-thinking-literature-review": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/scientific-thinking-literature-review/SKILL.md",
+    "slug": "scientific-thinking-literature-review",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/scientific-thinking-scholar-evaluation": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/scientific-thinking-scholar-evaluation/SKILL.md",
+    "slug": "scientific-thinking-scholar-evaluation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/search-first": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/search-first/SKILL.md",
+    "slug": "search-first",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/security-bounty-hunter": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/security-bounty-hunter/SKILL.md",
+    "slug": "security-bounty-hunter",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/security-review": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/security-review/SKILL.md",
+    "slug": "security-review",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/security-scan": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/security-scan/SKILL.md",
+    "slug": "security-scan",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/seo": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/seo/SKILL.md",
+    "slug": "seo",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/skill-comply": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/skill-comply/SKILL.md",
+    "slug": "skill-comply",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/skill-scout": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/skill-scout/SKILL.md",
+    "slug": "skill-scout",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/skill-stocktake": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/skill-stocktake/SKILL.md",
+    "slug": "skill-stocktake",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/social-graph-ranker": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/social-graph-ranker/SKILL.md",
+    "slug": "social-graph-ranker",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/social-publisher": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/social-publisher/SKILL.md",
+    "slug": "social-publisher",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/springboot-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/springboot-patterns/SKILL.md",
+    "slug": "springboot-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/springboot-security": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/springboot-security/SKILL.md",
+    "slug": "springboot-security",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/springboot-tdd": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/springboot-tdd/SKILL.md",
+    "slug": "springboot-tdd",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/springboot-verification": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/springboot-verification/SKILL.md",
+    "slug": "springboot-verification",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/strategic-compact": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/strategic-compact/SKILL.md",
+    "slug": "strategic-compact",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/swift-actor-persistence": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/swift-actor-persistence/SKILL.md",
+    "slug": "swift-actor-persistence",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/swift-concurrency-6-2": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/swift-concurrency-6-2/SKILL.md",
+    "slug": "swift-concurrency-6-2",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/swift-protocol-di-testing": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/swift-protocol-di-testing/SKILL.md",
+    "slug": "swift-protocol-di-testing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/swiftui-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/swiftui-patterns/SKILL.md",
+    "slug": "swiftui-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/taste": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/taste/SKILL.md",
+    "slug": "taste",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/taste-application": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/taste-application/SKILL.md",
+    "slug": "taste-application",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/taste-distillation": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/taste-distillation/SKILL.md",
+    "slug": "taste-distillation",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/tasteforge-video": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/tasteforge-video/SKILL.md",
+    "slug": "tasteforge-video",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/tdd-workflow": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/tdd-workflow/SKILL.md",
+    "slug": "tdd-workflow",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/team-agent-orchestration": {
+    "category": "development",
+    "path": ".claude/skills/everything-claude-code/team-agent-orchestration/SKILL.md",
+    "slug": "team-agent-orchestration",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/team-builder": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/team-builder/SKILL.md",
+    "slug": "team-builder",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/terminal-opener": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/terminal-opener/SKILL.md",
+    "slug": "terminal-opener",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/terminal-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/terminal-ops/SKILL.md",
+    "slug": "terminal-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/tinystruct-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/tinystruct-patterns/SKILL.md",
+    "slug": "tinystruct-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/token-budget-advisor": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/token-budget-advisor/SKILL.md",
+    "slug": "token-budget-advisor",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ui-demo": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ui-demo/SKILL.md",
+    "slug": "ui-demo",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/ui-to-vue": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/ui-to-vue/SKILL.md",
+    "slug": "ui-to-vue",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/uncloud": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/uncloud/SKILL.md",
+    "slug": "uncloud",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/unified-memory": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/unified-memory/SKILL.md",
+    "slug": "unified-memory",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/unified-notifications-ops": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/unified-notifications-ops/SKILL.md",
+    "slug": "unified-notifications-ops",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/verification-loop": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/verification-loop/SKILL.md",
+    "slug": "verification-loop",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/video-editing": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/video-editing/SKILL.md",
+    "slug": "video-editing",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/videodb": {
+    "category": "data",
+    "path": ".claude/skills/everything-claude-code/videodb/SKILL.md",
+    "slug": "videodb",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/visa-doc-translate": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/visa-doc-translate/SKILL.md",
+    "slug": "visa-doc-translate",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/vite-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/vite-patterns/SKILL.md",
+    "slug": "vite-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/vue-patterns": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/vue-patterns/SKILL.md",
+    "slug": "vue-patterns",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/windows-desktop-e2e": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/windows-desktop-e2e/SKILL.md",
+    "slug": "windows-desktop-e2e",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/workspace-surface-audit": {
+    "category": "security",
+    "path": ".claude/skills/everything-claude-code/workspace-surface-audit/SKILL.md",
+    "slug": "workspace-surface-audit",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "everything-claude-code/x-api": {
+    "category": "other",
+    "path": ".claude/skills/everything-claude-code/x-api/SKILL.md",
+    "slug": "x-api",
+    "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
+    "source_slug": "everything-claude-code"
+  },
+  "n8n-mcp/n8n-agents": {
+    "category": "development",
+    "path": ".claude/skills/n8n-mcp/n8n-agents/SKILL.md",
+    "slug": "n8n-agents",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-binary-and-data": {
+    "category": "data",
+    "path": ".claude/skills/n8n-mcp/n8n-binary-and-data/SKILL.md",
+    "slug": "n8n-binary-and-data",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-code-javascript": {
+    "category": "development",
+    "path": ".claude/skills/n8n-mcp/n8n-code-javascript/SKILL.md",
+    "slug": "n8n-code-javascript",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-code-python": {
+    "category": "development",
+    "path": ".claude/skills/n8n-mcp/n8n-code-python/SKILL.md",
+    "slug": "n8n-code-python",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-code-tool": {
+    "category": "development",
+    "path": ".claude/skills/n8n-mcp/n8n-code-tool/SKILL.md",
+    "slug": "n8n-code-tool",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-error-handling": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-error-handling/SKILL.md",
+    "slug": "n8n-error-handling",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-expression-syntax": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-expression-syntax/SKILL.md",
+    "slug": "n8n-expression-syntax",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-mcp-tools-expert": {
+    "category": "development",
+    "path": ".claude/skills/n8n-mcp/n8n-mcp-tools-expert/SKILL.md",
+    "slug": "n8n-mcp-tools-expert",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-multi-instance": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-multi-instance/SKILL.md",
+    "slug": "n8n-multi-instance",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-node-configuration": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-node-configuration/SKILL.md",
+    "slug": "n8n-node-configuration",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-self-hosting": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-self-hosting/SKILL.md",
+    "slug": "n8n-self-hosting",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-subworkflows": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-subworkflows/SKILL.md",
+    "slug": "n8n-subworkflows",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-validation-expert": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-validation-expert/SKILL.md",
+    "slug": "n8n-validation-expert",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/n8n-workflow-patterns": {
+    "category": "other",
+    "path": ".claude/skills/n8n-mcp/n8n-workflow-patterns/SKILL.md",
+    "slug": "n8n-workflow-patterns",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "n8n-mcp/using-n8n-mcp-skills": {
+    "category": "development",
+    "path": ".claude/skills/n8n-mcp/using-n8n-mcp-skills/SKILL.md",
+    "slug": "using-n8n-mcp-skills",
+    "source_repo": "https://github.com/czlonkowski/n8n-mcp.git",
+    "source_slug": "n8n-mcp"
+  },
+  "obsidian-skills/defuddle": {
+    "category": "other",
+    "path": ".claude/skills/obsidian-skills/defuddle/SKILL.md",
+    "slug": "defuddle",
+    "source_repo": "https://github.com/kepano/obsidian-skills.git",
+    "source_slug": "obsidian-skills"
+  },
+  "obsidian-skills/json-canvas": {
+    "category": "other",
+    "path": ".claude/skills/obsidian-skills/json-canvas/SKILL.md",
+    "slug": "json-canvas",
+    "source_repo": "https://github.com/kepano/obsidian-skills.git",
+    "source_slug": "obsidian-skills"
+  },
+  "obsidian-skills/knap": {
+    "category": "other",
+    "path": ".claude/skills/obsidian-skills/knap/SKILL.md",
+    "slug": "knap",
+    "source_repo": "https://github.com/kepano/obsidian-skills.git",
+    "source_slug": "obsidian-skills"
+  },
+  "obsidian-skills/obsidian-bases": {
+    "category": "other",
+    "path": ".claude/skills/obsidian-skills/obsidian-bases/SKILL.md",
+    "slug": "obsidian-bases",
+    "source_repo": "https://github.com/kepano/obsidian-skills.git",
+    "source_slug": "obsidian-skills"
+  },
+  "obsidian-skills/obsidian-cli": {
+    "category": "other",
+    "path": ".claude/skills/obsidian-skills/obsidian-cli/SKILL.md",
+    "slug": "obsidian-cli",
+    "source_repo": "https://github.com/kepano/obsidian-skills.git",
+    "source_slug": "obsidian-skills"
+  },
+  "obsidian-skills/obsidian-markdown": {
+    "category": "other",
+    "path": ".claude/skills/obsidian-skills/obsidian-markdown/SKILL.md",
+    "slug": "obsidian-markdown",
+    "source_repo": "https://github.com/kepano/obsidian-skills.git",
+    "source_slug": "obsidian-skills"
+  },
   "superpowers/brainstorming": {
     "category": "other",
     "path": ".claude/skills/superpowers/brainstorming/SKILL.md",
