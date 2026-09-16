@@ -28,7 +28,11 @@ jobs:
         run: |
           if [ -f tasks/last-gate-report.md ]; then
             cp tasks/last-gate-report.md /tmp/pr_body.md
-            if grep -qi "BLOCKED" tasks/last-gate-report.md; then
+            # Match the actual verdict marker (❌ BLOCKED), not any prose
+            # mention of the word "BLOCKED" — a report can legitimately say
+            # "WARN, not BLOCKED" while explaining why it isn't blocked,
+            # which a bare word-match would misfire on.
+            if grep -q "❌ BLOCKED" tasks/last-gate-report.md; then
               echo "blocked=true" >> "$GITHUB_OUTPUT"
             else
               echo "blocked=false" >> "$GITHUB_OUTPUT"

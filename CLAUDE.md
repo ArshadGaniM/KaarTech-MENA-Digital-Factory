@@ -516,9 +516,11 @@ of sources extracted nothing (curated reference/awesome-lists with no
 SKILL.md/agents/commands, or repos using a structural convention our generic
 detection patterns don't match — e.g. agents under `categories/` instead of
 `agents/`); that's a legitimate outcome, not a fetch failure. `.claude/agents/INDEX.md`
-and `.claude/skills/INDEX.md` still only describe this project's own
-first-party agents/skills and have not been regenerated to include the 40
-ingested sources — pending.
+and `.claude/skills/INDEX.md` have been regenerated to route across all 40
+ingested sources: each keeps its first-party routing table as the default,
+adds an explicit "promoted niches" table for the specific gaps vendored
+content fills, and inventories every vendored source by count and content
+rather than enumerating all ~500 agents/~1,600 skills individually.
 
 ### 13.2 The `/fetch-github-repo` command
 
@@ -839,6 +841,6 @@ still unresolved here — fill in as decided:
       `.claude/hooks/pre-commit.sh`). A real leaked credential or a malicious
       instruction buried in the 40 sources would not be caught by anything in
       this repo today.
-- [ ] `.claude/agents/INDEX.md` and `.claude/skills/INDEX.md` predate the
-      40-source ingestion and only describe first-party content — not
-      regenerated to route across the newly ingested sources.
+- [x] `.claude/agents/INDEX.md` and `.claude/skills/INDEX.md` regenerated to
+      route across the 40 ingested sources (first-party table + promoted
+      niches + full per-source inventory).
