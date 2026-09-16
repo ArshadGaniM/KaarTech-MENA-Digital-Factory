@@ -3,14 +3,11 @@ import cors from "cors";
 import { teamMembersRouter } from "./routes/teamMembers.js";
 import { createMasterDataRouter } from "./masterDataRouter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
+import { parseAllowedOrigins } from "./corsOrigins.js";
 
 const app = express();
 
-// FRONTEND_URL supports a comma-separated list since Vercel serves the same
-// deployment behind multiple origins (the project's primary domain and its
-// team-scoped alias) that the frontend can legitimately be loaded from.
-const allowedOrigins = process.env.FRONTEND_URL?.split(",").map((url) => url.trim()) ?? null;
-app.use(cors({ origin: allowedOrigins ?? "*" }));
+app.use(cors({ origin: parseAllowedOrigins(process.env.FRONTEND_URL) }));
 app.use(express.json());
 
 app.get("/health", (req, res) => {

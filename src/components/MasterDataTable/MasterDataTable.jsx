@@ -5,7 +5,7 @@ const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
 function capitalize(value) {
-  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return typeof value === 'string' ? value.replace(/\b\w/g, (letter) => letter.toUpperCase()) : value;
 }
 
 function formatCell(column, value) {
