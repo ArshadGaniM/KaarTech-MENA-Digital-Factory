@@ -8,6 +8,7 @@ const AUDIT_COLUMNS = [
   { key: "createdAt", label: "Created" },
   { key: "updatedBy", label: "Modified By" },
   { key: "updatedAt", label: "Modified" },
+  { key: "markedDeleted", label: "Marked Deleted" },
 ];
 
 export const MASTER_DATA_TABLES = [
@@ -21,6 +22,7 @@ export const MASTER_DATA_TABLES = [
       { key: "createdAt", label: "Created At" },
       { key: "updatedBy", label: "Updated By" },
       { key: "updatedAt", label: "Updated At" },
+      { key: "markedDeleted", label: "Marked Deleted" },
     ],
   },
   {
@@ -52,6 +54,7 @@ export const MASTER_DATA_TABLES = [
       { key: "createdAt", label: "Created At" },
       { key: "updatedBy", label: "Updated By" },
       { key: "updatedAt", label: "Updated At" },
+      { key: "markedDeleted", label: "Marked Deleted" },
     ],
   },
   {
@@ -69,6 +72,7 @@ export const MASTER_DATA_TABLES = [
       { key: "createdAt", label: "Created At" },
       { key: "updatedBy", label: "Updated By" },
       { key: "updatedAt", label: "Updated At" },
+      { key: "markedDeleted", label: "Marked Deleted" },
     ],
   },
 ];

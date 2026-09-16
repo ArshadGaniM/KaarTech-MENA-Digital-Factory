@@ -36,10 +36,10 @@ authoritative per-table field list (key, required, type).
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|
-| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). Excludes soft-deleted rows. |
-| GET | `/v1/<table>/:id` | — | none | 404 if soft-deleted or missing. |
+| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. |
+| GET | `/v1/<table>/:id` | — | none | 404 only if the id doesn't exist — returns a soft-deleted row too. |
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
-| PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing. |
+| PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |
 | DELETE | `/v1/<table>/:id` | — | `x-internal-api-key` | Soft delete — sets `deleted_at`, does not remove the row. 204 on success. |
 
 Per-table fields, as of this writing:
@@ -53,12 +53,20 @@ Per-table fields, as of this writing:
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** validated against `practices`; can be set/changed later via PATCH) — plus an auto-generated `code` (`MOD-001`, ...) |
 
 Every record's response includes `id`, the table's own fields, `createdBy`,
-`createdAt`, `updatedBy`, `updatedAt` (camelCase in responses, snake_case in
-the database) — plus `code` for `delivery-centers`, `departments`,
-`practices`, and `modules` (an auto-generated, immutable business
-identifier, distinct from `id`).
+`createdAt`, `updatedBy`, `updatedAt`, and `markedDeleted` (camelCase in
+responses, snake_case in the database) — plus `code` for
+`delivery-centers`, `departments`, `practices`, and `modules` (an
+auto-generated, immutable business identifier, distinct from `id`).
 `updatedAt` is bumped automatically by a Postgres trigger on every UPDATE,
 not by application code.
+
+**`markedDeleted`** (`"Yes"` \| `"No"`): derived from the row's
+`deleted_at` column, not a separate stored flag — one source of truth for
+delete state. GET routes return every row, soft-deleted included, so a
+consumer doing its own aggregation/reporting sees `markedDeleted: "Yes"`
+rows and can choose to skip them, rather than have them silently
+disappear from every read. Only PATCH/DELETE still refuse to act on an
+already soft-deleted row.
 
 **`updatedBy`** (optional on every POST/PATCH): who is performing the
 write. Defaults server-side to `"Arshad Gani"` if omitted — no user/auth
