@@ -11,7 +11,7 @@ import { requireInternalApiKey } from "./auth.js";
 const DEFAULT_ACTOR = "Arshad Gani";
 
 // Shared CRUD behaviour for every master data table (CLAUDE.md request:
-// practices, delivery_centers, skill_sets, modules, resources, departments
+// practices, delivery_centers, competencies, modules, resources, departments
 // all follow the identical add/modify/mark-deleted + created/updated
 // by/at contract) — one factory instead of six near-identical route
 // files. Each table's own business columns come from `table.fields`

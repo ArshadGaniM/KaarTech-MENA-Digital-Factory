@@ -28,7 +28,7 @@ npm run dev
 | PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
 | DELETE | `/v1/team-members/:id` | — | Hard delete |
 
-### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/skill-sets`, `/v1/modules`, `/v1/resources`, `/v1/departments`
+### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`
 
 All six routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
@@ -46,13 +46,14 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `practices`, `skill-sets`, `modules`, `resources`, `departments` | `name` (required) |
-| `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) |
+| `practices`, `competencies`, `modules`, `resources` | `name` (required) |
+| `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
+| `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 
 Every record's response includes `id`, the table's own fields, `createdBy`,
 `createdAt`, `updatedBy`, `updatedAt` (camelCase in responses, snake_case in
-the database) — plus `code` for `delivery-centers` (an auto-generated,
-immutable business identifier like `DC-001`, distinct from `id`).
+the database) — plus `code` for `delivery-centers` and `departments` (an
+auto-generated, immutable business identifier, distinct from `id`).
 `updatedAt` is bumped automatically by a Postgres trigger on every UPDATE,
 not by application code.
 
@@ -89,6 +90,8 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0004_add_created_by_updated_by.sql` | Adds `created_by`/`updated_by` (text, not null) to all 6 tables. |
 | `0005_add_delivery_center_columns.sql` | `delivery_centers`-specific: `code` (auto-generated via trigger, immutable), `location_type` (`CHECK`-constrained enum), `city`, `country`. |
 | `0006_add_actor_length_constraints.sql` | 255-char `CHECK` constraint on `created_by`/`updated_by`, matching the app-layer cap. |
+| `0007_add_department_code.sql` | `departments`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`). |
+| `0008_rename_skill_sets_to_competencies.sql` | Renames `skill_sets` to `competencies` (and its index/constraint/trigger names) — no column changes. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

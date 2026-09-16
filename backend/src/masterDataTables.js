@@ -40,9 +40,9 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
-    route: "skill-sets",
-    tableName: "skill_sets",
-    resourceName: "skill_set",
+    route: "competencies",
+    tableName: "competencies",
+    resourceName: "competency",
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
   {
@@ -61,6 +61,7 @@ export const MASTER_DATA_TABLES = [
     route: "departments",
     tableName: "departments",
     resourceName: "department",
+    hasCode: true,
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
 ];
