@@ -16,7 +16,7 @@ app.get("/health", (req, res) => {
 app.use("/v1/team-members", teamMembersRouter);
 
 for (const table of MASTER_DATA_TABLES) {
-  app.use(`/v1/${table.route}`, createMasterDataRouter(table.tableName, table.resourceName));
+  app.use(`/v1/${table.route}`, createMasterDataRouter(table));
 }
 
 app.use((req, res) => {

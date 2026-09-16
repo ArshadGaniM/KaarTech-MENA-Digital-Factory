@@ -34,12 +34,12 @@ async function request(path, { method = "GET", body } = {}) {
   return payload.data;
 }
 
-export function createRecord(route, name) {
-  return request(`/v1/${route}`, { method: "POST", body: { name } });
+export function createRecord(route, fields) {
+  return request(`/v1/${route}`, { method: "POST", body: fields });
 }
 
-export function updateRecord(route, id, name) {
-  return request(`/v1/${route}/${id}`, { method: "PATCH", body: { name } });
+export function updateRecord(route, id, fields) {
+  return request(`/v1/${route}/${id}`, { method: "PATCH", body: fields });
 }
 
 export function markDeleted(route, id) {

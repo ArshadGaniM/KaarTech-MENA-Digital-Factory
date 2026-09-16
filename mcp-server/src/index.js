@@ -16,14 +16,31 @@ function errorResult(err) {
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
+function fieldSchema(field) {
+  const base = field.type === "enum" ? z.enum(field.values) : z.string().min(1);
+  return base.describe(`The ${field.label}.`);
+}
+
+const UPDATED_BY_DESCRIPTION =
+  "Who is performing this change. Defaults to \"Arshad Ghani\" if omitted.";
+
 for (const table of MASTER_DATA_TABLES) {
+  const fieldEntries = table.fields.map((f) => [f.key, fieldSchema(f)]);
+
   server.tool(
     `add_${table.slug}`,
-    `Add a new ${table.label} record to the master data table. Sets created_at/updated_at automatically.`,
-    { name: z.string().min(1).describe(`The ${table.label}'s name.`) },
-    async ({ name }) => {
+    `Add a new ${table.label} record to the master data table.` +
+      (table.hasCode ? " A business code is generated automatically and never changes." : "") +
+      " created_at/updated_at are set automatically, and created_by/updated_by" +
+      " are set from updatedBy (or default to Arshad Ghani).",
+    {
+      ...Object.fromEntries(fieldEntries),
+      updatedBy: z.string().min(1).optional().describe(UPDATED_BY_DESCRIPTION),
+    },
+    async (input) => {
       try {
-        return json(await createRecord(table.route, name));
+        const { updatedBy, ...fields } = input;
+        return json(await createRecord(table.route, { ...fields, updatedBy }));
       } catch (err) {
         return errorResult(err);
       }
@@ -32,14 +49,16 @@ for (const table of MASTER_DATA_TABLES) {
 
   server.tool(
     `update_${table.slug}`,
-    `Modify an existing ${table.label} record's name. Bumps updated_at automatically.`,
+    `Modify an existing ${table.label} record. Only the fields you pass are changed. ` +
+      "Bumps updated_at automatically; updated_by is set from updatedBy (or defaults to Arshad Ghani).",
     {
       id: z.string().uuid().describe(`The ${table.label}'s id.`),
-      name: z.string().min(1).describe("The new name."),
+      ...Object.fromEntries(fieldEntries.map(([key, schema]) => [key, schema.optional()])),
+      updatedBy: z.string().min(1).optional().describe(UPDATED_BY_DESCRIPTION),
     },
-    async ({ id, name }) => {
+    async ({ id, updatedBy, ...fields }) => {
       try {
-        return json(await updateRecord(table.route, id, name));
+        return json(await updateRecord(table.route, id, { ...fields, updatedBy }));
       } catch (err) {
         return errorResult(err);
       }

@@ -2,11 +2,57 @@
 // this package has no workspace link to the backend, but the two lists must
 // stay in sync. slug is the tool-name suffix (add_<slug>, update_<slug>,
 // delete_<slug>); route matches the backend's REST path segment.
+//
+// fields describes each table's own business columns (beyond name), used
+// to build each add_/update_ tool's zod input shape. Same shape as the
+// backend's field list: key (camelCase JSON field), label (for the tool
+// description), and for enum fields, values.
 export const MASTER_DATA_TABLES = [
-  { slug: "practice", route: "practices", label: "Practice" },
-  { slug: "delivery_center", route: "delivery-centers", label: "Delivery Center" },
-  { slug: "skill_set", route: "skill-sets", label: "Skill Set" },
-  { slug: "module", route: "modules", label: "Module" },
-  { slug: "resource", route: "resources", label: "Resource" },
-  { slug: "department", route: "departments", label: "Department" },
+  {
+    slug: "practice",
+    route: "practices",
+    label: "Practice",
+    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+  },
+  {
+    slug: "delivery_center",
+    route: "delivery-centers",
+    label: "Delivery Center",
+    fields: [
+      { key: "name", label: "name", required: true, type: "string" },
+      {
+        key: "locationType",
+        label: "onshore/offshore classification",
+        required: true,
+        type: "enum",
+        values: ["onshore", "offshore"],
+      },
+      { key: "city", label: "city", required: true, type: "string" },
+      { key: "country", label: "country", required: true, type: "string" },
+    ],
+  },
+  {
+    slug: "skill_set",
+    route: "skill-sets",
+    label: "Skill Set",
+    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+  },
+  {
+    slug: "module",
+    route: "modules",
+    label: "Module",
+    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+  },
+  {
+    slug: "resource",
+    route: "resources",
+    label: "Resource",
+    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+  },
+  {
+    slug: "department",
+    route: "departments",
+    label: "Department",
+    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+  },
 ];

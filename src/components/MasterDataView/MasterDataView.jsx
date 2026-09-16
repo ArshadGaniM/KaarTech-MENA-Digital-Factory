@@ -5,6 +5,7 @@ import styles from './MasterDataView.module.css';
 
 function MasterDataView() {
   const [activeRoute, setActiveRoute] = useState(MASTER_DATA_TABLES[0].route);
+  const activeTable = MASTER_DATA_TABLES.find((table) => table.route === activeRoute);
 
   return (
     <section className={styles.section} id="master-data">
@@ -32,7 +33,7 @@ function MasterDataView() {
         </div>
 
         <div className={styles.tableWrap}>
-          <MasterDataTable route={activeRoute} />
+          <MasterDataTable route={activeTable.route} columns={activeTable.columns} />
         </div>
       </div>
     </section>
