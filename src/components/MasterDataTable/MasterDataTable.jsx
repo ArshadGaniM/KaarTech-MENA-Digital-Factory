@@ -2,9 +2,15 @@ import { useMasterDataTable } from '../../hooks/useMasterDataTable';
 import styles from './MasterDataTable.module.css';
 
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
+const ENUM_COLUMN_KEYS = new Set(['locationType']);
+
+function capitalize(value) {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 function formatCell(column, value) {
   if (DATE_COLUMN_KEYS.has(column.key)) return new Date(value).toLocaleString();
+  if (ENUM_COLUMN_KEYS.has(column.key)) return capitalize(value);
   return value;
 }
 
@@ -13,7 +19,6 @@ function MasterDataTable({ route, columns }) {
 
   if (isLoading) return <p className={styles.status}>Loading…</p>;
   if (error) return <p className={styles.statusError}>Could not load this table: {error.message}</p>;
-  if (data.length === 0) return <p className={styles.status}>No records yet. Add one via the MCP tools.</p>;
 
   return (
     <table className={styles.table}>
@@ -25,13 +30,21 @@ function MasterDataTable({ route, columns }) {
         </tr>
       </thead>
       <tbody>
-        {data.map((row) => (
-          <tr key={row.id}>
-            {columns.map((column) => (
-              <td key={column.key}>{formatCell(column, row[column.key])}</td>
-            ))}
+        {data.length === 0 ? (
+          <tr>
+            <td className={styles.status} colSpan={columns.length}>
+              No records yet. Add one via the MCP tools.
+            </td>
           </tr>
-        ))}
+        ) : (
+          data.map((row) => (
+            <tr key={row.id}>
+              {columns.map((column) => (
+                <td key={column.key}>{formatCell(column, row[column.key])}</td>
+              ))}
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   );

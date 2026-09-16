@@ -22,7 +22,7 @@ function fieldSchema(field) {
 }
 
 const UPDATED_BY_DESCRIPTION =
-  "Who is performing this change. Defaults to \"Arshad Ghani\" if omitted.";
+  "Who is performing this change. Defaults to \"Arshad Gani\" if omitted.";
 
 for (const table of MASTER_DATA_TABLES) {
   // add_ only requires fields the backend actually requires on create;
@@ -38,7 +38,7 @@ for (const table of MASTER_DATA_TABLES) {
     `Add a new ${table.label} record to the master data table.` +
       (table.hasCode ? " A business code is generated automatically and never changes." : "") +
       " created_at/updated_at are set automatically, and created_by/updated_by" +
-      " are set from updatedBy (or default to Arshad Ghani).",
+      " are set from updatedBy (or default to Arshad Gani).",
     {
       ...Object.fromEntries(addFieldEntries),
       updatedBy: z.string().min(1).optional().describe(UPDATED_BY_DESCRIPTION),
@@ -56,7 +56,7 @@ for (const table of MASTER_DATA_TABLES) {
   server.tool(
     `update_${table.slug}`,
     `Modify an existing ${table.label} record. Only the fields you pass are changed. ` +
-      "Bumps updated_at automatically; updated_by is set from updatedBy (or defaults to Arshad Ghani).",
+      "Bumps updated_at automatically; updated_by is set from updatedBy (or defaults to Arshad Gani).",
     {
       id: z.string().uuid().describe(`The ${table.label}'s id.`),
       ...Object.fromEntries(updateFieldEntries),

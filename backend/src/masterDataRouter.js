@@ -8,7 +8,7 @@ import { requireInternalApiKey } from "./auth.js";
 // (matches CLAUDE.md's ask verbatim: "created by which is me Arshad
 // Ghani"), defaulting here so the MCP tools stay simple to call day to
 // day while remaining overridable once more than one person uses them.
-const DEFAULT_ACTOR = "Arshad Ghani";
+const DEFAULT_ACTOR = "Arshad Gani";
 
 // Shared CRUD behaviour for every master data table (CLAUDE.md request:
 // practices, delivery_centers, skill_sets, modules, resources, departments
