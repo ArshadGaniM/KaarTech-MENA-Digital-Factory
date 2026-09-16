@@ -2,14 +2,9 @@ import styles from './ServicesSection.module.css';
 
 const SERVICES = [
   {
-    title: 'Application Development',
+    title: 'Digital/AI Transformation Consulting Services',
     description:
-      'Factory-model build teams delivering new applications and enhancements against a shared engineering standard.',
-  },
-  {
-    title: 'Quality Assurance & Testing',
-    description:
-      'Independent QA and test cycles run in parallel with delivery, catching defects before they reach production.',
+      'Advisory and delivery support for embedding AI into existing applications and operating models.',
   },
   {
     title: 'Design Services',
@@ -17,12 +12,22 @@ const SERVICES = [
       'Solution and experience design for IT applications, from architecture diagrams to interface design.',
   },
   {
-    title: 'Managed & Support Services',
+    title: 'Development Services',
+    description:
+      'Factory-model build teams delivering new applications and enhancements against a shared engineering standard.',
+  },
+  {
+    title: 'Quality Assurance & Testing Services',
+    description:
+      'Independent QA and test cycles run in parallel with delivery, catching defects before they reach production.',
+  },
+  {
+    title: 'Operational Support Services',
     description:
       'Ongoing support and managed services for applications and infrastructure once they go live.',
   },
   {
-    title: 'IT Assessments',
+    title: 'Assessment Services',
     description:
       'Structured assessments of existing systems, architecture, and process maturity ahead of a transformation.',
   },
@@ -30,11 +35,6 @@ const SERVICES = [
     title: 'Audit Services',
     description:
       'Independent audits of IT applications and processes against compliance and quality benchmarks.',
-  },
-  {
-    title: 'AI Transformation Consulting',
-    description:
-      'Advisory and delivery support for embedding AI into existing applications and operating models.',
   },
 ];
 

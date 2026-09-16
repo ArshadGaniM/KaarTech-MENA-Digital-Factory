@@ -1,10 +1,13 @@
 import express from "express";
 import cors from "cors";
 import { teamMembersRouter } from "./routes/teamMembers.js";
+import { createMasterDataRouter } from "./masterDataRouter.js";
+import { MASTER_DATA_TABLES } from "./masterDataTables.js";
+import { parseAllowedOrigins } from "./corsOrigins.js";
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
+app.use(cors({ origin: parseAllowedOrigins(process.env.FRONTEND_URL) }));
 app.use(express.json());
 
 app.get("/health", (req, res) => {
@@ -12,6 +15,10 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/v1/team-members", teamMembersRouter);
+
+for (const table of MASTER_DATA_TABLES) {
+  app.use(`/v1/${table.route}`, createMasterDataRouter(table));
+}
 
 app.use((req, res) => {
   res.status(404).json({ error: { code: "not_found", message: "No route matches this path." } });

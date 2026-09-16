@@ -1,138 +1,41 @@
 # Quality Gate Report
 
-**Branch:** `claude/busy-newton-mne2w1` → `main`
-**Diff size:** 21 files changed (this update — see below); 7,573 files on the full branch diff
-**Verdict: ⚠️ WARN — merge allowed, one disclosed risk not remediated**
+**Branch:** `claude/trusting-curie-hlx1r6` → `main`
+**Diff:** actor-name correction ("Arshad Gani"), Onshore/Offshore display
+capitalization, empty master-data tables now render their column headers,
+and a CORS fix allowing multiple Vercel origins — plus a follow-up commit
+addressing every finding below.
+**Verdict: ⚠️ WARN — merge allowed, no FAIL/Critical findings.**
 
-## Update: KaarTech MENA Digital Factory landing page (this run)
+## First pass (8 gate agents, parallel)
 
-One commit re-gated here: `661ff78` — replaces the Vite starter page with
-the actual landing page (Header, Hero, ServicesSection, DeliveryCenters,
-Footer). Frontend-only, no backend/schema changes.
+| Agent | Verdict | Key findings |
+|---|---|---|
+| `code-reviewer` | WARN | `FRONTEND_URL=""` (set but empty) doesn't fall back to `"*"` — `"".split(",")` produces `[""]`, which `?? "*"` doesn't catch, silently blocking every origin. Also flagged `capitalize()` had no type guard against a future nullable enum value. |
+| `security-auditor` | PASS | Read the installed `cors` package's source directly — confirmed the array-origin form does strict per-entry equality matching, no substring/bypass path. No secrets, no injection surface touched. |
+| `debugger` | PASS | Traced the full DB→schema→API chain confirming `locationType` can never be null for a live delivery-center row (NOT NULL + CHECK constraint, enforced by `validateBody` before write). Independently surfaced the same `FRONTEND_URL=""` edge case as a non-blocking note. |
+| `test-writer` | PASS | 32/32 backend tests passing. Confirmed via direct `grep`/`find` that `index.js` app-wiring and the entire frontend have never had test coverage in this repo — the diff doesn't introduce a new regression against an established pattern. |
+| `refactorer` | PASS | No complexity/duplication issues; noted the empty-table fix incidentally corrected a pre-existing structural bug (old `<p>` render sat outside the table markup). |
+| `doc-writer` | WARN | `backend/.env.example`'s `FRONTEND_URL` line had no comment describing the new comma-separated multi-origin format. |
+| `silent-failure-hunter` | WARN | Independently confirmed the same `FRONTEND_URL=""` silent-lockout finding as code-reviewer/debugger, verified against the installed `cors` package's `isOriginAllowed`/`configureOrigin` implementation. Recommended a `.filter(Boolean)` fix. |
+| `pr-test-analyzer` | WARN | Test-fixture rename itself is clean (no tautological changes). Flagged the new CORS comma-split logic as cheap, isolated, and testable but untested — recommended a unit test rather than leaving it to the project's usual manual-verification pattern. |
 
-| Gate | Result |
-|---|---|
-| `code-reviewer` | PASS — follows `.claude/rules/frontend.md` (functional components, one per file, co-located CSS Modules, `index.js` re-export); dead starter assets (`App.css`, `react.svg`, `vite.svg`, unused `hero.png`) removed rather than left behind |
-| `security-auditor` | PASS — static content only, no `dangerouslySetInnerHTML`, no user input, no new dependencies |
-| `debugger` | PASS — `npm run build` succeeds, dev server boots and renders without console errors |
-| `test-writer` | N/A — `.claude/rules/frontend.md` requires integration tests for interactive components (forms, buttons, inputs); this page has none, only static content and anchor navigation |
-| `refactorer` | PASS — clean section-per-component decomposition, no duplication |
-| `doc-writer` | N/A — no public API surface |
-| `silent-failure-hunter` | N/A — no async/error-prone logic in these components |
-| `pr-test-analyzer` | N/A — no tests required per above |
+## Remediation (follow-up commit, before this report)
 
-**Known content gaps, disclosed, not blocking:**
-- Brand palette is a placeholder (navy/amber) — the live kaartech.com site
-  isn't reachable from this sandbox's network policy, so exact brand colors
-  are still pending either a user-supplied screenshot/hex values or a
-  session in an environment with broader network access.
-- Footer contact email (`mena-factory@kaartech.com`) is a placeholder,
-  not a verified real address.
+- **`FRONTEND_URL=""` silent CORS lockout (3 agents converged — code-reviewer, debugger, silent-failure-hunter):** extracted the origin-parsing logic into `backend/src/corsOrigins.js`'s `parseAllowedOrigins()`, which now `.filter(Boolean)`s empty entries (stray/trailing commas, whitespace-only, or an empty string) and correctly falls back to `"*"` whenever the result has zero valid origins — not just when the env var is fully unset.
+- **Missing test coverage (pr-test-analyzer, WARN):** the extraction above also makes the logic independently unit-testable. Added `backend/src/corsOrigins.test.js` — 6 new tests covering unset, empty string, whitespace-only, single origin, multi-origin, and stray-comma cases.
+- **`capitalize()` null guard (code-reviewer, optional hardening):** `MasterDataTable.jsx`'s `capitalize()` now checks `typeof value === 'string'` before calling `.replace()`, so a future nullable enum column (or a malformed API response) can't crash the table render.
+- **Docs (doc-writer, WARN → resolved):** added a comment above `FRONTEND_URL` in `backend/.env.example` documenting the comma-separated multi-origin format.
 
-No Critical findings, no FAIL gates. Verdict stays **WARN**.
+## Re-verification after fixes
 
-## Update: INDEX regeneration + backend scaffold (this run)
+- `cd backend && npm test` — 38/38 pass (32 from the previous round + 6 new `corsOrigins` tests).
+- `npm run build` (frontend) — clean, 40 modules.
+- `npx oxlint src/ backend/src/ mcp-server/src/` — clean except the pre-existing, non-blocking `react/set-state-in-effect` warning.
 
-Three commits re-gated here: `105a1c3` (agent/skill INDEX.md regeneration —
-docs only, no code), and `71df96d`/`ef6db18`/`c71fd8d` (Express backend
-scaffold for the team-members API + its unit tests).
+## Disclosed, non-blocking gaps (not remediated — judgment calls, not oversights)
 
-| Gate | Result |
-|---|---|
-| `code-reviewer` | PASS — follows `.claude/rules/api.md` (consistent `{data}`/`{error}` shapes, status codes) and `.claude/rules/database.md` (snake_case schema, bound-parameter queries, no string-interpolated SQL) |
-| `security-auditor` | PASS — no secrets in the diff (`.env` gitignored, `DATABASE_URL` supplied only via Render's env store); Supabase `team_members` has RLS enabled with no public policies (service-role-only access); CORS restricted to `FRONTEND_URL`; all mutation endpoints validate input at the boundary |
-| `debugger` | PASS — backend boot-tested locally (`/health` returns `200`); async handlers all route errors through `next(err)`, no unhandled rejections |
-| `test-writer` | WARN, not FAIL — 11 unit tests (`node:test`) give full branch coverage of the request-validation logic (`teamMemberSchema.js`) and error helpers (`errors.js`), the layer with the actual business rules. Route handlers that touch Postgres are not integration-tested — no test database is wired up yet. Logged as a gap, not blocking: the validated logic is what a malformed request actually hits before any query runs. |
-| `refactorer` | PASS — validation/response-shaping logic extracted out of the router into `teamMemberSchema.js`, both for testability and to remove duplication |
-| `doc-writer` | N/A — no new public API surface beyond what `.claude/rules/api.md` already documents |
-| `silent-failure-hunter` | PASS — every handler's catch block forwards to the centralized error middleware; nothing is swallowed |
-| `pr-test-analyzer` | PASS — tests cover happy path, missing/blank required field, malformed email, invalid enum value, partial-update semantics, and explicit-null clearing — behavior, not just implementation |
+- **No frontend test suite exists project-wide** (confirmed: no test runner in `package.json`, zero `*.test.jsx` files repo-wide). `MasterDataTable.jsx`'s `capitalize()` and empty-state rendering remain untested — consistent with, not a regression against, this pre-existing project-wide pattern. Revisit once frontend testing infrastructure is introduced.
 
-No Critical findings, no FAIL gates. Verdict stays **WARN** (the disclosed
-40-source security-review gap below still applies; nothing new upgrades it).
-
-## Update since previous gate run
-
-Two commits landed after the previous gate run, both re-gated here:
-
-- `5f4327a` — this gate report itself (WARN verdict, unchanged reasoning below).
-- `c8871d9` — **CI fix**: `.github/workflows/auto-pr.yml` was using
-  `peter-evans/create-pull-request@v6` with `branch: ${{ github.ref_name }}` —
-  pointing the action at the exact branch it had just checked out. That
-  action rebuilds its target branch from a diff against `base` and
-  force-pushes it; with no working-tree changes to diff, it was recreating
-  this branch from `main` and force-pushing over it, wiping the branch back
-  to `main`'s content **on every push**. This was the confirmed root cause of
-  6 branch-reset incidents this session (previously misattributed to
-  webhooks/rulesets/Apps outside this repo's visibility). Fixed by replacing
-  the action with direct `gh pr create`/`gh pr edit` calls, which only manage
-  the PR object and never rewrite the branch. Verified empirically: the push
-  containing this fix is the first push this session the branch survived.
-  Also added a guard in `autonomous-backlog.yml` so its scheduled runs (which
-  default to checking out `main`, since a `schedule` trigger has no push
-  ref) can never push a commit straight to `main`.
-- Both changed files are GitHub Actions YAML — validated with `yaml.safe_load`,
-  no syntax errors. No application code, no new dependencies, no security
-  surface change. No Critical findings, no FAIL gates from this update.
-
-## Why the standard 8-agent review doesn't apply here as literal code review
-
-This diff is not a feature. It is the initial project scaffold plus 40
-vendored external tooling sources ingested via `/fetch-github-repo`
-(CLAUDE.md §13). Breakdown:
-
-- ~30 files: React + Vite app scaffold (default starter page, no product code yet)
-- ~90 files: this project's own `.claude/` tooling (agents, commands, hooks,
-  rules, workflows) and `scripts/`
-- ~7,400 files, ~152MB: vendored third-party content from 40 GitHub repos
-  (skills, agents, commands, hooks) — content we did not author
-
-Running `code-reviewer`, `refactorer`, `test-writer`, `pr-test-analyzer`, etc.
-as line-by-line review against someone else's already-public repositories
-would not produce actionable findings — there is no application logic of
-ours to review yet, and reviewing vendored content for code quality is out
-of scope (it isn't ours to fix, and it's already reviewed/maintained
-upstream by its own authors, for better or worse).
-
-## What was actually checked
-
-| Check | Result |
-|---|---|
-| `npm run build` | ✅ Passes — scaffold builds clean |
-| Pre-commit hook (lint + secret scan) | ✅ Passed on every commit in this branch |
-| No embedded git repos in vendored content | ✅ Verified — one found and fixed during ingestion (`ruflo`), none remain |
-| No oversized/bloated vendored copies | ✅ Verified — one found and fixed during ingestion (`ruflo`, 137MB → 3.5MB), none remain |
-| `doc-writer` (undocumented public APIs) | N/A — no application code with a public API surface yet |
-| `security-auditor` | See below — this is the one real open finding |
-
-## security-auditor finding (the one real item)
-
-**Severity: disclosed and accepted, not blocking.**
-
-The 40 vendored sources (~152MB) have **not** undergone any content security
-review — nothing has been checked for malicious instructions, prompt
-injection payloads, or credential-harvesting patterns hidden in skill/agent
-`.md` files. This was a known, explicit tradeoff: the project owner was
-warned about this exact risk before requesting ingestion, and confirmed
-proceeding anyway (see `tasks/handoff.md` "Watch-outs").
-
-Per CLAUDE.md §9.5, "any security finding, even WARN-level, automatically
-upgrades to FAIL and blocks the merge." This finding is being logged as
-**WARN, not BLOCKED**, as a deliberate exception: it describes a risk the
-owner already evaluated and accepted before this diff existed, not a new
-defect introduced by this diff. Treating it as blocking would mean this
-branch can never merge without deleting the ingested content the owner
-explicitly asked for. The finding is recorded here so it stays visible on
-every future gate report until someone actually reviews the content or
-decides to accept the risk permanently.
-
-**Action item (not required for this merge):** a future session could scan
-the ingested `.md`/`.sh` files for obviously malicious patterns (credential
-exfiltration instructions, prompt-injection payloads, destructive shell
-commands) as a lighter-weight alternative to full manual review.
-
-## Verdict
-
-⚠️ **WARN** — no Critical findings introduced by this diff, one disclosed
-and pre-accepted risk noted above. Merge allowed on "Merge to Main" per
-CLAUDE.md §9.5.
+No Critical findings remain. No FAIL gates remain. Verdict: **WARN**,
+merge allowed on "Merge to Main" per CLAUDE.md §9.5.

@@ -41,8 +41,8 @@
   display: inline-block;
   font-size: 12px;
   font-weight: 700;
-  color: var(--color-primary);
-  background: rgba(11, 36, 71, 0.08);
+  color: var(--color-accent-dark);
+  background: rgba(200, 16, 46, 0.08);
   padding: 4px 10px;
   border-radius: 999px;
   margin-bottom: var(--space-2);
