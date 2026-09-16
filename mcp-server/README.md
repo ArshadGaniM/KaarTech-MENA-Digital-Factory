@@ -1,7 +1,7 @@
 # KaarTech MENA Digital Factory — Master Data MCP Server
 
 An MCP server (stdio transport) exposing 18 tools — `add_`/`update_`/`delete_` for
-each of the 6 master data tables (`practice`, `delivery_center`, `skill_set`,
+each of the 6 master data tables (`practice`, `delivery_center`, `competency`,
 `module`, `resource`, `department`). Each tool is a thin client over the
 backend's REST API (see `backend/README.md` for the routes it calls).
 
@@ -57,7 +57,7 @@ e.g. in `claude_desktop_config.json` (Claude Desktop) or a project's
 
 ## Tools
 
-For each of `practice`, `delivery_center`, `skill_set`, `module`,
+For each of `practice`, `delivery_center`, `competency`, `module`,
 `resource`, `department`, there's an `add_<table>`, `update_<table>`, and
 `delete_<table>` tool. Each table's own fields differ — see
 `src/masterDataTables.js` for the authoritative list — but every
@@ -68,12 +68,14 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `practice`, `skill_set`, `module`, `resource`, `department` | `name` | `name` |
+| `practice`, `competency`, `module`, `resource` | `name` | `name` |
+| `department` | `name` | `name` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
 
 `add_<table>` creates a record — `created_at`/`updated_at` are set by the
-database, and `delivery_center` additionally gets an auto-generated,
-immutable business code (`DC-001`, ...) it never needs to be told.
+database, and `delivery_center`/`department` additionally get an
+auto-generated, immutable business code (`DC-001`.../`DEPT-001`...) they
+never need to be told.
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
 `delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`; the

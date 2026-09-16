@@ -32,9 +32,9 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
-    slug: "skill_set",
-    route: "skill-sets",
-    label: "Skill Set",
+    slug: "competency",
+    route: "competencies",
+    label: "Competency",
     fields: [{ key: "name", label: "name", required: true, type: "string" }],
   },
   {
@@ -53,6 +53,7 @@ export const MASTER_DATA_TABLES = [
     slug: "department",
     route: "departments",
     label: "Department",
+    hasCode: true,
     fields: [{ key: "name", label: "name", required: true, type: "string" }],
   },
 ];

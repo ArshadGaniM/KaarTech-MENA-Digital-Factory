@@ -29,8 +29,8 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
-    route: "skill-sets",
-    label: "Skill Sets",
+    route: "competencies",
+    label: "Competencies",
     columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
   },
   {
@@ -46,7 +46,14 @@ export const MASTER_DATA_TABLES = [
   {
     route: "departments",
     label: "Departments",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "code", label: "Department Code" },
+      { key: "name", label: "Department Name" },
+      { key: "createdBy", label: "Created By" },
+      { key: "createdAt", label: "Created At" },
+      { key: "updatedBy", label: "Updated By" },
+      { key: "updatedAt", label: "Updated At" },
+    ],
   },
 ];
 
