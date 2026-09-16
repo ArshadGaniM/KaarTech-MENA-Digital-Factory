@@ -131,8 +131,37 @@ the ingested `.md`/`.sh` files for obviously malicious patterns (credential
 exfiltration instructions, prompt-injection payloads, destructive shell
 commands) as a lighter-weight alternative to full manual review.
 
+## Update: brand theme follow-ups + Auto PR workflow fix (this run)
+
+Two commits re-gated here, on branch `claude/trusting-curie-hlx1r6` restarted
+from `main` after PR #4 (the KaarTech brand-theme rebrand) merged:
+
+- `64abf3b` — two disclosed WARN items from PR #4's gate report, now fixed:
+  - `index.html` — added the Google Fonts `<link>` for Poppins, so
+    `--font-sans` actually renders it instead of silently falling back to
+    `system-ui`.
+  - `src/components/Hero/Hero.module.css` — darkened `.secondaryAction`'s
+    default border from `var(--color-border)` (near-invisible on the new
+    white hero background) to `var(--color-text-muted)` (~5.5:1 contrast).
+  - Verified: `npm run build` clean, `npx oxlint src/` clean, Playwright
+    screenshot confirms the border is now visible and `getComputedStyle`
+    confirms `font-family` resolves to `Poppins, system-ui, Roboto, sans-serif`.
+- CI fix — `.github/workflows/auto-pr.yml`'s `gh pr view "$ref_name"` matched
+  a PR by branch name regardless of state. After PR #4 merged and this branch
+  was restarted from `main` with the same name, the workflow found the old
+  **closed** PR #4, ran `gh pr edit` on it (updating its body, visible as the
+  `updated_at` bump on a closed PR), and never opened a new PR or attempted a
+  merge — this run's fixes sat on the branch with no path to `main`. Fixed by
+  checking `--json state --jq .state == "OPEN"` before treating a found PR as
+  reusable; otherwise falls through to `gh pr create`. Validated with
+  `python3 -c "import yaml; yaml.safe_load(...)"` — no syntax errors.
+
+Findings: none new. Pure CSS/HTML fix + one CI YAML fix, no application logic,
+no security surface change, no new dependencies. No Critical findings, no
+FAIL gates.
+
 ## Verdict
 
 ⚠️ **WARN** — no Critical findings introduced by this diff, one disclosed
-and pre-accepted risk noted above. Merge allowed on "Merge to Main" per
-CLAUDE.md §9.5.
+and pre-accepted risk noted above (the 40-vendored-sources security-review
+gap). Merge allowed on "Merge to Main" per CLAUDE.md §9.5.

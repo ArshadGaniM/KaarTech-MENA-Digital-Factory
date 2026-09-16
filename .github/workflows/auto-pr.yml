@@ -54,7 +54,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh pr view "${{ github.ref_name }}" --json number >/dev/null 2>&1; then
+          # `gh pr view` matches a PR by branch name regardless of state, so
+          # once a branch's PR has merged/closed, a later push to the same
+          # branch name would silently edit that dead PR instead of opening
+          # a new one — checking `state == OPEN` is what makes this safe to
+          # re-run after a branch has been restarted post-merge.
+          state=$(gh pr view "${{ github.ref_name }}" --json state --jq .state 2>/dev/null || echo "NONE")
+          if [ "$state" = "OPEN" ]; then
             gh pr edit "${{ github.ref_name }}" --body-file /tmp/pr_body.md
           else
             gh pr create --base main --head "${{ github.ref_name }}" \
