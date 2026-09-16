@@ -1,8 +1,28 @@
 # Quality Gate Report
 
 **Branch:** `claude/busy-newton-mne2w1` → `main`
-**Diff size:** 7,569 files changed, 1,679,310 insertions (0 deletions)
+**Diff size:** 7,573 files changed
 **Verdict: ⚠️ WARN — merge allowed, one disclosed risk not remediated**
+
+## Update: INDEX regeneration + backend scaffold (this run)
+
+Three commits re-gated here: `105a1c3` (agent/skill INDEX.md regeneration —
+docs only, no code), and `71df96d`/`ef6db18`/`c71fd8d` (Express backend
+scaffold for the team-members API + its unit tests).
+
+| Gate | Result |
+|---|---|
+| `code-reviewer` | PASS — follows `.claude/rules/api.md` (consistent `{data}`/`{error}` shapes, status codes) and `.claude/rules/database.md` (snake_case schema, bound-parameter queries, no string-interpolated SQL) |
+| `security-auditor` | PASS — no secrets in the diff (`.env` gitignored, `DATABASE_URL` supplied only via Render's env store); Supabase `team_members` has RLS enabled with no public policies (service-role-only access); CORS restricted to `FRONTEND_URL`; all mutation endpoints validate input at the boundary |
+| `debugger` | PASS — backend boot-tested locally (`/health` returns `200`); async handlers all route errors through `next(err)`, no unhandled rejections |
+| `test-writer` | WARN, not FAIL — 11 unit tests (`node:test`) give full branch coverage of the request-validation logic (`teamMemberSchema.js`) and error helpers (`errors.js`), the layer with the actual business rules. Route handlers that touch Postgres are not integration-tested — no test database is wired up yet. Logged as a gap, not blocking: the validated logic is what a malformed request actually hits before any query runs. |
+| `refactorer` | PASS — validation/response-shaping logic extracted out of the router into `teamMemberSchema.js`, both for testability and to remove duplication |
+| `doc-writer` | N/A — no new public API surface beyond what `.claude/rules/api.md` already documents |
+| `silent-failure-hunter` | PASS — every handler's catch block forwards to the centralized error middleware; nothing is swallowed |
+| `pr-test-analyzer` | PASS — tests cover happy path, missing/blank required field, malformed email, invalid enum value, partial-update semantics, and explicit-null clearing — behavior, not just implementation |
+
+No Critical findings, no FAIL gates. Verdict stays **WARN** (the disclosed
+40-source security-review gap below still applies; nothing new upgrades it).
 
 ## Update since previous gate run
 
