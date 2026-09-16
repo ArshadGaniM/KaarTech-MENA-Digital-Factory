@@ -67,8 +67,8 @@
   },
   "awesome-claude-design": {
     "components": "curated Claude design-resource list (no SKILL.md extractables)",
-    "last_fetched": null,
-    "type": "reference",
+    "last_fetched": "2026-09-16T10:54:57Z",
+    "type": "none",
     "url": "https://github.com/VoltAgent/awesome-claude-design"
   },
   "awesome-openclaw-skills": {
@@ -120,13 +120,13 @@
   },
   "design-md-chrome": {
     "components": "Chrome extension project (no SKILL.md extractables)",
-    "last_fetched": null,
-    "type": "reference",
+    "last_fetched": "2026-09-16T10:54:58Z",
+    "type": "none",
     "url": "https://github.com/bergside/design-md-chrome"
   },
   "design-motion-principles": {
     "components": "1 skill (UI motion/animation audit + creation workflow)",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:54:59Z",
     "type": "skills",
     "url": "https://github.com/kylezantos/design-motion-principles"
   },
@@ -150,8 +150,8 @@
   },
   "impeccable": {
     "components": "1 skill (visual polish/design-critique), 4 agents, 1 command",
-    "last_fetched": null,
-    "type": "skills+agents+commands",
+    "last_fetched": "2026-09-16T10:54:55Z",
+    "type": "skills,agents,commands",
     "url": "https://github.com/pbakaus/impeccable"
   },
   "learn-claude-code": {
@@ -180,13 +180,13 @@
   },
   "omniroute": {
     "components": "46 skills (multi-provider LLM routing/proxy CLI toolchain), 1 command",
-    "last_fetched": null,
-    "type": "skills+commands",
+    "last_fetched": "2026-09-16T10:55:14Z",
+    "type": "skills,commands",
     "url": "https://github.com/diegosouzapw/OmniRoute"
   },
   "one-skill-to-rule-them-all": {
     "components": "1 skill",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:55:15Z",
     "type": "skills",
     "url": "https://github.com/rebelytics/one-skill-to-rule-them-all"
   },
@@ -227,7 +227,7 @@
   },
   "taste-skill": {
     "components": "13 design-taste skills",
-    "last_fetched": null,
+    "last_fetched": "2026-09-16T10:54:56Z",
     "type": "skills",
     "url": "https://github.com/Leonxlnx/taste-skill"
   },

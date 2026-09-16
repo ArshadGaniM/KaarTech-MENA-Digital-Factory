@@ -4003,6 +4003,13 @@
     "source_repo": "https://github.com/upstash/context7.git",
     "source_slug": "context7"
   },
+  "design-motion-principles/design-motion-principles": {
+    "category": "other",
+    "path": ".claude/skills/design-motion-principles/design-motion-principles/SKILL.md",
+    "slug": "design-motion-principles",
+    "source_repo": "https://github.com/kylezantos/design-motion-principles",
+    "source_slug": "design-motion-principles"
+  },
   "everything-claude-code/accessibility": {
     "category": "other",
     "path": ".claude/skills/everything-claude-code/accessibility/SKILL.md",
@@ -6061,6 +6068,20 @@
     "source_repo": "https://github.com/affaan-m/everything-claude-code.git",
     "source_slug": "everything-claude-code"
   },
+  "impeccable/audit": {
+    "category": "security",
+    "path": ".claude/skills/impeccable/audit/SKILL.md",
+    "slug": "audit",
+    "source_repo": "https://github.com/pbakaus/impeccable",
+    "source_slug": "impeccable"
+  },
+  "impeccable/impeccable": {
+    "category": "other",
+    "path": ".claude/skills/impeccable/impeccable/SKILL.md",
+    "slug": "impeccable",
+    "source_repo": "https://github.com/pbakaus/impeccable",
+    "source_slug": "impeccable"
+  },
   "learn-claude-code/agent-builder": {
     "category": "development",
     "path": ".claude/skills/learn-claude-code/agent-builder/SKILL.md",
@@ -6585,6 +6606,342 @@
     "slug": "obsidian-markdown",
     "source_repo": "https://github.com/kepano/obsidian-skills.git",
     "source_slug": "obsidian-skills"
+  },
+  "omniroute/bridge-proof": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/bridge-proof/SKILL.md",
+    "slug": "bridge-proof",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-a2a": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-a2a/SKILL.md",
+    "slug": "cli-a2a",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-backup-sync": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-backup-sync/SKILL.md",
+    "slug": "cli-backup-sync",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-batches": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-batches/SKILL.md",
+    "slug": "cli-batches",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-chat": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-chat/SKILL.md",
+    "slug": "cli-chat",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-compression": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-compression/SKILL.md",
+    "slug": "cli-compression",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-contexts": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-contexts/SKILL.md",
+    "slug": "cli-contexts",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-cost-usage": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-cost-usage/SKILL.md",
+    "slug": "cli-cost-usage",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-eval": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-eval/SKILL.md",
+    "slug": "cli-eval",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-health": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-health/SKILL.md",
+    "slug": "cli-health",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-keys": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-keys/SKILL.md",
+    "slug": "cli-keys",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-mcp": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/cli-mcp/SKILL.md",
+    "slug": "cli-mcp",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-models": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-models/SKILL.md",
+    "slug": "cli-models",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-plugins-skills": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/cli-plugins-skills/SKILL.md",
+    "slug": "cli-plugins-skills",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-policy-audit": {
+    "category": "security",
+    "path": ".claude/skills/omniroute/cli-policy-audit/SKILL.md",
+    "slug": "cli-policy-audit",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-providers": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-providers/SKILL.md",
+    "slug": "cli-providers",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-resilience": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-resilience/SKILL.md",
+    "slug": "cli-resilience",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-routing": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-routing/SKILL.md",
+    "slug": "cli-routing",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-serve": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-serve/SKILL.md",
+    "slug": "cli-serve",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-setup": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-setup/SKILL.md",
+    "slug": "cli-setup",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-skill-collector": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/cli-skill-collector/SKILL.md",
+    "slug": "cli-skill-collector",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/cli-tunnel": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/cli-tunnel/SKILL.md",
+    "slug": "cli-tunnel",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/config-codex-cli": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/config-codex-cli/SKILL.md",
+    "slug": "config-codex-cli",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-agents-a2a": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/omni-agents-a2a/SKILL.md",
+    "slug": "omni-agents-a2a",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-api-keys": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-api-keys/SKILL.md",
+    "slug": "omni-api-keys",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-auth": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-auth/SKILL.md",
+    "slug": "omni-auth",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-budget": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-budget/SKILL.md",
+    "slug": "omni-budget",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-cache": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-cache/SKILL.md",
+    "slug": "omni-cache",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-cli-tools": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-cli-tools/SKILL.md",
+    "slug": "omni-cli-tools",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-combos-routing": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-combos-routing/SKILL.md",
+    "slug": "omni-combos-routing",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-compression": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-compression/SKILL.md",
+    "slug": "omni-compression",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-context-rtk": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-context-rtk/SKILL.md",
+    "slug": "omni-context-rtk",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-db-backups": {
+    "category": "data",
+    "path": ".claude/skills/omniroute/omni-db-backups/SKILL.md",
+    "slug": "omni-db-backups",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-github-skills": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/omni-github-skills/SKILL.md",
+    "slug": "omni-github-skills",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-inference": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-inference/SKILL.md",
+    "slug": "omni-inference",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-mcp": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/omni-mcp/SKILL.md",
+    "slug": "omni-mcp",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-models": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-models/SKILL.md",
+    "slug": "omni-models",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-providers": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-providers/SKILL.md",
+    "slug": "omni-providers",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-proxies": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-proxies/SKILL.md",
+    "slug": "omni-proxies",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-resilience": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-resilience/SKILL.md",
+    "slug": "omni-resilience",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-settings": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-settings/SKILL.md",
+    "slug": "omni-settings",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-sync-cloud": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-sync-cloud/SKILL.md",
+    "slug": "omni-sync-cloud",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-tunnels": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-tunnels/SKILL.md",
+    "slug": "omni-tunnels",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-usage-logs": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-usage-logs/SKILL.md",
+    "slug": "omni-usage-logs",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-version-manager": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/omni-version-manager/SKILL.md",
+    "slug": "omni-version-manager",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/omni-webhooks": {
+    "category": "development",
+    "path": ".claude/skills/omniroute/omni-webhooks/SKILL.md",
+    "slug": "omni-webhooks",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "omniroute/ponytail": {
+    "category": "other",
+    "path": ".claude/skills/omniroute/ponytail/SKILL.md",
+    "slug": "ponytail",
+    "source_repo": "https://github.com/diegosouzapw/OmniRoute",
+    "source_slug": "omniroute"
+  },
+  "one-skill-to-rule-them-all": {
+    "category": "development",
+    "path": ".claude/skills/one-skill-to-rule-them-all/SKILL.md",
+    "slug": "one-skill-to-rule-them-all",
+    "source_repo": "https://github.com/rebelytics/one-skill-to-rule-them-all",
+    "source_slug": "one-skill-to-rule-them-all"
   },
   "openmontage/3d-asset-generation": {
     "category": "other",
@@ -9763,6 +10120,97 @@
     "slug": "workflow-authoring",
     "source_repo": "https://github.com/asgeirtj/system_prompts_leaks",
     "source_slug": "system-prompts-leaks"
+  },
+  "taste-skill/brandkit": {
+    "category": "other",
+    "path": ".claude/skills/taste-skill/brandkit/SKILL.md",
+    "slug": "brandkit",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/brutalist-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/brutalist-skill/SKILL.md",
+    "slug": "brutalist-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/gpt-tasteskill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/gpt-tasteskill/SKILL.md",
+    "slug": "gpt-tasteskill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/image-to-code-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/image-to-code-skill/SKILL.md",
+    "slug": "image-to-code-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/imagegen-frontend-mobile": {
+    "category": "other",
+    "path": ".claude/skills/taste-skill/imagegen-frontend-mobile/SKILL.md",
+    "slug": "imagegen-frontend-mobile",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/imagegen-frontend-web": {
+    "category": "other",
+    "path": ".claude/skills/taste-skill/imagegen-frontend-web/SKILL.md",
+    "slug": "imagegen-frontend-web",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/minimalist-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/minimalist-skill/SKILL.md",
+    "slug": "minimalist-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/output-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/output-skill/SKILL.md",
+    "slug": "output-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/redesign-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/redesign-skill/SKILL.md",
+    "slug": "redesign-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/soft-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/soft-skill/SKILL.md",
+    "slug": "soft-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/stitch-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/stitch-skill/SKILL.md",
+    "slug": "stitch-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/taste-skill": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/taste-skill/SKILL.md",
+    "slug": "taste-skill",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
+  },
+  "taste-skill/taste-skill-v1": {
+    "category": "development",
+    "path": ".claude/skills/taste-skill/taste-skill-v1/SKILL.md",
+    "slug": "taste-skill-v1",
+    "source_repo": "https://github.com/Leonxlnx/taste-skill",
+    "source_slug": "taste-skill"
   },
   "ui-ux-pro-max/banner-design": {
     "category": "other",
