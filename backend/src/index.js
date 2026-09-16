@@ -6,7 +6,11 @@ import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
+// FRONTEND_URL supports a comma-separated list since Vercel serves the same
+// deployment behind multiple origins (the project's primary domain and its
+// team-scoped alias) that the frontend can legitimately be loaded from.
+const allowedOrigins = process.env.FRONTEND_URL?.split(",").map((url) => url.trim()) ?? null;
+app.use(cors({ origin: allowedOrigins ?? "*" }));
 app.use(express.json());
 
 app.get("/health", (req, res) => {

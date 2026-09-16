@@ -62,7 +62,7 @@ For each of `practice`, `delivery_center`, `skill_set`, `module`,
 `delete_<table>` tool. Each table's own fields differ — see
 `src/masterDataTables.js` for the authoritative list — but every
 `add_`/`update_` tool additionally accepts an optional `updatedBy: string`
-(who is performing the write; defaults to `"Arshad Ghani"` if omitted, no
+(who is performing the write; defaults to `"Arshad Gani"` if omitted, no
 user/auth system exists yet). On create this sets both `createdBy` and
 `updatedBy`; on update, only `updatedBy` changes.
 

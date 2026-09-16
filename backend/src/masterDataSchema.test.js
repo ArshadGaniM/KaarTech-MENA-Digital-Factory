@@ -27,17 +27,17 @@ test("toResponse maps snake_case db columns to camelCase fields (simple table)",
   const row = {
     id: "1",
     name: "SAP",
-    created_by: "Arshad Ghani",
+    created_by: "Arshad Gani",
     created_at: "2026-01-01T00:00:00Z",
-    updated_by: "Arshad Ghani",
+    updated_by: "Arshad Gani",
     updated_at: "2026-01-02T00:00:00Z",
   };
   assert.deepEqual(toResponse(SIMPLE_TABLE, row), {
     id: "1",
     name: "SAP",
-    createdBy: "Arshad Ghani",
+    createdBy: "Arshad Gani",
     createdAt: "2026-01-01T00:00:00Z",
-    updatedBy: "Arshad Ghani",
+    updatedBy: "Arshad Gani",
     updatedAt: "2026-01-02T00:00:00Z",
   });
 });
@@ -50,9 +50,9 @@ test("toResponse includes code for a hasCode table", () => {
     location_type: "onshore",
     city: "Khobar",
     country: "Kingdom of Saudi Arabia",
-    created_by: "Arshad Ghani",
+    created_by: "Arshad Gani",
     created_at: "2026-01-01T00:00:00Z",
-    updated_by: "Arshad Ghani",
+    updated_by: "Arshad Gani",
     updated_at: "2026-01-01T00:00:00Z",
   };
   const response = toResponse(DELIVERY_CENTER_TABLE, row);
@@ -149,7 +149,7 @@ test("validateBody accepts a field exactly at the 255-character limit", () => {
 });
 
 test("validateActor accepts a normal actor name", () => {
-  assert.doesNotThrow(() => validateActor("Arshad Ghani"));
+  assert.doesNotThrow(() => validateActor("Arshad Gani"));
 });
 
 test("validateActor rejects an actor name longer than 255 characters", () => {

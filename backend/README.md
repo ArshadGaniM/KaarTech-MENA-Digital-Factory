@@ -57,7 +57,7 @@ immutable business identifier like `DC-001`, distinct from `id`).
 not by application code.
 
 **`updatedBy`** (optional on every POST/PATCH): who is performing the
-write. Defaults server-side to `"Arshad Ghani"` if omitted — no user/auth
+write. Defaults server-side to `"Arshad Gani"` if omitted — no user/auth
 system exists yet. On create, this sets both `createdBy` and `updatedBy`;
 on update, only `updatedBy` changes. Capped at 255 characters (both in
 `validateActor()`/`validateBody()` and as a DB `CHECK` constraint,
