@@ -12,7 +12,8 @@
       "mcp__Render__list_logs",
       "mcp__Render__list_deploys",
       "mcp__Vercel__list_projects",
-      "mcp__Vercel__list_deployments"
+      "mcp__Vercel__list_deployments",
+      "mcp__Supabase__execute_sql"
     ]
   },
   "hooks": {
