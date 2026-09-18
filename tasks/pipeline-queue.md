@@ -6,12 +6,13 @@
 
 **Active run ID:** none
 
-**Feature counter:** 0
+**Feature counter:** 1
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
+| FEAT-1 | queued | Redesign the frontend UI so it reads as a multi-user internal application (dashboard/app shell — nav, workspace chrome, data-dense views) rather than a public-facing "portal" landing-page style. | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 
