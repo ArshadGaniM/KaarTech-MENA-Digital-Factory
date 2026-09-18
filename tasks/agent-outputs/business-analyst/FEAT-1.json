@@ -1,0 +1,70 @@
+{
+  "feature_id": "FEAT-1",
+  "stage": "1-business-analyst",
+  "requirement_plain": "Replace the current public-facing marketing landing page (Header/Hero/ServicesSection/DeliveryCenters/Footer) with an internal app-shell UI: persistent navigation, workspace chrome, data-dense views, and visible signed-in-user context — so the app reads as a multi-user internal tool, not a portal.",
+  "traceability_matrix": [
+    {
+      "id": "REQ-1",
+      "requirement": "Persistent primary navigation replaces the anchor-link marketing nav in Header.",
+      "acceptance_criteria": [
+        "Nav is visible on every internal view, not just scrolled-to via anchor links.",
+        "Nav communicates current section/route (active-state indication).",
+        "Nav structure reflects the app's actual sections (e.g. Master Data / future modules), not marketing sections (Services, Delivery Centers)."
+      ],
+      "source": "computed task + codebase-explorer finding (current nav is anchor-link marketing nav)"
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "App shell / workspace chrome frames every internal screen (consistent layout wrapper distinct from the marketing page layout).",
+      "acceptance_criteria": [
+        "A single shell component wraps all internal views (nav + content region at minimum).",
+        "Marketing-only sections (Hero, ServicesSection, DeliveryCenters, marketing Footer) are not part of the internal shell.",
+        "Shell layout is consistent across views (no per-page reinvention of chrome)."
+      ],
+      "source": "computed task"
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Signed-in-user context is visibly present in the shell.",
+      "acceptance_criteria": [
+        "Some persistent UI element (e.g. user name/avatar/menu area) is present, acknowledging a signed-in user exists.",
+        "No behavior claims beyond display are required — actual auth/session backend is out of scope (per CLAUDE.md §0/§23, no backend exists yet)."
+      ],
+      "source": "computed task",
+      "ambiguity": "No auth system exists yet. Needs a decision (see Open Questions) on whether this is static/placeholder UI or deferred entirely."
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Data-dense views are the primary content style, built on the existing MasterDataTable/MasterDataView pattern rather than marketing-style sections.",
+      "acceptance_criteria": [
+        "Existing MasterDataView/MasterDataTable functionality (tabs, columns-driven table, loading/error/empty states) is preserved, not regressed.",
+        "New/reworked views follow the same {data, isLoading, error} hook convention already used by useMasterDataTable.js."
+      ],
+      "source": "codebase-explorer finding (MasterDataView/MasterDataTable is the closest existing internal-app pattern)"
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Visual/tone shift from public marketing landing page to internal application, while staying within frontend.md conventions (CSS Modules, design tokens in src/index.css, one-component-per-folder).",
+      "acceptance_criteria": [
+        "No hardcoded hex values; new UI reuses/extends the existing :root design tokens.",
+        "New/changed components follow the Component.jsx + Component.module.css + index.js co-location pattern.",
+        "No global state library introduced (per frontend.md) unless explicitly decided otherwise."
+      ],
+      "source": "frontend.md + CLAUDE.md §12"
+    }
+  ],
+  "open_questions_for_design_stage": [
+    "Do the existing marketing components (Header, Hero, ServicesSection, DeliveryCenters, Footer) get deleted, retained as a separate public route, or repurposed? The prompt says 'redesign' but doesn't state whether the marketing page must still exist somewhere.",
+    "Is routing (currently hash-based, no router library) expected to be formalized, or does the app-shell redesign stay within the existing hash-routing approach?",
+    "What are the actual navigable sections of the app shell beyond Master Data — is Master Data the only real module today, with nav items for others being placeholders/disabled?",
+    "Signed-in-user context: is this purely visual/placeholder (no real auth exists per CLAUDE.md §23), or should it be built against a stubbed/mock user object?",
+    "No PropTypes are currently used anywhere in the codebase despite frontend.md requiring them — should this redesign start enforcing PropTypes on new components, or is that a separate cleanup item?"
+  ],
+  "out_of_scope": [
+    "Backend/auth implementation — no backend exists yet (CLAUDE.md §0, §23).",
+    "New business/data modules beyond what Master Data already supports.",
+    "Router library adoption (not requested, not confirmed as needed)."
+  ],
+  "verdict": "PASS",
+  "summary": "Extracted requirements for FEAT-1: replace the marketing landing page with a persistent-nav, workspace-chrome, data-dense internal app shell with signed-in-user context, built on the existing MasterDataTable/MasterDataView pattern and frontend.md conventions. Produced a 5-item traceability matrix and flagged 5 open questions (fate of existing marketing components, routing approach, real module list, whether signed-in-user context is placeholder-only given no auth backend exists, and whether to start enforcing PropTypes) that the architecture/design stages should resolve before build. No code or architecture decisions made — this stage is requirements-only per role definition."
+}

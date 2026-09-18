@@ -2,26 +2,23 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import ServicesSection from './components/ServicesSection';
 import DeliveryCenters from './components/DeliveryCenters';
-import MasterDataView from './components/MasterDataView';
 import Footer from './components/Footer';
+import AppShell from './components/AppShell';
 import { useLocationHash } from './hooks/useLocationHash';
+import { APP_SHELL_HASHES } from './lib/navigation';
 
 function App() {
   const hash = useLocationHash();
 
-  return (
+  return APP_SHELL_HASHES.includes(hash) ? (
+    <AppShell initialHash={hash} />
+  ) : (
     <>
       <Header />
       <main>
-        {hash === '#master-data' ? (
-          <MasterDataView />
-        ) : (
-          <>
-            <Hero />
-            <ServicesSection />
-            <DeliveryCenters />
-          </>
-        )}
+        <Hero />
+        <ServicesSection />
+        <DeliveryCenters />
       </main>
       <Footer />
     </>

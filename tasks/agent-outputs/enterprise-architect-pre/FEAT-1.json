@@ -1,0 +1,79 @@
+{
+  "feature_id": "FEAT-1",
+  "stage": "2-enterprise-architect-pre",
+  "reviewed_inputs": [
+    "tasks/agent-outputs/business-analyst/FEAT-1.json",
+    "src/App.jsx",
+    "src/components/Header, Hero, ServicesSection, DeliveryCenters, Footer, MasterDataView, MasterDataTable",
+    "src/hooks/useMasterDataTable.js, useLocationHash.js",
+    "src/lib/masterDataApi.js",
+    "src/index.css (design tokens)",
+    ".claude/rules/frontend.md",
+    "CLAUDE.md §0, §1, §12, §23"
+  ],
+  "verdict": "PASS",
+  "decisions": [
+    {
+      "topic": "Fate of marketing components (Header, Hero, ServicesSection, DeliveryCenters, Footer)",
+      "resolves_ba_open_question": 1,
+      "decision": "Retire from the default app tree. §0 defines this product as an internal management application, not a public marketing site — a marketing landing page is out of the product's actual scope, and CLAUDE.md §1 (No Unused Code) forbids keeping dead components around 'just in case'. Downstream (Solution Architect / Developer) should remove Hero, ServicesSection, DeliveryCenters and the marketing Header/Footer from the render tree entirely rather than hiding them behind a route no one requested. Git history preserves the code if a public page is wanted later — that is a new feature request, not a revert.",
+      "rationale": "Avoids duplicate/parallel 'two apps in one App.jsx' architecture and dead code that will bit-rot.",
+      "risk_if_ignored": "A conditional (hash-based or route-based) fork between 'marketing mode' and 'app mode' baked into App.jsx becomes permanent accidental complexity and an untested code path."
+    },
+    {
+      "topic": "Routing approach",
+      "resolves_ba_open_question": 2,
+      "decision": "Do NOT adopt a router library (react-router or similar) at this stage. package.json currently has zero non-React dependencies; frontend.md's 'no global state library unless the team decides otherwise' spirit extends to routing — minimal footprint until multiple real routes justify it. Extend the existing useLocationHash pattern into a small, named route registry (e.g. `src/lib/routes.js` exporting `{ path, label, component }` entries) that AppShell's nav renders from. This is a directive, not a suggestion left open for the Solution Architect to re-litigate — a new dependency for one real route (Master Data) plus placeholder nav items is disproportionate.",
+      "rationale": "CLAUDE.md §1 Simplicity First / Minimal Impact. No dependency-adoption need has been demonstrated.",
+      "risk_if_ignored": "Unjustified new dependency, contradicts §1."
+    },
+    {
+      "topic": "Nav/route registry location — explorer's suggestion to extend masterDataApi.js's MASTER_DATA_TABLES pattern",
+      "resolves_ba_open_question": 3,
+      "decision": "REJECTED as proposed. Do not add nav/route entries into `src/lib/masterDataApi.js`. That module's job is the Master Data fetch layer; folding unrelated app-shell navigation config into it is inappropriate coupling (a change to nav has no reason to touch the data-fetching module, and vice versa). Use a separate `src/lib/routes.js` (or `src/config/nav.js`) for the nav/route registry. The 'columns drive rendering' array-config *idiom* is fine to reuse — just not the same file/module.",
+      "rationale": "Single-responsibility per module; this is exactly the 'inappropriate coupling' this review stage exists to catch (agent role definition).",
+      "risk_if_ignored": "masterDataApi.js becomes a dumping ground for unrelated config; future data-layer changes risk breaking navigation and vice versa."
+    },
+    {
+      "topic": "Data-dense views / table pattern",
+      "resolves_ba_open_question": 3,
+      "decision": "APPROVED as BA specified. MasterDataView/MasterDataTable + useMasterDataTable's {data, isLoading, error} contract is the one existing internal-app pattern and MUST be reused/generalized (e.g. into a shared DataTable primitive), not reimplemented in parallel. Any new dashboard view built with its own bespoke fetch/loading logic instead of the existing hook contract is a duplicate-solution violation and should be rejected at the Architecture Critic (3.1) or Code Reviewer (4.2) stage if it appears.",
+      "rationale": "Reject duplicate-of-existing-solution per this stage's mandate; frontend.md's hook contract is already the standard.",
+      "risk_if_ignored": "Two competing data-fetching patterns in one small codebase."
+    },
+    {
+      "topic": "Signed-in-user context with no auth backend",
+      "resolves_ba_open_question": 4,
+      "decision": "Placeholder/display-only, explicitly and visibly non-functional (e.g. a static mock user object in a constants file, clearly named `MOCK_CURRENT_USER` or similar) — not wired to any fake login flow, fake token, or fake session storage. No behavior beyond rendering a name/avatar/menu affordance is in scope. This must be easy to find and swap out wholesale when real auth is built (single source of truth for the mock, not scattered inline).",
+      "rationale": "CLAUDE.md §23 confirms no backend/auth exists; §1 Security by Default — never fabricate the appearance of a working auth boundary.",
+      "risk_if_ignored": "A convincing-looking but fake 'signed in' UI could be mistaken for real auth later and shipped without an actual security review."
+    },
+    {
+      "topic": "PropTypes enforcement",
+      "resolves_ba_open_question": 5,
+      "decision": "New/changed components produced by this feature MUST add PropTypes at the top of the file, per frontend.md's existing (previously unenforced) rule. This is not optional cleanup scope-creep — it's applying a standing convention to new code, which is exactly what frontend.md already requires; the fact that older components never did it is pre-existing debt, not license to keep skipping it. Do not do a repo-wide PropTypes retrofit as part of this feature — that is out of scope (would violate Minimal Impact).",
+      "rationale": "frontend.md §Components; CLAUDE.md §1 Minimal Impact bounds the retrofit."
+    },
+    {
+      "topic": "Design tokens / styling",
+      "decision": "APPROVED as BA specified (REQ-5). Extend `:root` in src/index.css with new tokens (e.g. `--color-surface`, `--color-sidebar-bg`, elevation tokens) rather than a parallel token set. No hardcoded hex values in new CSS Modules. CSS Modules co-location pattern (Component.jsx/.module.css/index.js) continues unchanged.",
+      "rationale": "frontend.md Styling section; no violation risk identified."
+    },
+    {
+      "topic": "State management for shell (active nav item, current user, sidebar collapse, etc.)",
+      "decision": "Local component state / a single small AppShell-scoped Context if truly cross-cutting (e.g. current-user, active-route) — no global state library. This is a direct application of frontend.md's existing rule, restated here because app-shell work is exactly the kind of feature where a Redux/Zustand-style dependency gets proposed 'for convenience'. Reject any such proposal at Tech Lead (2.5) or Architecture Critic (3.1) if it surfaces.",
+      "rationale": "frontend.md State Management section."
+    }
+  ],
+  "blocking_findings": [],
+  "flags_for_tech_lead_and_solution_architect": [
+    "Confirm the new route registry module name/location (proposal: src/lib/routes.js) before SDD is written, so System Engineer (3.3) doesn't invent a second competing location.",
+    "Confirm removal (not hiding) of marketing components is acceptable to the owner before Developer stage deletes them — this is a product-scope call, not just a code call, and this review is not the owner's sign-off.",
+    "Watch for scope creep into installing a UI kit or icon library 'to make the sidebar look right' — no such dependency has been justified; if one is genuinely needed, it must be an explicit, named architecture decision at stage 2.5/3.1, not an incidental add."
+  ],
+  "summary": "Reviewed the Business Analyst's FEAT-1 brief against the existing codebase architecture and frontend.md/CLAUDE.md conventions. No idea in the brief is rejected outright, but several implementation directions implied or left open are resolved here to prevent architecture drift before any code is written: no router library adoption (extend hash-routing via a new, separate route-registry module — explicitly NOT folded into masterDataApi.js, which would be inappropriate coupling), retire the marketing components rather than fork the app between 'marketing mode' and 'app mode', keep the signed-in-user context strictly placeholder/mock (no fake auth flow), reuse (never duplicate) the existing MasterDataTable/useMasterDataTable pattern for all new data-dense views, apply frontend.md's already-standing PropTypes rule to new components only, and continue the no-global-state-library / token-reuse conventions already in force. No blocking findings — verdict PASS. Read-only architecture review; no application code was created or edited in this stage.",
+  "files_created": [
+    "tasks/agent-outputs/enterprise-architect-pre/FEAT-1.json"
+  ],
+  "files_edited": []
+}

@@ -1,0 +1,119 @@
+{
+  "feature": "FEAT-1",
+  "stage": "system-engineer",
+  "pipeline_stage_number": "3.3",
+  "verdict": "PASS",
+  "inputs_reviewed": [
+    "tasks/agent-outputs/solution-architect/FEAT-1.json (revision_round 2)",
+    "tasks/agent-outputs/architecture-critic/FEAT-1.json (round-2 re-review, PASS with advisories AC-5, AC-6)",
+    "tasks/agent-outputs/tech-lead/FEAT-1.json",
+    "src/App.jsx (direct Read, verified matches SDD's 'before' description)",
+    "src/components/{Header,Hero,ServicesSection,DeliveryCenters,Footer,MasterDataView,MasterDataTable}",
+    "src/hooks/{useLocationHash.js,useMasterDataTable.js}",
+    "src/lib/masterDataApi.js",
+    ".claude/rules/frontend.md"
+  ],
+  "summary": "Finalized the concrete system/component structure for FEAT-1 by folding architecture-critic's two round-2 advisory findings (AC-5, AC-6) into the design before code generation begins at stage 3.5, per architecture-critic's own 'open_items' note. This stage is design-only per system-engineer.md's scope (component boundaries, data flow, schema, caching) — no application code was created or edited; code generation starts at 3.5 (Engineer/MVP). No database schema or caching strategy applies to this feature (pure frontend, no persistence, no network cache beyond the existing useMasterDataTable fetch, which is unchanged).",
+  "AC-5_resolution": {
+    "finding": "SDD had AppShell resolving useCurrentUser() and passing a `user` prop into TopBar, but TopBar's role text renders UserBadge (which self-fetches via its own useCurrentUser() call and takes no props) — so TopBar's `user` prop would be dead/unused, and the mock user gets fetched twice through two different paths.",
+    "decision": "Accepted architecture-critic's recommendation verbatim. TopBar takes only `title: PropTypes.string.isRequired` and renders `<UserBadge />` directly with no `user` prop. AppShell does NOT call useCurrentUser() itself and does NOT pass a user prop down through TopBar — UserBadge is the single call site for useCurrentUser() in the whole tree.",
+    "component_contract_update": {
+      "TopBar": {
+        "props": { "title": "string (required)" },
+        "children_rendered": ["<UserBadge />  (no props)"]
+      },
+      "AppShell": {
+        "note": "AppShell's responsibility for user context is removed entirely — it no longer knows or cares about the current user. This also simplifies AppShell's own state/prop surface, directly addressing tech-lead's flagged 'AppShell god-component' risk by keeping one more concern (user identity) out of it."
+      }
+    },
+    "data_flow_update": "UserBadge -> useCurrentUser() -> MOCK_CURRENT_USER. This is now the ONLY path any component reaches user data through. AppShell -> TopBar -> UserBadge carries no user data as props at all."
+  },
+  "AC-6_resolution": {
+    "finding": "SDD's supporting_modules placed the mock user data file at a new top-level `src/mock/currentUser.js`, deviating without explicit call-out from tech-lead's literal hard-constraint path `src/lib/currentUser.js` and from the repo's documented directory map.",
+    "decision": "Accepted architecture-critic's recommendation: keep the file/hook split (it matches the existing masterDataApi.js + useMasterDataTable.js idiom) but relocate the mock-data file under `src/lib/` instead of a new top-level `src/mock/` directory. No new top-level source directory is introduced by this feature.",
+    "final_file_layout": {
+      "src/lib/currentUser.js": "Exports MOCK_CURRENT_USER = { id, name, role, initials }. No token, no email persistence, no auth call. A fictitious placeholder identity, not any real person's data.",
+      "src/hooks/useCurrentUser.js": "Imports MOCK_CURRENT_USER from '../lib/currentUser' and returns it as-is: { id, name, role, initials }. This hook is the single seam future real-auth work replaces; every consumer goes through it, never src/lib/currentUser.js directly."
+    }
+  },
+  "final_component_breakdown": [
+    {
+      "path": "src/components/AppShell/",
+      "files": ["AppShell.jsx", "AppShell.module.css", "index.js"],
+      "role": "Top-level internal-app container. Renders Sidebar + TopBar + a content outlet. Owns activeViewId as local useState, derived from an initialHash prop on mount via NAV_ITEMS lookup (fallback: NAV_ITEMS[0].id).",
+      "props": { "initialHash": "string (optional, defaults to '')" },
+      "state": { "activeViewId": "string — id of the entry in NAV_ITEMS currently shown in the content outlet" },
+      "children_rendered": ["Sidebar", "TopBar (title only — see AC-5_resolution)", "the active NAV_ITEMS entry's component (MasterDataView for id 'master-data')"]
+    },
+    {
+      "path": "src/components/Sidebar/",
+      "files": ["Sidebar.jsx", "Sidebar.module.css", "index.js"],
+      "role": "Persistent left nav. Pure presentational list of NAV_ITEMS, highlights activeId, calls onSelect(id) on click. No routing/hash knowledge — AppShell owns that. Unchanged from SDD.",
+      "props": {
+        "items": "arrayOf({ id: string, label: string })",
+        "activeId": "string",
+        "onSelect": "func(id: string) => void"
+      }
+    },
+    {
+      "path": "src/components/TopBar/",
+      "files": ["TopBar.jsx", "TopBar.module.css", "index.js"],
+      "role": "Workspace chrome bar: current section title (derived by AppShell from the active NAV_ITEMS entry's label) on the left + UserBadge on the right. Purely presentational.",
+      "props": { "title": "string (required)" },
+      "changed_from_sdd": "Dropped the `user` shape prop per AC-5_resolution — was dead/unused and caused a double-fetch path."
+    },
+    {
+      "path": "src/components/UserBadge/",
+      "files": ["UserBadge.jsx", "UserBadge.module.css", "index.js"],
+      "role": "Signed-in-user chip: initials avatar + name + role. Calls useCurrentUser() itself — the single call site in the tree — so any consumer can drop it in without prop drilling the mock user.",
+      "props": {}
+    }
+  ],
+  "final_supporting_modules": [
+    {
+      "path": "src/lib/currentUser.js",
+      "role": "Single explicitly-named mock export, MOCK_CURRENT_USER = { id, name, role, initials }. Relocated from src/mock/currentUser.js per AC-6_resolution — matches tech-lead's literal hard-constraint path and the repo's existing top-level directory map (no new top-level dir)."
+    },
+    {
+      "path": "src/hooks/useCurrentUser.js",
+      "role": "Returns MOCK_CURRENT_USER as-is: { id, name, role, initials }. The single seam future real-auth work replaces. Only UserBadge calls it, per AC-5_resolution.",
+      "return_shape": "{ id, name, role, initials }"
+    },
+    {
+      "path": "src/lib/navigation.js",
+      "role": "NAV_ITEMS registry: [{ id: 'master-data', label: 'Master Data', hash: '#master-data', component: MasterDataView }]. Single array AppShell/Sidebar both read. Also exports APP_SHELL_HASHES (derived from NAV_ITEMS) so App.jsx and AppShell can't drift out of sync. Unchanged from SDD."
+    }
+  ],
+  "final_data_flow": [
+    "App.jsx reads hash via useLocationHash (unchanged hook).",
+    "App.jsx: APP_SHELL_HASHES.includes(hash) ? <AppShell initialHash={hash} /> : <Header/><main>Hero/ServicesSection/DeliveryCenters</main><Footer/> — single outermost ternary, per SDD round 2 / AC-1 fix. Verified against the current, unmodified src/App.jsx.",
+    "AppShell resolves initialHash -> activeViewId via NAV_ITEMS lookup (fallback: NAV_ITEMS[0].id).",
+    "AppShell renders Sidebar(items=NAV_ITEMS, activeId=activeViewId, onSelect=setActiveViewId).",
+    "AppShell renders TopBar(title=<active item's label>) — no user prop (AC-5_resolution). TopBar renders <UserBadge/> internally.",
+    "UserBadge calls useCurrentUser() -> reads src/lib/currentUser.js's MOCK_CURRENT_USER (AC-6_resolution) -> renders initials/name/role.",
+    "AppShell renders the active NAV_ITEMS entry's component in the content outlet (MasterDataView today) — MasterDataView's own internal state (tabs, table data fetching via useMasterDataTable) is untouched."
+  ],
+  "database_schema": "Not applicable — no backend/database exists in this project yet (CLAUDE.md §0, §11 forward-looking only). This feature is pure frontend composition over the existing useMasterDataTable fetch layer, which is unmodified.",
+  "caching_strategy": "Not applicable — no new network calls are introduced. useMasterDataTable's existing fetch-on-mount behavior (with its cancelled-flag cleanup guard) is reused unchanged; MOCK_CURRENT_USER is a static in-memory module export, not a fetched or cached value.",
+  "propTypes_plan": {
+    "Sidebar": "items: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.string.isRequired, label: PropTypes.string.isRequired })).isRequired, activeId: PropTypes.string.isRequired, onSelect: PropTypes.func.isRequired",
+    "TopBar": "title: PropTypes.string.isRequired  (user shape prop removed per AC-5_resolution)",
+    "AppShell": "initialHash: PropTypes.string",
+    "UserBadge": "(none — self-fetches via useCurrentUser)"
+  },
+  "constraints_carried_forward_unchanged": [
+    "No new router/UI-kit/state-management dependency; prop-types remains the one explicitly-justified exception (SDD dependency_decision).",
+    "Marketing components remain untouched and decoupled; App.jsx's single outermost hash ternary is the only branch point (AC-1 fix, re-verified against current App.jsx).",
+    "One component per folder, CSS Modules, camelCase classes, additive-only design tokens (--shell-sidebar-width, --shell-topbar-height) in src/index.css :root.",
+    "PropTypes required on every new component.",
+    "Internal nav (Sidebar clicks) is plain useState, not hash-addressable past the entry hash — accepted trade-off (SDD/AC-3)."
+  ],
+  "open_items_for_engineer_mvp": [
+    "Stage 3.5 builds AppShell, Sidebar, TopBar, UserBadge, src/lib/navigation.js, src/lib/currentUser.js, src/hooks/useCurrentUser.js exactly per this stage's final_component_breakdown / final_supporting_modules / final_data_flow — no further redesign needed for AC-5/AC-6, both are now closed.",
+    "npm install prop-types before writing PropTypes-validated components (per SDD dependency_decision)."
+  ],
+  "files_created": [
+    "tasks/agent-outputs/system-engineer/FEAT-1.json"
+  ],
+  "files_edited": []
+}

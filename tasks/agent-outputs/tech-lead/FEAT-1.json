@@ -1,0 +1,73 @@
+{
+  "feature_id": "FEAT-1",
+  "stage": "2.5-tech-lead",
+  "reviewed_inputs": [
+    "tasks/agent-outputs/business-analyst/FEAT-1.json",
+    "tasks/agent-outputs/enterprise-architect-pre/FEAT-1.json",
+    "src/App.jsx",
+    "src/components/{Header,Hero,ServicesSection,DeliveryCenters,Footer,MasterDataView,MasterDataTable}",
+    "src/hooks/{useLocationHash.js,useMasterDataTable.js}",
+    "src/lib/masterDataApi.js",
+    "src/index.css",
+    "package.json",
+    ".claude/rules/frontend.md",
+    "CLAUDE.md §0, §1, §12"
+  ],
+  "verdict": "PASS",
+  "architecture_direction": {
+    "component_tree": {
+      "decision": "Introduce a single `AppShell` component (`src/components/AppShell/`) that becomes App.jsx's top-level render: `AppShell` renders a persistent `SideNav` (or `TopNav` — pick one, do not build both) + a `TopBar` (workspace title/breadcrumb + `UserMenu`) + a content region that switches between registered views via the route registry. `App.jsx` shrinks to essentially `<AppShell />`.",
+      "constraint": "Marketing components (Header, Hero, ServicesSection, DeliveryCenters, Footer) are deleted, not merely unmounted — confirms enterprise-architect-pre's directive. Their directories are removed from src/components entirely. Do not leave them present-but-unreferenced; that violates CLAUDE.md §1 No Unused Code."
+    },
+    "routing": {
+      "decision": "Confirmed: no router dependency. New file `src/lib/routes.js` exports a `ROUTES` array: `{ id, hash, label, component }` per nav item, mirroring the existing MASTER_DATA_TABLES 'config array drives rendering' idiom but living in its own module (enterprise-architect-pre already rejected folding it into masterDataApi.js — reaffirmed, do not revisit).",
+      "constraint": "useLocationHash.js is reused unchanged as the mechanism reading window.location.hash; AppShell resolves the active route by matching hash against ROUTES, defaulting to the first entry when the hash is empty/unrecognized. Nav items for not-yet-built sections may exist in ROUTES as disabled/placeholder entries (explicitly labeled, e.g. a `disabled: true` flag) rather than being invented as fake working views."
+    },
+    "signed_in_user_context": {
+      "decision": "One mock user object, single source of truth: `src/lib/currentUser.js` exporting `MOCK_CURRENT_USER = { name, initials/avatarInitial, role }`. UserMenu component reads only from this module. No localStorage, no fake session/token, no login form — display-only, per enterprise-architect-pre.",
+      "constraint": "Nothing else in the app may construct its own ad-hoc 'current user' value — if a second stage introduces a second mock-user shape, that is a duplicate-source-of-truth violation Architecture Critic (3.1) should block."
+    },
+    "data_dense_views": {
+      "decision": "MasterDataView/MasterDataTable + useMasterDataTable's {data, isLoading, error} contract becomes a view rendered inside AppShell's content region — not rearchitected. If System Engineer (3.3) wants a shared `DataTable` primitive generalized out of MasterDataTable, that's fine, but the {data, isLoading, error} hook contract itself is a hard constraint, not up for renegotiation.",
+      "constraint": "Any new dashboard view added under this feature must consume a `use<Thing>` hook returning that exact shape. No bespoke fetch/loading state inside a component body."
+    },
+    "styling_and_tokens": {
+      "decision": "Extend src/index.css :root with shell-specific tokens needed for a sidebar/topbar layout: `--color-surface`, `--color-sidebar-bg`, `--color-sidebar-text`, `--color-border`, and one elevation/shadow token (e.g. `--shadow-sm`). Reuse existing `--color-primary`, `--color-accent`, `--space-*`, `--font-sans` — do not redefine equivalents.",
+      "constraint": "No hardcoded hex in new CSS Modules (frontend.md). No dark-mode tokens are being added in this feature — out of scope, not requested."
+    },
+    "state_management": {
+      "decision": "Active route: derived from useLocationHash's hash value matched against ROUTES — not stored as separate React state (avoids two sources of truth for 'what's active'). Sidebar collapsed/expanded (if built): local useState in AppShell, optionally persisted to localStorage as a per-viewer convenience only — never a required source of truth. No Context needed unless a third distinct cross-cutting concern emerges; MOCK_CURRENT_USER is a static import, not context, since it never changes at runtime.",
+      "constraint": "No global state library (Redux/Zustand/etc.) — reaffirmed, do not revisit."
+    },
+    "dependencies": {
+      "decision": "No new npm dependencies for this feature — no icon library, no UI kit, no router. If the Solution Architect or Frontend Engineer stage genuinely needs icons for the nav, use inline SVG (co-located as small local components or raw JSX), not a new package.",
+      "constraint": "Any dependency addition proposal must come back to an explicit architecture decision at Architecture Critic (3.1) with a stated reason — flagged again per enterprise-architect-pre's scope-creep warning."
+    }
+  },
+  "scaling_and_complexity_risks": [
+    "Risk: AppShell becoming a god-component if nav, topbar, user menu, and route-switching logic all live in one file. Mitigation: split into AppShell (layout + route switch only), SideNav (or TopNav), TopBar, UserMenu as separate co-located components per frontend.md's one-component-per-file rule; AppShell composes them.",
+    "Risk: routes.js and masterDataApi.js's MASTER_DATA_TABLES both describe 'what tables/sections exist' with different shapes, inviting future confusion about which is authoritative for what. Mitigation: routes.js is authoritative for nav/shell structure only; MASTER_DATA_TABLES remains authoritative for master-data table/column config. A route entry's `component` may render a view that internally consumes MASTER_DATA_TABLES — the two are layered, not merged.",
+    "Risk: hash-routing with a hand-rolled registry can silently drift from what's actually rendered if ROUTES and the switch statement diverge. Mitigation: AppShell must render purely by iterating ROUTES and matching on hash — no separate hardcoded switch/if-chain duplicating the registry.",
+    "Risk: placeholder/disabled nav entries could be built as fully-wired links to nonexistent views (broken 404-like experience). Mitigation: disabled entries render as visually non-interactive (no click handler / aria-disabled), never as links to an empty or error view."
+  ],
+  "hard_constraints_for_solution_architect": [
+    "Marketing components are deleted from src/components, not hidden behind a flag or second route.",
+    "Route/nav registry lives in a new src/lib/routes.js — never inside masterDataApi.js.",
+    "Signed-in-user context is one static mock object in src/lib/currentUser.js — display-only, no fake auth/session behavior.",
+    "All new data views reuse the existing {data, isLoading, error} hook contract; no parallel fetch pattern.",
+    "No new npm dependencies (no router, no icon/UI kit) without a named, explicit architecture decision at 3.1.",
+    "No global state library; route state derives from useLocationHash + ROUTES match, not duplicated in separate useState.",
+    "New/changed components get PropTypes at the top of the file (frontend.md, scoped to new code only per enterprise-architect-pre).",
+    "New CSS tokens are added to src/index.css :root, no hardcoded hex values, CSS Modules co-location maintained."
+  ],
+  "open_items_deferred_to_solution_architect": [
+    "Exact choice of SideNav vs. TopNav layout — visual/UX call, not an architecture-blocking one; either satisfies REQ-1/REQ-2.",
+    "Whether sidebar-collapse is built in this feature at all, or the shell ships expanded-only for v1 — a scope call, not an architecture one."
+  ],
+  "verdict_notes": "No architecture-level objection to the enterprise-architect-pre decisions; this stage makes them concrete and buildable (specific file names, component boundaries, and the exact contract each downstream stage must not violate) rather than re-opening any of them. No blocking findings.",
+  "summary": "Set concrete architecture direction for FEAT-1's app-shell redesign: a single AppShell component (src/components/AppShell/) replaces App.jsx's marketing render tree (Header/Hero/ServicesSection/DeliveryCenters/Footer deleted outright), composed of SideNav/TopNav + TopBar + UserMenu + a content region driven by a new src/lib/routes.js registry (kept separate from masterDataApi.js) matched against the existing useLocationHash hook — no router dependency. Signed-in-user context is one static MOCK_CURRENT_USER object in src/lib/currentUser.js, display-only. All new data-dense views must reuse the existing useMasterDataTable {data, isLoading, error} hook contract rather than a parallel fetch pattern. New CSS tokens extend src/index.css :root; no hardcoded hex, no global state library, no new npm dependencies without an explicit 3.1 decision, PropTypes required on new/changed components. Flagged four scaling/complexity risks (AppShell god-component, routes.js vs. MASTER_DATA_TABLES authority overlap, registry/render drift, broken-looking disabled nav links) with concrete mitigations, and listed eight hard constraints the Solution Architect stage must respect verbatim. Verdict PASS — no blocking findings; this is a read-only architecture-direction stage, no application code was created or edited.",
+  "files_created": [
+    "tasks/agent-outputs/tech-lead/FEAT-1.json"
+  ],
+  "files_edited": []
+}
