@@ -9,11 +9,18 @@
 //   column   - snake_case Postgres column name
 //   required - validated on create; on update, only enforced if the key
 //              is present in the request body (partial update semantics)
-//   type     - "string" (default) or "enum" (checked against `values`)
+//   type     - "string" (default), "enum" (checked against `values`), or
+//              "number" (finite JS number, no length/enum checks)
+//   maxLength - optional override of the default 255-char cap on a
+//               "string" field (e.g. resources.skill, a long free-text
+//               comma list that can run past 12,000 characters)
 //
 // hasCode marks a table whose primary key isn't what the app treats as
 // "the" identifier — delivery_centers additionally exposes an
 // auto-generated, immutable business code (DC-001, ...) via a DB trigger.
+// resources.employeeId is a different case: also "the" identifier, but
+// caller-supplied rather than auto-generated (enforced unique at the DB
+// level, see migrations/0012), so it's just an ordinary required field.
 export const MASTER_DATA_TABLES = [
   {
     route: "practices",
@@ -61,13 +68,55 @@ export const MASTER_DATA_TABLES = [
     route: "resources",
     tableName: "resources",
     resourceName: "resource",
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    fields: [
+      { key: "employeeId", column: "employee_id", required: true, type: "number" },
+      { key: "name", column: "name", required: true, type: "string" },
+      { key: "orgChart", column: "org_chart", required: false, type: "string" },
+      { key: "employmentStatus", column: "employment_status", required: true, type: "string" },
+      { key: "employmentType", column: "employment_type", required: true, type: "string" },
+      { key: "region", column: "region", required: false, type: "string" },
+      { key: "subDivision", column: "sub_division", required: true, type: "string" },
+      { key: "position", column: "position", required: true, type: "string" },
+      { key: "onsiteLocation", column: "onsite_location", required: false, type: "string" },
+      { key: "offshoreLocation", column: "offshore_location", required: false, type: "string" },
+      {
+        key: "locationType",
+        column: "location_type",
+        required: true,
+        type: "enum",
+        values: ["Onsite", "Offshore"],
+      },
+      { key: "designation", column: "designation", required: true, type: "string" },
+      { key: "skill", column: "skill", required: false, type: "string", maxLength: 20000 },
+      { key: "geBatch", column: "ge_batch", required: true, type: "string" },
+      { key: "kaarExperience", column: "kaar_experience", required: true, type: "number" },
+      { key: "sapExperience", column: "sap_experience", required: false, type: "number" },
+      { key: "totalExperience", column: "total_experience", required: true, type: "number" },
+    ],
   },
   {
     route: "departments",
     tableName: "departments",
     resourceName: "department",
     hasCode: true,
+    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+  },
+  {
+    route: "resource-cost",
+    tableName: "resource_cost",
+    resourceName: "resource_cost",
+    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+  },
+  {
+    route: "teams",
+    tableName: "teams",
+    resourceName: "team",
+    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+  },
+  {
+    route: "resource-deployment",
+    tableName: "resource_deployment",
+    resourceName: "resource_deployment",
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
 ];

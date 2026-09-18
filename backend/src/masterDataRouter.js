@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { pool } from "./db.js";
-import { notFound } from "./errors.js";
+import { notFound, isUniqueViolation, duplicateFieldError } from "./errors.js";
 import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
@@ -37,7 +37,13 @@ export function createMasterDataRouter(table) {
       const offset = Math.max(Number(req.query.offset) || 0, 0);
 
       const [rows, count] = await Promise.all([
-        pool.query(`select * from ${tableName} order by name asc limit $1 offset $2`, [limit, offset]),
+        // Active rows always sort before soft-deleted ones, so deleted rows
+        // (which are never removed and only accumulate) can't crowd active
+        // rows out of the page once the table holds more than `limit` rows.
+        pool.query(
+          `select * from ${tableName} order by (deleted_at is not null), name asc limit $1 offset $2`,
+          [limit, offset]
+        ),
         pool.query(`select count(*)::int as total from ${tableName}`),
       ]);
 
@@ -73,7 +79,7 @@ export function createMasterDataRouter(table) {
       );
       res.status(201).json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(err);
+      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
     }
   });
 
@@ -91,7 +97,15 @@ export function createMasterDataRouter(table) {
       validateActor(actor);
 
       const columns = [...fields.map((f) => f.column), "updated_by"];
-      const values = [...fields.map((f) => req.body[f.key] ?? current[f.column]), actor];
+      // ?? would treat an explicit null the same as "not sent" and silently
+      // keep the current value — Object.hasOwn distinguishes "the key is
+      // absent" (keep current) from "the key is present, set to null"
+      // (clear it), so an optional field like practiceId can actually be
+      // unset again once it's been set.
+      const values = [
+        ...fields.map((f) => (Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column])),
+        actor,
+      ];
       const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
 
       const result = await pool.query(
@@ -102,7 +116,7 @@ export function createMasterDataRouter(table) {
       if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(err);
+      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
     }
   });
 

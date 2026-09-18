@@ -17,7 +17,10 @@ function errorResult(err) {
 }
 
 function fieldSchema(field) {
-  const base = field.type === "enum" ? z.enum(field.values) : z.string().min(1);
+  let base;
+  if (field.type === "enum") base = z.enum(field.values);
+  else if (field.type === "number") base = z.number().finite();
+  else base = z.string().min(1).max(field.maxLength ?? 255);
   return base.describe(`The ${field.label}.`);
 }
 

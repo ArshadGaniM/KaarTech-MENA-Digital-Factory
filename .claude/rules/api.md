@@ -51,6 +51,12 @@ Never return 200 with `{ "error": "..." }` in the body.
 always-200 shape with a `needs_reauth` boolean. Document every such deviation
 here so it doesn't get "fixed" back into a bug.
 
+**Documented deviation:** the master-data routes' `GET /v1/<table>/:id`
+returns 200 (not 404) for a soft-deleted resource — the response includes
+`markedDeleted: "Yes"` instead. 404 is reserved for an id that doesn't exist
+at all. Only PATCH/DELETE on those routes still 404 a soft-deleted resource,
+since those refuse to act on one.
+
 ## Error Responses
 ```json
 {

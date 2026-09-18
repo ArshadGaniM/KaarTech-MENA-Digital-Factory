@@ -35,12 +35,24 @@ export function validateBody(table, body, { partial = false } = {}) {
     if (!mustValidate) continue;
 
     const value = safeBody[field.key];
+    // A non-required field sent as null is an explicit "clear this" —
+    // valid, not a type error. A required field can never be nulled.
+    if (value === null && !field.required) continue;
+
+    if (field.type === "number") {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        details[field.key] = `${field.key} must be a number.`;
+      }
+      continue;
+    }
+
+    const maxLength = field.maxLength ?? MAX_TEXT_LENGTH;
     if (typeof value !== "string" || value.trim().length === 0) {
       details[field.key] = field.required
         ? `${field.key} is required and must be a non-empty string.`
         : `${field.key} must be a non-empty string.`;
-    } else if (value.length > MAX_TEXT_LENGTH) {
-      details[field.key] = `${field.key} must be ${MAX_TEXT_LENGTH} characters or fewer.`;
+    } else if (value.length > maxLength) {
+      details[field.key] = `${field.key} must be ${maxLength} characters or fewer.`;
     } else if (field.type === "enum" && !field.values.includes(value)) {
       details[field.key] = `${field.key} must be one of: ${field.values.join(", ")}.`;
     }

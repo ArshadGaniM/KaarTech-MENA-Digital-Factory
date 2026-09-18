@@ -1,4 +1,21 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(git merge-base *)",
+      "Bash(npm test)",
+      "mcp__github__list_pull_requests",
+      "mcp__github__pull_request_read",
+      "mcp__github__actions_list",
+      "mcp__github__actions_get",
+      "mcp__Render__get_service",
+      "mcp__Render__list_logs",
+      "mcp__Render__list_deploys",
+      "mcp__Vercel__list_projects",
+      "mcp__Vercel__list_deployments",
+      "mcp__Supabase__execute_sql"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

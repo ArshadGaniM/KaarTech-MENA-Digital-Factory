@@ -1,9 +1,10 @@
 # KaarTech MENA Digital Factory — Master Data MCP Server
 
-An MCP server (stdio transport) exposing 18 tools — `add_`/`update_`/`delete_` for
-each of the 6 master data tables (`practice`, `delivery_center`, `competency`,
-`module`, `resource`, `department`). Each tool is a thin client over the
-backend's REST API (see `backend/README.md` for the routes it calls).
+An MCP server (stdio transport) exposing 27 tools — `add_`/`update_`/`delete_` for
+each of the 9 master data tables (`practice`, `delivery_center`, `competency`,
+`module`, `resource`, `department`, `resource_cost`, `team`,
+`resource_deployment`). Each tool is a thin client over the backend's
+REST API (see `backend/README.md` for the routes it calls).
 
 "delete" is a soft delete: it sets `deleted_at` on the row rather than
 removing it. Records added/modified/deleted here are visible in the
@@ -58,8 +59,9 @@ e.g. in `claude_desktop_config.json` (Claude Desktop) or a project's
 ## Tools
 
 For each of `practice`, `delivery_center`, `competency`, `module`,
-`resource`, `department`, there's an `add_<table>`, `update_<table>`, and
-`delete_<table>` tool. Each table's own fields differ — see
+`resource`, `department`, `resource_cost`, `team`, `resource_deployment`,
+there's an `add_<table>`, `update_<table>`, and `delete_<table>` tool.
+Each table's own fields differ — see
 `src/masterDataTables.js` for the authoritative list — but every
 `add_`/`update_` tool additionally accepts an optional `updatedBy: string`
 (who is performing the write; defaults to `"Arshad Gani"` if omitted, no
@@ -68,10 +70,11 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency`, `resource` | `name` | `name` |
+| `competency`, `resource_cost`, `team`, `resource_deployment` | `name` | `name` |
 | `practice`, `department` | `name` | `name` |
 | `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
+| `resource` | `employeeId`, `name`, `employmentStatus`, `employmentType`, `subDivision`, `position`, `locationType` (`Onsite` \| `Offshore`), `designation`, `geBatch`, `kaarExperience`, `totalExperience` | all of the above, plus `orgChart`, `region`, `onsiteLocation`, `offshoreLocation`, `skill`, `sapExperience` |
 
 `add_<table>` creates a record — `created_at`/`updated_at` are set by the
 database, and `delivery_center`/`department`/`practice`/`module`
@@ -84,7 +87,16 @@ distinct from the auto-generated one.
 It's optional on `add_module` and unvalidated — a module can be created
 without a Practice, or with one that doesn't exist yet, and mapped later
 via `update_module`.
+
+**`resource`'s `employeeId`** is unlike every other table's identifier —
+it's a required number **you supply**, not auto-generated, and must be
+unique. `add_resource` with a duplicate `employeeId` fails with a 422
+naming the field, not an auto-generated code collision. `resource`'s
+`skill` field accepts up to 20000 characters (other string fields cap at
+255) and numeric fields (`kaarExperience`, `sapExperience`,
+`totalExperience`) take a JS number, not a string.
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
-`delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`; the
-row is excluded from all reads afterward, not physically removed).
+`delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`, not
+physically removed). The row still shows up in reads afterward, flagged
+`markedDeleted: "Yes"` — see `backend/README.md` for why.
