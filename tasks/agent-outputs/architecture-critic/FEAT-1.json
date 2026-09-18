@@ -2,46 +2,58 @@
   "feature": "FEAT-1",
   "stage": "architecture-critic",
   "pipeline_stage_number": "3.1",
-  "verdict": "BLOCKED",
-  "summary": "Adversarial review of the solution-architect SDD for the app-shell redesign, cross-checked directly against src/App.jsx, src/components/Header/Header.jsx, src/components/Footer/Footer.jsx and package.json (not taken on prior-stage summaries alone). One Critical/blocking finding: the SDD's documented App.jsx change only swaps the <main> content between AppShell and the marketing fragment, but leaves the marketing <Header/> and <Footer/> mounted unconditionally around BOTH branches. That means the redesigned dashboard would still render inside the public marketing chrome — the portal-style anchor-nav Header (with 'Talk to Us' CTA and #services/#about/#contact links) above it and the marketing Footer below it. This directly contradicts the feature's own stated goal (stop reading as a public-facing portal landing page) and violates enterprise-architect-pre's condition 2 as written ('independent sibling top-level views... not merged/coupled together') — Header/Footer are currently coupled across both views, not siblings-by-hash. This must be fixed in the SDD before stage 3.3/3.5 build anything, per CLAUDE.md's Three Invariants (3rd: forbidden-pattern/architecture denylist checked after every code step) and this stage's mandate to block on findings that undermine the design.",
-  "findings": [
+  "verdict": "PASS",
+  "revision_round": 2,
+  "summary": "Round 2 re-review of the solution-architect SDD (tasks/agent-outputs/solution-architect/FEAT-1.json, revision_round 2), verified directly against src/App.jsx and src/index.css (not taken on the solution-architect's or prior stages' summaries alone). AC-1 (round 1 Critical/blocking finding) is correctly resolved: app_jsx_change now moves the hash decision to the outermost level, so APP_SHELL_HASHES matches render <AppShell/> alone with no marketing Header/Footer mounted, and the marketing branch is byte-for-byte the current src/App.jsx tree. Confirmed via direct Read that current src/App.jsx still matches the 'before_round1_design_rejected' shape exactly (Header/Footer unconditional, only <main> children swap) — so the SDD's before/after diff description is accurate to the real starting point, and the round-2 fix genuinely closes the gap AC-1 identified. Two new non-blocking advisory findings raised this round (AC-5, AC-6) for stage 3.3/3.5 to resolve before/while building — neither undermines the design and neither reopens AC-1. Verdict: PASS, pipeline clears to proceed to stage 3.3 (System Engineer).",
+  "round1_finding_status": [
     {
       "id": "AC-1",
       "severity": "Critical",
-      "blocking": true,
-      "title": "App.jsx still wraps AppShell in the marketing Header/Footer chrome",
-      "evidence": "Verified by direct Read of src/App.jsx: <Header/> and <Footer/> are rendered unconditionally, outside the hash ternary — only the <main> children swap. The SDD's 'app_jsx_change' section documents this exact same shape (before/after only touches the ternary), so the gap is in the design, not an implementation slip. src/components/Header/Header.jsx renders a public anchor-nav (Services/Delivery Centers/Master Data/About/Contact) plus a 'Talk to Us' CTA — classic marketing chrome. src/components/Footer/Footer.jsx renders the same marketing footer (About/Contact/legal) for every view, including id=\"about\" and id=\"contact\" anchors meant for the landing page.",
-      "why_it_matters": "The whole point of FEAT-1 (per the business-analyst brief and tech-lead D1) is that the app should read as a multi-user internal app shell, not a public portal. Rendering the new persistent Sidebar/TopBar dashboard sandwiched between the old marketing header (with its own competing nav links and 'Talk to Us' CTA) and marketing footer defeats that goal visually and structurally — a signed-in user would see two nav systems (Header's anchor nav + Sidebar) simultaneously, and the marketing Footer's #about/#contact anchors would be semantically wrong inside an app screen.",
-      "required_fix": "The SDD must make the top-level App.jsx branch decide on Header/Footer too, not just <main>'s content: APP_SHELL_HASHES branch renders <AppShell initialHash={hash} /> alone (AppShell owns its own TopBar/UserBadge as the equivalent of page chrome); the marketing branch keeps <Header/><main>...</main><Footer/> exactly as today. This still satisfies tech-lead's 'single hash-driven top-level decision point' constraint — it just needs to be the outermost decision, not one nested one level down inside <main>."
+      "status": "RESOLVED",
+      "verification": "Direct Read of the round-2 SDD's app_jsx_change.after_round2 confirms the hash ternary now wraps the entire Header/main/Footer tree: APP_SHELL_HASHES.includes(hash) ? <AppShell initialHash={hash} /> : (<><Header/><main>...</main><Footer/></>). AppShell's own TopBar is documented as the app-shell branch's chrome equivalent, replacing Header/Footer rather than sitting alongside them. This is exactly the required_fix from the round-1 finding — still a single hash-driven top-level decision point (tech-lead's constraint preserved), just now the outermost one instead of nested inside <main>."
     },
     {
       "id": "AC-2",
-      "severity": "Advisory",
-      "blocking": false,
-      "title": "prop-types dependency exception — bless it",
-      "notes": "Reasonable read of tech-lead's constraint (D1/hard_constraints name router/UI-kit/state-management libraries specifically; prop-types is a validation-only micro-library and frontend.md already mandates PropTypes usage). No objection — approved as scoped. Recommend the SDD/engineer stage note the exact version pin (^15.x) is fine, no further action needed."
+      "status": "unchanged, still approved (prop-types exception)"
     },
     {
       "id": "AC-3",
-      "severity": "Advisory",
-      "blocking": false,
-      "title": "Internal nav not hash-addressable (no deep-link/back-button past entry hash)",
-      "notes": "Accepted as a deliberate, documented trade-off per tech-lead's YAGNI direction and the SDD's explicit call-out. Not blocking for a single-module app shell. Flag for a future feature once a second nav module exists, consistent with tech-lead's view-registry risk note — no action needed now."
+      "status": "unchanged, still accepted trade-off (internal nav not hash-addressable)"
     },
     {
       "id": "AC-4",
-      "severity": "Advisory",
+      "status": "unchanged, resolved as a consequence of AC-1 (Header no longer renders on app-shell hashes, so its #master-data link is no longer a live conflict)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "AC-5",
+      "severity": "Major",
       "blocking": false,
-      "title": "Header's own nav still links to #master-data",
-      "notes": "Once AC-1 is fixed (Header no longer renders on app-shell hashes), this stops being a live conflict for the master-data hash itself. Still worth a one-line note for stage 3.3: since Header won't render while an app-shell hash is active, no consumer-facing link ever points a signed-in-feeling view back into itself via the marketing nav — no change needed beyond AC-1's fix."
+      "title": "TopBar's `user` prop is dead/duplicated against UserBadge's self-fetch — the SDD specifies two contradictory data paths for the same mock user",
+      "evidence": "component_breakdown.TopBar.props declares `user: shape({ name, role, initials })` and data_flow literally says 'AppShell renders ... TopBar(title=..., user=useCurrentUser())' — i.e. AppShell calls useCurrentUser() and passes the result into TopBar as a prop. But component_breakdown.UserBadge.props is explicitly '(none — self-fetches via useCurrentUser)', and TopBar's own role text says it renders 'UserBadge on the right' with no mention of forwarding a user prop into it. UserBadge takes no props, so TopBar has nowhere to put the `user` prop it receives — it would be unused inside TopBar, and useCurrentUser() would end up called twice (once in AppShell to build the prop, once again inside UserBadge) for the same mock object.",
+      "why_it_matters": "This is a genuine 'No Unused Code' (CLAUDE.md §1) violation waiting to happen: whichever of stage 3.3/3.5 implements this literally either (a) threads a `user` prop into TopBar that nothing consumes, or (b) has to silently deviate from the SDD to make it consistent, which is exactly the kind of drift this stage exists to catch before code is written. It is also a minor coupling smell — two different data-access strategies (prop-drilling vs. self-fetching hook) for the identical piece of state, with no stated reason for the split.",
+      "recommendation": "Stage 3.3 (System Engineer) should resolve this one way before 3.5 builds: either (a) drop the `user` prop from TopBar entirely and let TopBar render `<UserBadge />` with no props (UserBadge self-fetches, consistent with its own spec — the simpler option, and the one already implied by UserBadge's props list), or (b) keep TopBar prop-driven and have UserBadge accept a `user` prop instead of calling useCurrentUser() itself. Option (a) is recommended: it matches UserBadge's already-agreed self-fetching design and avoids call-siting useCurrentUser() in two places for one mock value.",
+      "blocking_rationale": "Not Critical/blocking — this is an internal data-flow inconsistency inside a still-unbuilt SDD, not a rendered-chrome/UX defect like AC-1, and it doesn't compromise the app-shell-vs-marketing separation that was this stage's core adversarial concern. It is flagged with enough detail that stage 3.3 can resolve it without another SDD round-trip."
+    },
+    {
+      "id": "AC-6",
+      "severity": "Minor",
+      "blocking": false,
+      "title": "supporting_modules introduces a new src/mock/ top-level directory, deviating from tech-lead's literal 'src/lib/currentUser.js' path without call-out",
+      "evidence": "tech-lead's stage 2.5 summary states signed-in-user context should be 'one static MOCK_CURRENT_USER object in a new src/lib/currentUser.js'. The SDD instead places it at 'src/mock/currentUser.js' (a directory not present in CLAUDE.md §3's repo file map, which lists only src/components, src/hooks, src/lib under src/) and adds a second file, src/hooks/useCurrentUser.js, as the consuming hook.",
+      "why_it_matters": "Tech-lead's hard_constraints_for_solution_architect were flagged upstream as things to respect verbatim. This is a silent path deviation, not a documented, justified one (contrast with the SDD's dependency_decision section, which does explicitly flag and justify its one deviation — the prop-types exception). That said, the actual split (data module + a use-prefixed hook, in separate files) matches the codebase's own established idiom more closely than a single combined file would: codebase-explorer's mapping already documents src/lib/masterDataApi.js (data) + src/hooks/useMasterDataTable.js (hook) as the precedent pattern this feature should extend, not replace.",
+      "recommendation": "Not blocking. Two acceptable resolutions for stage 3.3/3.5: (a) keep the two-file split (it's the better fit for the existing hook-contract convention) but move the mock object into src/lib/currentUser.js instead of inventing a new src/mock/ directory, keeping the data file next to masterDataApi.js as its sibling; or (b) if the owner/tech-lead prefers isolating mock-only fixtures for easy future removal, keep src/mock/ but say so explicitly as a deliberate, named deviation (the same way the prop-types exception was called out) rather than leaving it unflagged. Recommend (a) — no new top-level src/ directory is needed for one file."
     }
   ],
   "constraints_re_verified": [
-    "No new router/UI-kit/state-management dependency — still true, prop-types is the sole justified exception (AC-2).",
-    "Single hash-driven top-level decision point — AC-1's required fix keeps this true, it just needs to be applied one level higher (around Header/main/Footer, not just <main>'s children).",
-    "PropTypes plan, CSS Modules/camelCase, additive-only tokens, one-component-per-folder — all consistent with frontend.md, no issues found."
+    "No new router/UI-kit/state-management dependency — still true, prop-types remains the sole justified exception (AC-2).",
+    "Single hash-driven top-level decision point — confirmed now applied at the outermost level (Header/main/Footer), resolving AC-1.",
+    "App-shell branch renders no marketing chrome alongside AppShell — confirmed: app_jsx_change.after_round2 shows AppShell renders alone on app-shell hashes.",
+    "Design tokens additive-only — verified against src/index.css: --shell-sidebar-width and --shell-topbar-height are new names, no existing token (--color-bg, --color-bg-alt, --color-primary, --color-text, --color-text-muted, --color-border, --color-accent, --space-1..6, --font-sans) is renamed or redefined.",
+    "PropTypes plan, CSS Modules/camelCase, one-component-per-folder — all consistent with frontend.md, no issues found this round."
   ],
-  "verdict_rationale": "One Critical, blocking finding (AC-1) per CLAUDE.md §7.6 invariant 3 (forbidden-pattern/architecture check after every code-generating step) and this role's mandate to adversarially catch coupling/deviation issues before code is written. This halts the pipeline for FEAT-1 until the SDD is amended: solution-architect (stage 3) should update app_jsx_change to move the Header/Footer decision to the same branch as AppShell vs. marketing, then this stage re-runs.",
+  "verdict_rationale": "AC-1 (the only Critical/blocking finding from round 1) is verified resolved by direct inspection of the round-2 SDD text, cross-checked against the actual current src/App.jsx to confirm the 'before' state cited by the SDD is accurate. The two new findings this round (AC-5 data-flow duplication, AC-6 undocumented directory deviation) are both Major/Minor and non-blocking under this role's mandate — they are convention/clarity issues for the next design-detail stage to close, not architecture-undermining coupling or over-engineering. Verdict: PASS. Pipeline clears to stage 3.3 (System Engineer), which should fold AC-5's and AC-6's recommendations into the component/data-flow design before stage 3.5 (Engineer/MVP) generates code.",
   "files_created_or_modified": [
     "tasks/agent-outputs/architecture-critic/FEAT-1.json"
   ]

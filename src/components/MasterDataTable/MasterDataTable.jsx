@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
 import styles from './MasterDataTable.module.css';
 
@@ -17,8 +18,20 @@ function formatCell(column, value) {
 function MasterDataTable({ route, columns }) {
   const { data, isLoading, error } = useMasterDataTable(route);
 
-  if (isLoading) return <p className={styles.status}>Loading…</p>;
-  if (error) return <p className={styles.statusError}>Could not load this table: {error.message}</p>;
+  if (isLoading) {
+    return (
+      <p className={styles.status} role="status" aria-live="polite">
+        Loading…
+      </p>
+    );
+  }
+  if (error) {
+    return (
+      <p className={styles.statusError} role="alert">
+        Could not load this table: {error.message}
+      </p>
+    );
+  }
 
   return (
     <table className={styles.table}>
@@ -49,5 +62,15 @@ function MasterDataTable({ route, columns }) {
     </table>
   );
 }
+
+MasterDataTable.propTypes = {
+  route: PropTypes.string.isRequired,
+  columns: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+};
 
 export default MasterDataTable;

@@ -3,7 +3,8 @@
   "stage": "solution-architect",
   "pipeline_stage_number": "3",
   "verdict": "PASS",
-  "summary": "Solution Design Document for the app-shell redesign. Constrained by tech-lead's FEAT-1 decision record (D1-D6, hard_constraints_for_solution_architect) and .claude/rules/frontend.md. No application code written at this stage per solution-architect.md's scope (SDD only) — code generation begins at stage 3.5 (Engineer/MVP).",
+  "revision_round": 2,
+  "summary": "Solution Design Document for the app-shell redesign (round 2, amended after architecture-critic's round-1 BLOCKED verdict on finding AC-1). Constrained by tech-lead's FEAT-1 decision record (D1-D6, hard_constraints_for_solution_architect) and .claude/rules/frontend.md. No application code written at this stage per solution-architect.md's scope (SDD only) — code generation begins at stage 3.5 (Engineer/MVP). Round 2 change: app_jsx_change and routing_design were amended so the hash decision wraps the entire Header/main/Footer tree instead of nesting inside <main> — the app-shell branch now renders <AppShell/> alone, with no marketing Header/Footer mounted alongside it. All other round-1 sections (component_breakdown, supporting_modules, design_tokens, dependency_decision, propTypes_plan) are unchanged and were re-verified as still consistent with this fix.",
   "scope_note": "Stage 3 produces the design document that stages 3.1 (Architecture Critic), 3.3 (System Engineer) and 3.5 (Engineer/MVP) build from. Component code is intentionally not written here.",
   "component_breakdown": [
     {
@@ -56,15 +57,19 @@
     }
   ],
   "routing_design": {
-    "decision_point": "App.jsx's existing useLocationHash remains the ONLY hash-driven decision. hash is looked up against APP_SHELL_HASHES (from src/lib/navigation.js, currently just '#master-data'): match -> <AppShell initialHash={hash} />; no match -> marketing site (Hero/ServicesSection/DeliveryCenters), unchanged.",
+    "decision_point": "App.jsx's existing useLocationHash remains the ONLY hash-driven decision, and it is now the OUTERMOST decision in the render tree (revised in round 2 per architecture-critic AC-1) — it decides between the entire app-shell branch and the entire marketing branch, not just the <main> content between a shared Header/Footer. hash is looked up against APP_SHELL_HASHES (from src/lib/navigation.js, currently just '#master-data'): match -> <AppShell initialHash={hash} /> alone (no Header/Footer); no match -> <Header/><main>Hero/ServicesSection/DeliveryCenters</main><Footer/>, unchanged from today.",
     "internal_navigation": "Inside AppShell, clicking a Sidebar item calls setActiveViewId(id) — plain useState, NOT a hash change. This is a deliberate, tech-lead-mandated trade-off: no second router layer. Consequence: the browser back button and deep-linking only work for the entry hash (e.g. '#master-data'), not for whichever internal view is currently selected. Documented here so stage 3.1 (Architecture Critic) evaluates it as an accepted trade-off, not an oversight.",
-    "hash_collision_resolution": "'#master-data' is now consumed entirely by NAV_ITEMS/APP_SHELL_HASHES — App.jsx has exactly one place that lists internal-app hashes, so there is no second branch that could diverge from it (resolves tech-lead's flagged hash-collision risk)."
+    "hash_collision_resolution": "'#master-data' is now consumed entirely by NAV_ITEMS/APP_SHELL_HASHES — App.jsx has exactly one place that lists internal-app hashes, so there is no second branch that could diverge from it (resolves tech-lead's flagged hash-collision risk).",
+    "app_shell_owns_its_own_chrome": "AppShell's TopBar (title + UserBadge) is the app-shell branch's equivalent of page chrome — it replaces Header/Footer entirely on app-shell hashes, it does not sit alongside them. This is the direct fix for architecture-critic finding AC-1 (round 1): the marketing Header (anchor-nav + 'Talk to Us' CTA) and marketing Footer (#about/#contact anchors) must never render while an app-shell hash is active, because they duplicate/contradict Sidebar navigation and read as public-portal chrome around an internal dashboard."
   },
   "app_jsx_change": {
-    "before": "hash === '#master-data' ? <MasterDataView /> : <marketing fragment>",
-    "after": "APP_SHELL_HASHES.includes(hash) ? <AppShell initialHash={hash} /> : <marketing fragment>",
+    "round": 2,
+    "revision_reason": "architecture-critic (stage 3.1) BLOCKED round 1 with Critical finding AC-1: round 1's design only swapped <main>'s children between AppShell and the marketing fragment, leaving <Header/> and <Footer/> mounted unconditionally around BOTH branches — so the new dashboard still rendered sandwiched inside the old public-portal chrome. Fixed by moving the branch decision one level up, per AC-1's required_fix, while keeping tech-lead's 'single hash-driven top-level decision point' constraint intact (the decision is still exactly one ternary on `hash`, just now wrapping Header/main/Footer instead of nesting inside <main>).",
+    "before_round1_design_rejected": "<Header/><main>{hash === '#master-data' ? <MasterDataView /> : <marketing fragment>}</main><Footer/>",
+    "after_round2": "APP_SHELL_HASHES.includes(hash) ? <AppShell initialHash={hash} /> : (<><Header /><main><Hero /><ServicesSection /><DeliveryCenters /></main><Footer /></>)",
     "imports_added": ["AppShell from './components/AppShell'", "APP_SHELL_HASHES from './lib/navigation'"],
-    "imports_removed": ["MasterDataView (moved to being imported only by src/lib/navigation.js)"]
+    "imports_removed": ["MasterDataView (moved to being imported only by src/lib/navigation.js)"],
+    "imports_unchanged_but_now_conditional": ["Header — only rendered in the marketing branch", "Footer — only rendered in the marketing branch"]
   },
   "data_flow": [
     "App.jsx reads hash via useLocationHash (unchanged hook).",
@@ -105,14 +110,26 @@
   ],
   "constraints_verified_against": [
     "No new router/UI-kit/state-management dependency (prop-types is the one explicitly-justified exception, documented above).",
-    "Marketing components remain untouched and decoupled — only App.jsx's conditional branch changes, no import of AppShell into marketing components or vice versa.",
+    "Marketing components remain untouched and decoupled — only App.jsx's conditional branch changes, no import of AppShell into marketing components or vice versa. Header/Footer are now conditionally rendered (marketing branch only) rather than unconditionally wrapping both branches — see app_jsx_change round 2.",
     "Signed-in-user context is a clearly-named mock behind one hook seam.",
-    "Single hash-driven top-level decision point; all further nav is React state.",
+    "Single hash-driven top-level decision point; all further nav is React state. Round 2: this decision point is now the outermost render decision (wraps Header/main/Footer), not nested inside <main> — still exactly one ternary on `hash`.",
     "PropTypes required on every new component (see propTypes_plan).",
-    "One component per folder, CSS Modules, camelCase classes, additive tokens only."
+    "One component per folder, CSS Modules, camelCase classes, additive tokens only.",
+    "App-shell branch renders no marketing chrome (Header/Footer) alongside AppShell — resolves architecture-critic finding AC-1."
+  ],
+  "round1_findings_resolved": [
+    {
+      "id": "AC-1",
+      "severity": "Critical",
+      "resolution": "app_jsx_change and routing_design amended (see 'round': 2 fields above) so the hash ternary decides between <AppShell/> alone and the full <Header/><main/><Footer/> marketing tree, instead of nesting a swap inside a shared <main>. Header and Footer no longer render on any app-shell hash."
+    }
+  ],
+  "round1_advisories_carried_forward_unchanged": [
+    "AC-2: prop-types dependency exception — approved, no action needed.",
+    "AC-3: internal nav not hash-addressable past the entry hash — accepted trade-off, no action needed now.",
+    "AC-4: Header's own nav linking to #master-data stops being a live conflict once AC-1's fix lands (Header doesn't render on app-shell hashes) — no action needed beyond AC-1."
   ],
   "open_items_for_architecture_critic": [
-    "Confirm the accepted trade-off on internal-nav not being hash-addressable (no back-button/deep-link support past the entry hash) is acceptable for this stage of the product, or should be flagged for a follow-up feature.",
-    "Confirm prop-types as a dependency exception is acceptable given tech-lead's constraint wording."
+    "Re-verify AC-1's required_fix is correctly reflected in app_jsx_change (round 2) and routing_design.app_shell_owns_its_own_chrome before clearing this stage for stage 3.3."
   ]
 }

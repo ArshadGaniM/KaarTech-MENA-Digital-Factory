@@ -1,0 +1,81 @@
+{
+  "feature_id": "FEAT-1",
+  "stage": "5.9",
+  "role": "test-architect",
+  "verdict": "PASS",
+  "verified_via_direct_read": [
+    "src/App.jsx",
+    "src/lib/navigation.js",
+    "src/lib/currentUser.js",
+    "src/hooks/useCurrentUser.js",
+    "src/hooks/useMasterDataTable.js",
+    "src/components/AppShell/AppShell.jsx",
+    "src/components/Sidebar/Sidebar.jsx",
+    "src/components/TopBar/TopBar.jsx",
+    "src/components/UserBadge/UserBadge.jsx",
+    "src/components/MasterDataTable/MasterDataTable.jsx",
+    "package.json (root and backend/)"
+  ],
+  "critical_infrastructure_gap": {
+    "finding": "The frontend has zero test infrastructure: no vitest/jest, no @testing-library/react, no jsdom, no src/**/*.test.jsx anywhere in the repo. Root package.json devDependencies are only vite/@vitejs/plugin-react/oxlint/@types. Backend has its own runner (node --test) but that is irrelevant to frontend coverage.",
+    "why_it_matters": "frontend.md mandates React Testing Library for every interactive component, and CLAUDE.md §9.4 fails the gate if coverage < 70%. Zero frontend infra means the Test Script Writer (stage 6) cannot produce runnable tests, and the Tester (stage 7) cannot execute anything, until a runner exists.",
+    "required_before_stage_6": [
+      "Add devDependencies: vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event, jsdom",
+      "Add vitest.config.js (or extend vite.config.js test block) with environment: 'jsdom' and a setup file importing @testing-library/jest-dom",
+      "Add a 'test' script to root package.json: 'vitest run' (and 'test:watch': 'vitest')",
+      "CSS Modules import handling needs no extra config under Vite/vitest (class-name objects resolve automatically)."
+    ],
+    "ownership": "This is plumbing, not a design/architecture decision (no competing approach to choose between, single well-established toolchain matching Vite+React 19), so it does not require another architecture-review round. Flagging it here as a hard prerequisite the Test Script Writer stage must satisfy as its first action, since no prior stage installed it and stage 4.15/4.16 correctly scoped it out as backend-only."
+  },
+  "test_architecture": {
+    "unit_vs_integration_boundary": {
+      "principle": "Unit tests isolate pure logic and single components with mocked collaborators. Integration tests exercise a component tree as a user would (render + interact via Testing Library, querying by role/label per frontend.md), crossing real child-component boundaries but mocking the network edge.",
+      "unit_scope": [
+        "src/lib/navigation.js — NAV_ITEMS shape and APP_SHELL_HASHES derivation (pure data, no rendering)",
+        "src/lib/currentUser.js — MOCK_CURRENT_USER shape (pure data)",
+        "src/hooks/useCurrentUser.js — returns the mock object unchanged (trivial hook, still gets one direct test since it's the seam future real-auth replaces)",
+        "AppShell's resolveInitialViewId behavior — covered as a unit-level concern via AppShell's own render tests (not exported, so tested through its observable behavior rather than imported directly)"
+      ],
+      "integration_scope": [
+        "AppShell — full render: initial view resolution from a valid hash, from an invalid/missing hash (fallback to first NAV_ITEMS entry), Sidebar selection switching TopBar title and content region, skip-link presence and target id",
+        "Sidebar — render of items, aria-current on the active item, onSelect fired with correct id on click, keyboard activation (Enter/Space on the nav buttons)",
+        "TopBar — renders title text and mounts UserBadge (no user prop passed/needed — locks in AC-5)",
+        "UserBadge — renders name/role/initials sourced from useCurrentUser()",
+        "App.jsx — the outermost ternary: an app-shell hash renders AppShell alone (Header/Footer absent from the DOM — locks in AC-1); a non-app-shell hash (including '') renders the marketing tree (Header + Hero/ServicesSection/DeliveryCenters + Footer) with AppShell absent",
+        "MasterDataTable — loading state (role=status/aria-live=polite), error state (role=alert) with the useMasterDataTable hook mocked (not the network), and success rendering with mocked data rows including the zero-rows empty-state message"
+      ],
+      "explicitly_out_of_scope_for_this_feature": [
+        "useMasterDataTable's own fetch/cancellation logic — pre-existing, untouched by this feature, already implicitly covered by any prior MasterDataTable tests; no new tests required here since CLAUDE.md §1 Minimal Impact means this stage doesn't retrofit coverage onto unrelated untouched code",
+        "masterDataApi.js network layer — untouched by this feature",
+        "Marketing components (Hero/ServicesSection/DeliveryCenters) content — untouched by this feature; only their presence/absence at the App.jsx routing boundary is in scope"
+      ]
+    },
+    "mock_strategy": {
+      "network": "Mock at the hook boundary, not fetch/MSW: MasterDataTable tests mock useMasterDataTable's return value directly (vi.mock('../../hooks/useMasterDataTable')) to assert the three states (loading/error/success) deterministically without timers or network shims. This matches the existing hook contract ({data, isLoading, error}) and avoids introducing a network-mocking dependency (MSW) that no other rule file calls for.",
+      "current_user": "useCurrentUser is NOT mocked in UserBadge's own test (it's synchronous and trivial — exercise it for real). It MAY be mocked in AppShell/TopBar integration tests if UserBadge's rendering is irrelevant noise to the assertion being made; prefer exercising it for real when practical since it adds no flakiness risk (pure sync mock data).",
+      "routing": "useLocationHash is exercised for real in App.jsx tests by setting window.location.hash before render and calling location.hash = '' between cases (jsdom supports this natively) rather than mocking the hook, since hash-routing behavior is exactly what AC-1 needs verified end-to-end.",
+      "no_snapshot_tests": "Per frontend.md, snapshot tests are banned — all assertions are behavior/DOM-query based (getByRole, getByText, getByLabelText)."
+    },
+    "coverage_plan": {
+      "gate_threshold": "70% (CLAUDE.md §9.4, test-writer gate agent) computed over this feature's new/changed files only, consistent with how prior stages scoped their own audits to the feature's file set",
+      "in_scope_files_for_coverage": [
+        "src/App.jsx",
+        "src/lib/navigation.js",
+        "src/lib/currentUser.js",
+        "src/hooks/useCurrentUser.js",
+        "src/components/AppShell/AppShell.jsx",
+        "src/components/Sidebar/Sidebar.jsx",
+        "src/components/TopBar/TopBar.jsx",
+        "src/components/UserBadge/UserBadge.jsx",
+        "src/components/MasterDataTable/MasterDataTable.jsx (frontend-engineer's a11y edit + type-design-analyzer's PropTypes edit)"
+      ],
+      "expected_coverage": "Comfortably above 70% for every listed file: each is small, has no untested branches beyond the ones enumerated in integration_scope above (initial-hash resolution fallback, active/inactive nav-item styling, loading/error/success/empty states), and none contain dead branches per code-simplifier's stage 4.8 audit.",
+      "risk_if_skipped": "Without the vitest/RTL install (see critical_infrastructure_gap), coverage is mechanically 0% for all of the above, which is an automatic FAIL on the test-writer gate agent per CLAUDE.md §9.5 — this would BLOCK the merge-to-main gate regardless of code quality, independent of any functional defect."
+    }
+  },
+  "handoff_to_stage_6_test_script_writer": {
+    "must_do_first": "Install and configure the vitest/RTL toolchain listed under critical_infrastructure_gap before writing any test file.",
+    "then": "Write one *.test.jsx per component/module in in_scope_files_for_coverage, co-located per frontend.md (e.g. src/components/AppShell/AppShell.test.jsx), following the unit/integration boundaries and mock strategy above.",
+    "acceptance_criteria_source": "tasks/agent-outputs/business-analyst/FEAT-1.json REQ-1..REQ-5 acceptance criteria, cross-referenced against AC-1/AC-5/AC-6 resolutions confirmed by every stage from solution-architect (round 2) through code-simplifier."
+  }
+}

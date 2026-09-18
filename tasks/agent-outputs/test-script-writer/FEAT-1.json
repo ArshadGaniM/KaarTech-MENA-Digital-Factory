@@ -1,0 +1,55 @@
+{
+  "feature_id": "FEAT-1",
+  "stage": "6",
+  "role": "test-script-writer",
+  "verdict": "PASS",
+  "prerequisite_addressed": {
+    "what": "test-architect's critical_infrastructure_gap: zero frontend test infrastructure existed prior to this stage.",
+    "installed_devDependencies": ["vitest", "@testing-library/react", "@testing-library/jest-dom", "@testing-library/user-event", "jsdom"],
+    "config_added": [
+      "vite.config.js — test: { environment: 'jsdom', globals: true, setupFiles: './src/test/setup.js', include: ['src/**/*.test.{js,jsx}'] }",
+      "src/test/setup.js — imports @testing-library/jest-dom/vitest",
+      "package.json scripts — 'test': 'vitest run', 'test:watch': 'vitest'"
+    ],
+    "why_include_scoping_was_needed": "Without an explicit `include` glob, vitest also picked up ~40 vendored external skill/agent sources under .claude/ that ship their own unrelated *.test.* files (Node's node:test runner, differing suite shapes) and failed to bundle them. Scoping to src/**/*.test.{js,jsx} isolates this app's own suite, per CLAUDE.md §1 Minimal Impact — no vendored content was touched."
+  },
+  "test_files_written": [
+    "src/lib/navigation.test.js",
+    "src/lib/currentUser.test.js",
+    "src/hooks/useCurrentUser.test.js",
+    "src/components/UserBadge/UserBadge.test.jsx",
+    "src/components/TopBar/TopBar.test.jsx",
+    "src/components/Sidebar/Sidebar.test.jsx",
+    "src/components/AppShell/AppShell.test.jsx",
+    "src/components/MasterDataTable/MasterDataTable.test.jsx",
+    "src/App.test.jsx"
+  ],
+  "coverage_of_test_architect_plan": {
+    "unit_scope_covered": [
+      "navigation.js — NAV_ITEMS shape, APP_SHELL_HASHES derivation",
+      "currentUser.js — MOCK_CURRENT_USER shape",
+      "useCurrentUser — returns the mock unchanged (renderHook)"
+    ],
+    "integration_scope_covered": [
+      "AppShell — initial view from valid hash, fallback on invalid/missing hash, no-initialHash fallback, Sidebar selection switching TopBar/content, skip-link presence and target",
+      "Sidebar — item rendering, aria-current on active item, onSelect on click, keyboard (Tab+Enter) activation",
+      "TopBar — renders title heading, mounts UserBadge with no user prop (locks in AC-5)",
+      "UserBadge — renders name/role/initials from useCurrentUser(), aria-hidden avatar",
+      "App.jsx — app-shell hash renders AppShell alone with marketing chrome absent (locks in AC-1); non-app-shell and unrecognized hashes render the marketing tree with AppShell absent",
+      "MasterDataTable — loading (role=status/aria-live=polite), error (role=alert with message), success (headers+rows), empty-state message, useMasterDataTable mocked at the hook boundary per the plan's mock_strategy"
+    ],
+    "mock_strategy_followed": {
+      "network": "MasterDataTable.test.jsx mocks useMasterDataTable directly via vi.mock, not fetch/MSW, per the plan.",
+      "appshell_and_app_tests": "AppShell.test.jsx and App.test.jsx stub global fetch (not the hook) because they render through MasterDataView's real component tree rather than isolating MasterDataTable directly — this keeps them deterministic/offline without touching the hook-mocking approach reserved for MasterDataTable's own test.",
+      "current_user": "Exercised for real everywhere (synchronous, no flakiness risk), per the plan.",
+      "routing": "App.test.jsx sets window.location.hash directly and exercises useLocationHash for real, per the plan.",
+      "no_snapshot_tests": "None written — every assertion queries by role/label/text (frontend.md)."
+    }
+  },
+  "verification": {
+    "npm_test": "9 test files, 25 tests, all passing",
+    "npx_oxlint_src": "only the one pre-existing, unrelated set-state-in-effect warning in untouched src/hooks/useMasterDataTable.js",
+    "npm_run_build": "58 modules, succeeds, no errors"
+  },
+  "notes_for_stage_6_1_test_quality_analyzer_and_stage_7_tester": "MasterDataTable's route/columns props are covered structurally (headers/rows/empty/loading/error) rather than exhaustively per-table, matching in_scope_files_for_coverage's file-level (not per-route) scope from test-architect's plan. useMasterDataTable's own fetch/cancellation internals remain out of scope per the plan's explicitly_out_of_scope_for_this_feature (pre-existing, untouched by this feature)."
+}
