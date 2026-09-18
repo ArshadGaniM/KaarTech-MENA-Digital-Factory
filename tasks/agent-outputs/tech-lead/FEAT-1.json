@@ -1,0 +1,58 @@
+{
+  "feature": "FEAT-1",
+  "stage": "tech-lead",
+  "pipeline_stage_number": "2.5",
+  "verdict": "PASS",
+  "summary": "Sets concrete architecture direction for the app-shell redesign: reuse MasterDataView/MasterDataTable + useLocationHash as the only structural precedent, add a new AppShell as a sibling top-level view keyed off the existing hash router (no new router dependency), keep the marketing site fully decoupled, and require PropTypes + CSS Modules tokens for all new components per frontend.md.",
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "Reuse vs. build new",
+      "decision": "Extend the existing hash-based top-level switch in App.jsx (currently: '#master-data' vs marketing) into a 3-way switch: marketing site (default, unauthenticated-feel routes), '#master-data' (existing), and a new app-shell umbrella route (e.g. any hash NOT '#master-data' and not '' /'#' once a signed-in flag is set — see D2 for the concrete rule). Do not introduce react-router or any routing library; useLocationHash already gives cheap multi-view switching and enterprise-architect-pre explicitly forbade new router deps.",
+      "rationale": "MasterDataView is the only internal-feeling precedent in the codebase (tabbed nav + generic table + loading/error/empty states). The new AppShell should sit at the same level as MasterDataView/marketing, not wrap them ad hoc."
+    },
+    {
+      "id": "D2",
+      "topic": "Concrete routing rule for Solution Architect to implement",
+      "decision": "Introduce a single new top-level component `AppShell` (src/components/AppShell/) that renders persistent nav + workspace chrome + signed-in-user context, and becomes the container for internal views. MasterDataView becomes a child view rendered INSIDE AppShell's content area (nav item 'Master Data'), not a hash-level sibling of AppShell. App.jsx's hash switch becomes: hash starts with '#app' (or any internal hash going forward, e.g. '#master-data' too) → render <AppShell/>, which owns its own internal sub-navigation state (useState, not another routing layer); anything else → marketing site. This keeps exactly one router-like decision point (App.jsx's existing useLocationHash) and avoids a second competing navigation mechanism.",
+      "rationale": "Avoids the scaling risk of two independent 'routers' (App.jsx hash switch + a new AppShell-internal router) fighting each other. One hash-driven decision at the top, one useState-driven decision inside the shell — both plain React, matching the no-new-dependency constraint."
+    },
+    {
+      "id": "D3",
+      "topic": "Signed-in-user context",
+      "decision": "Implement as a small, explicitly-named mock: `src/mock/currentUser.js` exporting a static object, consumed via a `useCurrentUser` hook in src/hooks/ that just returns that constant. No Context API needed yet for a single mock value — Context is reserved (per frontend.md) for when a second global concern (e.g. theme) appears. Name everything 'mock'/'placeholder' in comments and identifiers so it is unambiguous this is not real auth once a backend arrives.",
+      "rationale": "Matches enterprise-architect-pre condition 3 (explicit UI-only placeholder, no real auth/token persistence) and frontend.md's 'Context only for genuinely global state, keep small' guidance — one static value doesn't yet justify Context."
+    },
+    {
+      "id": "D4",
+      "topic": "Component boundaries / file layout",
+      "decision": "New components, each in its own folder per frontend.md (Component.jsx + Component.module.css + index.js): AppShell (top-level layout, renders Sidebar + TopBar + <main> outlet), Sidebar (persistent nav, list of workspace sections), TopBar (signed-in-user chip, page title), UserBadge (avatar/initials + name, consumes useCurrentUser). MasterDataView is re-parented under AppShell's content outlet but its own internal implementation (tabs, table) is left untouched — do not refactor MasterDataTable in this feature.",
+      "rationale": "Minimal-impact principle (CLAUDE.md §1): touch only App.jsx (routing) + new AppShell family. MasterDataTable/MasterDataView internals are out of scope and already meet the target pattern."
+    },
+    {
+      "id": "D5",
+      "topic": "Design tokens / visual language",
+      "decision": "No new design-token system. Extend src/index.css :root with additive tokens only where the app-shell genuinely needs something the marketing site never needed (e.g. --shell-sidebar-width, --color-surface if a distinct panel background is needed) — do not redefine or rename existing --color-*/--space-* tokens, since Header/Hero/Footer/ServicesSection/DeliveryCenters/MasterDataView all depend on the current values. All new CSS Modules use camelCase classes and existing tokens wherever a matching one exists.",
+      "rationale": "Enterprise-architect-pre condition 2: marketing components and the new shell must stay decoupled siblings, not merged/coupled. Reusing the existing token set avoids a visual system split while still allowing extension."
+    },
+    {
+      "id": "D6",
+      "topic": "PropTypes",
+      "decision": "All new components (AppShell, Sidebar, TopBar, UserBadge, and any nav-item subcomponent) get `prop-types` validation at the top of the file per frontend.md, closing the gap business-analyst flagged. Do not retrofit PropTypes onto untouched existing components (Header, Hero, etc.) as part of this feature — out of scope, minimal-impact.",
+      "rationale": "Enterprise-architect-pre condition 4: stop treating PropTypes as open, just start using them for new work. Retrofitting old components is a separate, unscoped cleanup."
+    }
+  ],
+  "risks_flagged": [
+    "Scaling risk: if a second internal module (beyond Master Data) is added later, AppShell's internal useState-based nav will need to become a small explicit view-registry (name → component) rather than nested if/else — flag this to the Solution Architect as the SDD's extension point, not something to over-build now (YAGNI).",
+    "Hash-collision risk: '#master-data' currently exists as its own top-level hash. D2's App.jsx rule must explicitly keep '#master-data' routing into AppShell (as the pre-selected Master Data view) rather than leaving it as a separate sibling branch, or the app will end up with two divergent internal-app entry points.",
+    "No backend/auth exists — any future real-auth work will require replacing the useCurrentUser mock at exactly one seam (the hook), not scattered call sites; the Solution Architect should confirm all consumers go through the hook, never the static mock object directly."
+  ],
+  "hard_constraints_for_solution_architect": [
+    "No new runtime dependency (no router library, no UI kit, no state-management library) — plain React 19 + CSS Modules only.",
+    "Marketing components (Header, Hero, ServicesSection, DeliveryCenters, Footer) stay as an untouched, independent sibling view — do not import AppShell into them or vice versa.",
+    "Signed-in-user context is a clearly-named mock (no token storage, no real auth calls).",
+    "Single hash-driven top-level decision point in App.jsx; all further internal navigation is plain React state inside AppShell.",
+    "PropTypes required on every new component.",
+    "One component per folder, CSS Modules, camelCase classes, tokens from src/index.css — extend additively, don't rename existing tokens."
+  ]
+}

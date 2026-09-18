@@ -1,0 +1,118 @@
+{
+  "feature": "FEAT-1",
+  "stage": "solution-architect",
+  "pipeline_stage_number": "3",
+  "verdict": "PASS",
+  "summary": "Solution Design Document for the app-shell redesign. Constrained by tech-lead's FEAT-1 decision record (D1-D6, hard_constraints_for_solution_architect) and .claude/rules/frontend.md. No application code written at this stage per solution-architect.md's scope (SDD only) — code generation begins at stage 3.5 (Engineer/MVP).",
+  "scope_note": "Stage 3 produces the design document that stages 3.1 (Architecture Critic), 3.3 (System Engineer) and 3.5 (Engineer/MVP) build from. Component code is intentionally not written here.",
+  "component_breakdown": [
+    {
+      "path": "src/components/AppShell/",
+      "files": ["AppShell.jsx", "AppShell.module.css", "index.js"],
+      "role": "Top-level internal-app container. Renders Sidebar + TopBar + a content outlet. Owns activeViewId as local useState, derived from an initialHash prop on mount so an incoming '#master-data' link pre-selects the Master Data nav item.",
+      "props": { "initialHash": "string (optional, defaults to '')" },
+      "state": { "activeViewId": "string — id of the entry in NAV_ITEMS currently shown in the content outlet" },
+      "children_rendered": ["Sidebar", "TopBar", "the active NAV_ITEMS entry's component (MasterDataView for id 'master-data')"]
+    },
+    {
+      "path": "src/components/Sidebar/",
+      "files": ["Sidebar.jsx", "Sidebar.module.css", "index.js"],
+      "role": "Persistent left nav. Pure presentational list of NAV_ITEMS, highlights activeId, calls onSelect(id) on click. No routing/hash knowledge — AppShell owns that.",
+      "props": {
+        "items": "arrayOf({ id: string, label: string })",
+        "activeId": "string",
+        "onSelect": "func(id: string) => void"
+      }
+    },
+    {
+      "path": "src/components/TopBar/",
+      "files": ["TopBar.jsx", "TopBar.module.css", "index.js"],
+      "role": "Workspace chrome bar: current section title (derived from the active NAV_ITEMS entry's label) + UserBadge on the right. Purely presentational.",
+      "props": {
+        "title": "string",
+        "user": "shape({ name: string, role: string, initials: string })"
+      }
+    },
+    {
+      "path": "src/components/UserBadge/",
+      "files": ["UserBadge.jsx", "UserBadge.module.css", "index.js"],
+      "role": "Signed-in-user chip: initials avatar + name + role. Calls useCurrentUser() itself so any consumer can drop it in without prop drilling the mock user.",
+      "props": {}
+    }
+  ],
+  "supporting_modules": [
+    {
+      "path": "src/mock/currentUser.js",
+      "role": "Single explicitly-named mock export, MOCK_CURRENT_USER = { id, name, role, initials }. No token, no email persistence, no auth call — matches enterprise-architect-pre condition 3 and tech-lead D3. Uses a fictitious placeholder identity, not any real person's data."
+    },
+    {
+      "path": "src/hooks/useCurrentUser.js",
+      "role": "Returns MOCK_CURRENT_USER as-is. The single seam future real-auth work replaces — every consumer (UserBadge, and TopBar via AppShell) goes through this hook, never src/mock/currentUser.js directly, per tech-lead's risk note 3.",
+      "return_shape": "{ id, name, role, initials }"
+    },
+    {
+      "path": "src/lib/navigation.js",
+      "role": "NAV_ITEMS registry: [{ id: 'master-data', label: 'Master Data', hash: '#master-data', component: MasterDataView }]. Single array AppShell/Sidebar both read — the extension point tech-lead flagged for a second future module (add one entry, no new nav mechanism). Also exports APP_SHELL_HASHES (hashes that mean 'render AppShell'), derived from NAV_ITEMS so App.jsx and AppShell can't drift out of sync."
+    }
+  ],
+  "routing_design": {
+    "decision_point": "App.jsx's existing useLocationHash remains the ONLY hash-driven decision. hash is looked up against APP_SHELL_HASHES (from src/lib/navigation.js, currently just '#master-data'): match -> <AppShell initialHash={hash} />; no match -> marketing site (Hero/ServicesSection/DeliveryCenters), unchanged.",
+    "internal_navigation": "Inside AppShell, clicking a Sidebar item calls setActiveViewId(id) — plain useState, NOT a hash change. This is a deliberate, tech-lead-mandated trade-off: no second router layer. Consequence: the browser back button and deep-linking only work for the entry hash (e.g. '#master-data'), not for whichever internal view is currently selected. Documented here so stage 3.1 (Architecture Critic) evaluates it as an accepted trade-off, not an oversight.",
+    "hash_collision_resolution": "'#master-data' is now consumed entirely by NAV_ITEMS/APP_SHELL_HASHES — App.jsx has exactly one place that lists internal-app hashes, so there is no second branch that could diverge from it (resolves tech-lead's flagged hash-collision risk)."
+  },
+  "app_jsx_change": {
+    "before": "hash === '#master-data' ? <MasterDataView /> : <marketing fragment>",
+    "after": "APP_SHELL_HASHES.includes(hash) ? <AppShell initialHash={hash} /> : <marketing fragment>",
+    "imports_added": ["AppShell from './components/AppShell'", "APP_SHELL_HASHES from './lib/navigation'"],
+    "imports_removed": ["MasterDataView (moved to being imported only by src/lib/navigation.js)"]
+  },
+  "data_flow": [
+    "App.jsx reads hash via useLocationHash (unchanged hook).",
+    "App.jsx passes hash to AppShell only when it's an app-shell hash.",
+    "AppShell resolves initialHash -> activeViewId via NAV_ITEMS lookup (fallback: NAV_ITEMS[0].id).",
+    "AppShell renders Sidebar(items=NAV_ITEMS, activeId=activeViewId, onSelect=setActiveViewId) and TopBar(title=<active item's label>, user=useCurrentUser()).",
+    "AppShell renders the active NAV_ITEMS entry's component in the content outlet (MasterDataView today) — MasterDataView's own internal state (tabs, table data fetching via useMasterDataTable) is untouched."
+  ],
+  "design_tokens": {
+    "new_additive_tokens_in_src_index_css": [
+      { "token": "--shell-sidebar-width", "value": "240px", "reason": "Sidebar column width — no existing token covers a fixed layout dimension." },
+      { "token": "--shell-topbar-height", "value": "64px", "reason": "TopBar row height, used for sticky offset math." }
+    ],
+    "reused_existing_tokens": [
+      "--color-bg, --color-bg-alt (panel/surface backgrounds — no new surface token needed, --color-bg-alt already serves this)",
+      "--color-primary, --color-text, --color-text-muted, --color-border, --color-accent",
+      "--space-1..6",
+      "--font-sans"
+    ],
+    "constraint_honored": "No existing token renamed or redefined — Header/Hero/Footer/ServicesSection/DeliveryCenters/MasterDataView are unaffected."
+  },
+  "dependency_decision": {
+    "new_dependency": "prop-types (^15.x)",
+    "justification": "frontend.md mandates PropTypes on every component; it does not currently exist in package.json anywhere in the codebase. This is a validation-only micro-library (React's own former built-in, split out at React 15), not a router, UI kit, or state-management library — it does not conflict with tech-lead's 'no new runtime dependency' constraint, which specifically named those three categories. Flagging explicitly rather than silently adding it, per CLAUDE.md's no-laziness/explicit-tradeoffs principle.",
+    "action_for_next_stage": "Engineer (3.5) runs `npm install prop-types` when implementing."
+  },
+  "propTypes_plan": {
+    "Sidebar": "items: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.string.isRequired, label: PropTypes.string.isRequired })).isRequired, activeId: PropTypes.string.isRequired, onSelect: PropTypes.func.isRequired",
+    "TopBar": "title: PropTypes.string.isRequired, user: PropTypes.shape({ name: PropTypes.string.isRequired, role: PropTypes.string.isRequired, initials: PropTypes.string.isRequired }).isRequired",
+    "AppShell": "initialHash: PropTypes.string",
+    "UserBadge": "(none — self-fetches via useCurrentUser)"
+  },
+  "out_of_scope_for_this_feature": [
+    "MasterDataTable/MasterDataView internal refactor — left as-is per tech-lead D4.",
+    "Retrofitting PropTypes onto existing marketing components — per tech-lead D6.",
+    "Real authentication — mock only, per enterprise-architect-pre condition 3.",
+    "A second internal module / view-registry beyond the single Master Data entry — YAGNI per tech-lead's risk note, NAV_ITEMS array is the documented extension point when one appears."
+  ],
+  "constraints_verified_against": [
+    "No new router/UI-kit/state-management dependency (prop-types is the one explicitly-justified exception, documented above).",
+    "Marketing components remain untouched and decoupled — only App.jsx's conditional branch changes, no import of AppShell into marketing components or vice versa.",
+    "Signed-in-user context is a clearly-named mock behind one hook seam.",
+    "Single hash-driven top-level decision point; all further nav is React state.",
+    "PropTypes required on every new component (see propTypes_plan).",
+    "One component per folder, CSS Modules, camelCase classes, additive tokens only."
+  ],
+  "open_items_for_architecture_critic": [
+    "Confirm the accepted trade-off on internal-nav not being hash-addressable (no back-button/deep-link support past the entry hash) is acceptable for this stage of the product, or should be flagged for a follow-up feature.",
+    "Confirm prop-types as a dependency exception is acceptable given tech-lead's constraint wording."
+  ]
+}

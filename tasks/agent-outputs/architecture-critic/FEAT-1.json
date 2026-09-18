@@ -1,0 +1,48 @@
+{
+  "feature": "FEAT-1",
+  "stage": "architecture-critic",
+  "pipeline_stage_number": "3.1",
+  "verdict": "BLOCKED",
+  "summary": "Adversarial review of the solution-architect SDD for the app-shell redesign, cross-checked directly against src/App.jsx, src/components/Header/Header.jsx, src/components/Footer/Footer.jsx and package.json (not taken on prior-stage summaries alone). One Critical/blocking finding: the SDD's documented App.jsx change only swaps the <main> content between AppShell and the marketing fragment, but leaves the marketing <Header/> and <Footer/> mounted unconditionally around BOTH branches. That means the redesigned dashboard would still render inside the public marketing chrome — the portal-style anchor-nav Header (with 'Talk to Us' CTA and #services/#about/#contact links) above it and the marketing Footer below it. This directly contradicts the feature's own stated goal (stop reading as a public-facing portal landing page) and violates enterprise-architect-pre's condition 2 as written ('independent sibling top-level views... not merged/coupled together') — Header/Footer are currently coupled across both views, not siblings-by-hash. This must be fixed in the SDD before stage 3.3/3.5 build anything, per CLAUDE.md's Three Invariants (3rd: forbidden-pattern/architecture denylist checked after every code step) and this stage's mandate to block on findings that undermine the design.",
+  "findings": [
+    {
+      "id": "AC-1",
+      "severity": "Critical",
+      "blocking": true,
+      "title": "App.jsx still wraps AppShell in the marketing Header/Footer chrome",
+      "evidence": "Verified by direct Read of src/App.jsx: <Header/> and <Footer/> are rendered unconditionally, outside the hash ternary — only the <main> children swap. The SDD's 'app_jsx_change' section documents this exact same shape (before/after only touches the ternary), so the gap is in the design, not an implementation slip. src/components/Header/Header.jsx renders a public anchor-nav (Services/Delivery Centers/Master Data/About/Contact) plus a 'Talk to Us' CTA — classic marketing chrome. src/components/Footer/Footer.jsx renders the same marketing footer (About/Contact/legal) for every view, including id=\"about\" and id=\"contact\" anchors meant for the landing page.",
+      "why_it_matters": "The whole point of FEAT-1 (per the business-analyst brief and tech-lead D1) is that the app should read as a multi-user internal app shell, not a public portal. Rendering the new persistent Sidebar/TopBar dashboard sandwiched between the old marketing header (with its own competing nav links and 'Talk to Us' CTA) and marketing footer defeats that goal visually and structurally — a signed-in user would see two nav systems (Header's anchor nav + Sidebar) simultaneously, and the marketing Footer's #about/#contact anchors would be semantically wrong inside an app screen.",
+      "required_fix": "The SDD must make the top-level App.jsx branch decide on Header/Footer too, not just <main>'s content: APP_SHELL_HASHES branch renders <AppShell initialHash={hash} /> alone (AppShell owns its own TopBar/UserBadge as the equivalent of page chrome); the marketing branch keeps <Header/><main>...</main><Footer/> exactly as today. This still satisfies tech-lead's 'single hash-driven top-level decision point' constraint — it just needs to be the outermost decision, not one nested one level down inside <main>."
+    },
+    {
+      "id": "AC-2",
+      "severity": "Advisory",
+      "blocking": false,
+      "title": "prop-types dependency exception — bless it",
+      "notes": "Reasonable read of tech-lead's constraint (D1/hard_constraints name router/UI-kit/state-management libraries specifically; prop-types is a validation-only micro-library and frontend.md already mandates PropTypes usage). No objection — approved as scoped. Recommend the SDD/engineer stage note the exact version pin (^15.x) is fine, no further action needed."
+    },
+    {
+      "id": "AC-3",
+      "severity": "Advisory",
+      "blocking": false,
+      "title": "Internal nav not hash-addressable (no deep-link/back-button past entry hash)",
+      "notes": "Accepted as a deliberate, documented trade-off per tech-lead's YAGNI direction and the SDD's explicit call-out. Not blocking for a single-module app shell. Flag for a future feature once a second nav module exists, consistent with tech-lead's view-registry risk note — no action needed now."
+    },
+    {
+      "id": "AC-4",
+      "severity": "Advisory",
+      "blocking": false,
+      "title": "Header's own nav still links to #master-data",
+      "notes": "Once AC-1 is fixed (Header no longer renders on app-shell hashes), this stops being a live conflict for the master-data hash itself. Still worth a one-line note for stage 3.3: since Header won't render while an app-shell hash is active, no consumer-facing link ever points a signed-in-feeling view back into itself via the marketing nav — no change needed beyond AC-1's fix."
+    }
+  ],
+  "constraints_re_verified": [
+    "No new router/UI-kit/state-management dependency — still true, prop-types is the sole justified exception (AC-2).",
+    "Single hash-driven top-level decision point — AC-1's required fix keeps this true, it just needs to be applied one level higher (around Header/main/Footer, not just <main>'s children).",
+    "PropTypes plan, CSS Modules/camelCase, additive-only tokens, one-component-per-folder — all consistent with frontend.md, no issues found."
+  ],
+  "verdict_rationale": "One Critical, blocking finding (AC-1) per CLAUDE.md §7.6 invariant 3 (forbidden-pattern/architecture check after every code-generating step) and this role's mandate to adversarially catch coupling/deviation issues before code is written. This halts the pipeline for FEAT-1 until the SDD is amended: solution-architect (stage 3) should update app_jsx_change to move the Header/Footer decision to the same branch as AppShell vs. marketing, then this stage re-runs.",
+  "files_created_or_modified": [
+    "tasks/agent-outputs/architecture-critic/FEAT-1.json"
+  ]
+}
