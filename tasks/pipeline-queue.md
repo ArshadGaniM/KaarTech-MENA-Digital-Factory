@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** (launching FEAT-8 now)
+**Active run ID:** wf_cedbdefa-3a3 (FEAT-8, Teams — reuses FEAT-5's validateReferences/lookups framework)
 
 **Feature counter:** 11
 
