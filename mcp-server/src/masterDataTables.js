@@ -127,7 +127,22 @@ export const MASTER_DATA_TABLES = [
     slug: "team",
     route: "teams",
     label: "Team",
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    hasCode: true,
+    // departmentName is NOT writable here — it's a live lookup against
+    // the Departments table's current data, returned by the backend's
+    // GET responses but never accepted on add_/update_.
+    fields: [
+      { key: "name", label: "name", required: true, type: "string" },
+      {
+        key: "departmentCode",
+        label:
+          "the linked Department's business code (from the Departments table's own auto-generated " +
+          "code, e.g. DEPT-001) — must match an existing, non-deleted Department; the backend rejects " +
+          "the request with a validation error if no such Department exists",
+        required: true,
+        type: "string",
+      },
+    ],
   },
   {
     slug: "resource_deployment",

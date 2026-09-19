@@ -73,9 +73,10 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency`, `team`, `resource_deployment` | `name` | `name` |
+| `competency`, `resource_deployment` | `name` | `name` |
 | `practice`, `department` | `name` | `name` |
 | `resource_cost` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
+| `team` | `name`, `departmentCode` (string — must reference an existing `department`'s own auto-generated code, enforced) | `name`, `departmentCode` |
 | `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
 | `resource` | `employeeId`, `name`, `employmentStatus`, `employmentType`, `subDivision`, `position`, `locationType` (`Onsite` \| `Offshore`), `designation`, `geBatch`, `kaarExperience`, `totalExperience` | all of the above, plus `orgChart`, `region`, `onsiteLocation`, `offshoreLocation`, `skill`, `sapExperience` |
@@ -109,6 +110,17 @@ parameters on either `add_resource_cost` or `update_resource_cost` — they
 are resolved live from the referenced resource by the backend on every
 read, so they always reflect that resource's current name/designation
 rather than a value this server could set or go stale.
+
+**`team`'s `departmentCode`** is validated the same way, against
+`department`'s own auto-generated `code` (not the department's `id`):
+`add_team`/`update_team` reject a `departmentCode` that doesn't match an
+existing (non-deleted) `department`, with a 422 naming the field. `team`
+also exposes `departmentName` in every read and an auto-generated,
+immutable `code` (`TEAM-001`, ...) — neither is a tool parameter on
+`add_team`/`update_team`; `departmentName` is resolved live the same way
+`resource_cost`'s `employeeName` is, and `code` is set by a database
+trigger.
+
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
 `delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`, not

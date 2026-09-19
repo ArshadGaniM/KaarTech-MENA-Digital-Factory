@@ -2,86 +2,64 @@
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
 
-**Diff covered:** FEAT-5 (Resource Cost real schema + generic FK-validation/
-live-lookup framework) and FEAT-6 (Resources column label rename), plus the
-`bash-guard.sh` hardening that rode along on this branch. This report
-replaces the prior version, which covered only FEAT-6 and did not reflect
-the much larger FEAT-5 diff landing in the same push (caught by this gate's
-own code-reviewer agent).
+**Diff covered:** FEAT-8 (Teams real schema — auto-generated `code` +
+enforced `departmentCode` FK, reusing FEAT-5's generic framework verbatim).
 
-**Verdict: ⚠️ WARN → all findings fixed in this push → ✅ PASS.**
+**Verdict: ⚠️ WARN → both findings fixed in this push → ✅ PASS.**
 
-## FEAT-5 — Resource Cost real schema
+## FEAT-8 — Teams real schema
 
-`employeeId` (required, must reference an existing Resources row,
-enforced), `employeeName`/`employeeDesignation` (read-only, live-looked-up
-from the referenced resource), `offshoreCost`/`onsiteCost` (both optional
-numeric). Introduces two new generic master-data framework capabilities,
-reusable by future tables: `validateReferences()` (opt-in per-field FK-
-existence check) and a `lookups` descriptor (opt-in LEFT JOIN for read-only
-derived fields). Migration `0013_add_resource_cost_columns.sql` applied
-live to Supabase.
-
-## FEAT-6 — Resources column labels
-
-Every Resources table column label (except Employee ID) prefixed
-"Employee " (e.g. "Org Chart" → "Employee Org Chart"). Single-file,
-display-labels-only, no behavioral surface.
+`code` (auto-generated, immutable — `TEAM-001` style, same `hasCode`
+pattern as Practices/Departments), `name` (existing, now real and
+user-editable), `departmentCode` (required, must reference an existing
+Departments row by its own auto-generated `code`, enforced),
+`departmentName` (read-only, live-looked-up from the referenced
+department). Migration `0014_add_team_code_and_department.sql` applied
+live to Supabase. Zero changes to `backend/src/masterDataSchema.js` or
+`masterDataRouter.js` — this reuses FEAT-5's generic
+`validateReferences()`/`lookups` mechanism as pure data (a second FK
+relationship), proving the framework generalizes.
 
 ## Gate agent results (8 parallel agents against `git diff origin/main..HEAD`)
 
 | Agent | Verdict | Finding |
 |---|---|---|
-| code-reviewer | WARN | FK-violation race (23503) surfaced as raw 500 instead of 422; bash-guard `-f` end-of-string gap; stale gate report not covering this diff |
-| security-auditor | WARN → **FAIL** (§9.5 security exception) | `bash-guard.sh`'s "no direct push to main" pattern was bypassable via a colon-delimited refspec (`git push origin HEAD:main`) |
-| debugger | PASS | 73/73 backend + 7/7 mcp-server tests pass; no unhandled errors; no regression to the other 8 tables |
-| test-writer | PASS | ~95% coverage of new/changed logic; every branch of `validateReferences`/`lookupJoinSql`/`lookupSelectSql`/`toResponse`'s lookup branch tested |
-| refactorer | WARN | Duplicated presence-check formula between `validateBody`/`validateReferences`; sequential (not concurrent) FK-existence queries would serialize once a table has 2+ `references` fields |
-| doc-writer | WARN | `backend/README.md`/`mcp-server/README.md` had a stale `resource-cost: name` row, no migration 0013 entry, and no documentation of the new `references`/`lookups` descriptor keys |
-| silent-failure-hunter | PASS | No swallowed exceptions; `validateReferences` correctly throws; lookup-null vs lookup-absent correctly collapse to the same `null` |
-| pr-test-analyzer | WARN | `DELETE /:id` had zero test coverage (no success/404/auth cases); PATCH/DELETE auth-gate untested (only POST's 401 covered) — confirmed via mutation testing that the mocked-`pool.query` tests genuinely catch real regressions, not just restate the mock |
+| code-reviewer | PASS (WARN noted) | Migration's "table confirmed empty" claim is an unverified comment, not a checked precondition — low blast radius (would hard-fail, not silently corrupt) |
+| security-auditor | PASS | Confirmed no new SQL-injection surface (descriptor data only); auth gate unchanged and correctly exercised by new tests |
+| debugger | PASS | 92/92 backend + 13/13 mcp-server tests pass; no unhandled errors; no regression to the other 8 tables |
+| test-writer | PASS | ~95% coverage; proactively closed both gaps FEAT-5's gate had flagged (DELETE coverage, full-verb auth coverage) without being asked |
+| refactorer | WARN | `masterDataRouter.teams.test.js` substantially duplicated `masterDataRouter.resourceCost.test.js`'s structure — flagged as a real problem now that FEAT-9/FEAT-7 are queued to add a 3rd and 4th near-clone |
+| doc-writer | WARN | Same stale-README pattern as FEAT-5: `teams` row still described as name-only, migration 0014 missing from the table |
+| silent-failure-hunter | PASS | No masking mocks; every mock either asserts on the captured SQL or throws on an unrecognized query |
+| pr-test-analyzer | PASS | Confirmed via mutation-style reasoning that the FK-existence test is a genuine behavior test, not a restated mock |
 
-**Overall: FAIL**, auto-upgraded per §9.5's security exception on the
-`bash-guard.sh` finding.
+**Overall: WARN** (zero FAIL, zero Critical, zero security findings this
+run). Fixed both WARNs in this push rather than deferring to a checklist,
+since both were cheap and directly useful ahead of FEAT-9/FEAT-7 reusing
+this same pattern two more times.
 
-## Auto-fix loop (CLAUDE.md §9.3 Step 2) — all fixed in this push
+## Fixes in this push
 
-1. **`bash-guard.sh`** — broadened the "no push to main" pattern to catch
-   colon-delimited refspecs (`git push origin HEAD:main`), and the
-   force-push pattern to catch a bare trailing `-f` and combined short
-   flags (`-uf`). Verified against both the bypass cases and legitimate
-   pushes to the feature branch.
-2. **FK-violation-at-write-time (23503)** — added `isForeignKeyViolation`/
-   `referenceNotFoundError` to `backend/src/errors.js` and a shared
-   `mapWriteError()` helper in `masterDataRouter.js`, so a referenced row
-   deleted between `validateReferences()`'s check and the actual write
-   still returns a 422, not a raw 500. New regression test added.
-3. **DELETE test coverage** — added tests for DELETE's success path (204,
-   correct SQL), already-deleted/nonexistent (404), and missing-auth
-   (401), plus a missing-auth test for PATCH.
-4. **Refactor cleanup** — extracted the shared `fieldPresenceToValidate()`
-   helper (used by both `validateBody` and `validateReferences`,
-   standardized on `Object.hasOwn` for presence, matching the rest of the
-   codebase's convention); converted `validateReferences`'s per-field FK
-   checks from sequential to `Promise.all`-concurrent, ahead of FEAT-11
-   (Project Assignments) needing two FK checks per request.
-5. **Documentation** — both READMEs' per-table field tables now correctly
-   describe `resource-cost`'s real schema, migration 0013 is listed, and
-   the new `references`/`lookups` descriptor keys are documented as
-   reusable, opt-in table/field capabilities for future tables.
+1. **Extracted `backend/src/masterDataRouter.testHelpers.js`** — shared
+   `startTestServer()`/`stopTestServer()`, `registerAuthGateTests()`
+   (POST/PATCH/DELETE 401-without-key), and `registerDeleteTests()`
+   (soft-delete success/404). Both `masterDataRouter.resourceCost.test.js`
+   and `masterDataRouter.teams.test.js` now use this harness instead of
+   duplicating ~120 lines of bootstrap/401/DELETE boilerplate each — FEAT-9
+   and FEAT-7 will use it too rather than adding a 3rd/4th clone.
+2. **Documentation** — `backend/README.md`'s per-table field table now has
+   its own `teams` row (was still grouped under the name-only placeholder
+   row) and lists migration 0014; `mcp-server/README.md`'s tool-parameter
+   table and prose now describe `team`'s `departmentCode`/`departmentName`
+   the same way `resource_cost`'s `employeeId`/`employeeName` are
+   documented.
 
 ## Verification after fixes
 
-- `cd backend && node --test src/*.test.js` — **78/78 pass** (73 → 78:
-  5 new tests — FK-violation-at-write mapping, DELETE success/404,
-  PATCH/DELETE missing-auth).
-- `cd mcp-server && npm test` — **7/7 pass**, unchanged.
-- `npx oxlint backend/src mcp-server/src src` — clean except one
-  pre-existing, unrelated `react/set-state-in-effect` warning in
-  `src/hooks/useMasterDataTable.js` (not touched by this diff).
-- bash-guard.sh's new patterns manually verified against both bypass
-  cases (now blocked) and legitimate feature-branch pushes (still
-  allowed).
+- `cd backend && node --test src/*.test.js` — **92/92 pass**, unchanged
+  count (refactor moved tests into shared helpers, didn't add/remove any).
+- `cd mcp-server && npm test` — **13/13 pass**, unchanged.
+- `npx oxlint backend/src` — clean.
 
 No Critical findings remain. Verdict: **PASS**, merge allowed on "Merge to
 Main" per CLAUDE.md §9.5.

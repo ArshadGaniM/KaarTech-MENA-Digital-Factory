@@ -58,3 +58,51 @@ test("fieldSchema maps a number-type field to a zod schema that rejects NaN/Infi
   assert.equal(schema.safeParse(500).success, true);
   assert.equal(schema.safeParse(Infinity).success, false);
 });
+
+// FEAT-8: team's mirrored tool-field descriptor. Same enforced-FK/lookup
+// shape as resource_cost.employeeId, applied to a second reference field
+// (departmentCode -> departments.code) — mirrors resourceCostTable()'s
+// assertions above rather than inventing a new pattern.
+
+function teamTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "team");
+  assert.ok(table, "team entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("team's writable fields are exactly name/departmentCode", () => {
+  const fieldKeys = teamTable().fields.map((f) => f.key).sort();
+  assert.deepEqual(fieldKeys, ["departmentCode", "name"]);
+});
+
+test("team never exposes code or departmentName as a writable MCP field (auto-generated / live lookup only)", () => {
+  const fieldKeys = teamTable().fields.map((f) => f.key);
+  assert.ok(!fieldKeys.includes("code"));
+  assert.ok(!fieldKeys.includes("departmentName"));
+});
+
+test("team's hasCode flag is set so add_team/update_team's tool description reflects the auto-generated code", () => {
+  assert.equal(teamTable().hasCode, true);
+});
+
+test("team's name and departmentCode are both required strings", () => {
+  const table = teamTable();
+  const name = table.fields.find((f) => f.key === "name");
+  const departmentCode = table.fields.find((f) => f.key === "departmentCode");
+  assert.equal(name.type, "string");
+  assert.equal(name.required, true);
+  assert.equal(departmentCode.type, "string");
+  assert.equal(departmentCode.required, true);
+});
+
+test("team's departmentCode label documents that the FK IS validated (matches resource_cost's employeeId label style)", () => {
+  const departmentCode = teamTable().fields.find((f) => f.key === "departmentCode");
+  assert.match(departmentCode.label, /validated|rejects/i);
+});
+
+test("fieldSchema maps team's string-type fields to zod strings that reject a non-string value", () => {
+  const departmentCode = teamTable().fields.find((f) => f.key === "departmentCode");
+  const schema = fieldSchema(departmentCode);
+  assert.equal(schema.safeParse("DEPT-001").success, true);
+  assert.equal(schema.safeParse(12345).success, false);
+});

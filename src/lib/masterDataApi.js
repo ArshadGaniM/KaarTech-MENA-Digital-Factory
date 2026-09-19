@@ -99,7 +99,13 @@ export const MASTER_DATA_TABLES = [
   {
     route: "teams",
     label: "Teams",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "code", label: "Team ID" },
+      { key: "name", label: "Team Name" },
+      { key: "departmentCode", label: "Department Code" },
+      { key: "departmentName", label: "Department Name" },
+      ...AUDIT_COLUMNS,
+    ],
   },
   {
     route: "resource-deployment",

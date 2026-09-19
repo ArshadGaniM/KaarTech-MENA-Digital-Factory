@@ -46,8 +46,9 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `competencies`, `teams`, `resource-deployment` | `name` (required) |
+| `competencies`, `resource-deployment` | `name` (required) |
 | `resource-cost` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
+| `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
@@ -141,6 +142,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0011_create_additional_master_data_tables.sql` | 3 new tables (`resource_cost`, `teams`, `resource_deployment`), created directly with the full shape the original 6 accumulated (name-only, same starting point `practices`/`competencies`/etc. had before their own follow-up migrations). |
 | `0012_add_resource_columns.sql` | `resources`-specific: 16 real columns imported from an HR export, including `employee_id integer unique not null` — the first caller-supplied (not auto-generated) unique identifier in this schema — and a `location_type` `CHECK` constraint (`Onsite`/`Offshore`, matching the source data's casing). |
 | `0013_add_resource_cost_columns.sql` | `resource_cost`-specific: drops the placeholder `name` column, adds `employee_id integer not null` (with `fk_resource_cost_resources` foreign key to `resources.employee_id` and `ix_resource_cost_employee_id` index), `offshore_cost numeric`, `onsite_cost numeric` — the first real foreign-key constraint in this schema (every prior cross-table reference, e.g. `modules.practice_id`, is deliberately app-layer-only). |
+| `0014_add_team_code_and_department.sql` | `teams`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`/`departments`/`practices`), `department_code text not null` (with `fk_teams_departments` foreign key to `departments.code` and `ix_teams_department_code` index) — `name` stays as-is, no longer a placeholder. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):
