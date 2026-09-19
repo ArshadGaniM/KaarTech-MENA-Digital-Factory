@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import Sidebar from '../Sidebar';
 import TopBar from '../TopBar';
 import MasterDataTable from '../MasterDataTable';
+import DashboardPlaceholder from '../DashboardPlaceholder';
 import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './AppShell.module.css';
 
@@ -33,7 +34,11 @@ function AppShell({ initialHash = '' }) {
       <div className={styles.workspace}>
         <TopBar title="Dashboard" />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
-          <MasterDataTable key={activeItem.id} route={activeItem.route} columns={activeItem.columns} />
+          {activeItem.route ? (
+            <MasterDataTable key={activeItem.id} route={activeItem.route} columns={activeItem.columns} />
+          ) : (
+            <DashboardPlaceholder key={activeItem.id} />
+          )}
         </main>
       </div>
     </div>
