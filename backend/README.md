@@ -88,7 +88,7 @@ on update, only `updatedBy` changes. Capped at 255 characters (both in
 `migrations/0006`).
 
 **Why GET is unauthenticated but writes require a key:** the frontend's
-"Master Data" view is a public browser bundle — it can never safely hold a
+dashboard is a public browser bundle — it can never safely hold a
 real secret, so reads stay open. Writes go only through the
 [master-data MCP server](../mcp-server/README.md), a trusted server-side
 client that sends `INTERNAL_API_KEY` on every call.

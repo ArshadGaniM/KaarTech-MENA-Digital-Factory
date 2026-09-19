@@ -1,10 +1,16 @@
-import MasterDataView from '../components/MasterDataView';
+import { MASTER_DATA_TABLES } from './masterDataApi';
 
-// Single registry both AppShell and Sidebar read from — adding a second
-// internal module is one entry here, not a new nav mechanism.
-export const NAV_ITEMS = [
-  { id: 'master-data', label: 'Master Data', hash: '#master-data', component: MasterDataView },
-];
+// Single registry both AppShell and Sidebar read from — one nav item per
+// master-data table, each carrying the route/columns MasterDataTable needs
+// to render it directly. Adding a table is one entry in MASTER_DATA_TABLES,
+// not a second nav mechanism.
+export const NAV_ITEMS = MASTER_DATA_TABLES.map((table) => ({
+  id: table.route,
+  label: table.label,
+  hash: `#${table.route}`,
+  route: table.route,
+  columns: table.columns,
+}));
 
 // Hashes that mean "render AppShell instead of the marketing page",
 // derived from NAV_ITEMS so App.jsx and AppShell can't drift out of sync.

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Sidebar from '../Sidebar';
 import TopBar from '../TopBar';
+import MasterDataTable from '../MasterDataTable';
 import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './AppShell.module.css';
 
@@ -13,7 +14,6 @@ function resolveInitialViewId(initialHash) {
 function AppShell({ initialHash = '' }) {
   const [activeViewId, setActiveViewId] = useState(() => resolveInitialViewId(initialHash));
   const activeItem = NAV_ITEMS.find((item) => item.id === activeViewId) ?? NAV_ITEMS[0];
-  const ActiveView = activeItem.component;
 
   return (
     <div className={styles.shell}>
@@ -22,9 +22,9 @@ function AppShell({ initialHash = '' }) {
       </a>
       <Sidebar items={NAV_ITEMS} activeId={activeViewId} onSelect={setActiveViewId} />
       <div className={styles.workspace}>
-        <TopBar title={activeItem.label} />
+        <TopBar title="Dashboard" />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
-          <ActiveView />
+          <MasterDataTable route={activeItem.route} columns={activeItem.columns} />
         </main>
       </div>
     </div>
