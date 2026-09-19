@@ -2,8 +2,11 @@ name: Auto PR
 
 # Opens/updates a PR on push to any branch except main, using
 # tasks/last-gate-report.md as the PR body when present (CLAUDE.md §9.3).
-# Auto-merges only when that push carries a fresh, non-BLOCKED gate report —
-# see CLAUDE.md §9.3 Step 5 for the full contract.
+# Auto-merges only when THIS push's own commits modified
+# tasks/last-gate-report.md (the "fresh" check below) and it isn't BLOCKED —
+# see CLAUDE.md §9.3 Step 5 for the full contract. A report merely present
+# in the repo from an earlier, unrelated push does not count — that gap let
+# every subsequent push auto-merge ungated until this check was added.
 
 on:
   push:
@@ -38,10 +41,50 @@ jobs:
               echo "blocked=false" >> "$GITHUB_OUTPUT"
             fi
             echo "has_report=true" >> "$GITHUB_OUTPUT"
+
+            # Freshness check: the report only authorizes auto-merge if THIS
+            # push actually touched it. Without this, a report from an old,
+            # unrelated feature sits in the repo forever and silently
+            # auto-merges every future push, gate or no gate — which is
+            # exactly what happened before this check existed (see
+            # tasks/lessons.md). before == all-zeros (new branch), missing,
+            # or not a commit we have history for (force-push rewrote it
+            # away — fetch-depth: 0 only guarantees ancestry of the CURRENT
+            # ref, not orphaned pre-force-push commits) means we can't
+            # safely diff, so default to "not fresh" rather than letting
+            # `git diff` on an unknown revision abort this whole step under
+            # bash's default -e and take PR creation down with it.
+            # Beyond "was the report's path touched", also require this push
+            # to have changed at least one OTHER file. A path-touch alone
+            # (e.g. a cosmetic re-save of an old report, with no real gate
+            # re-run behind it) shouldn't be enough to launder a stale
+            # verdict forward — a genuine gate run is always reporting on
+            # real accompanying changes. This is a heuristic, not a
+            # cryptographic guarantee: it raises the bar against accidental
+            # staleness (the bug actually observed) without claiming to
+            # stop a determined actor who deliberately bundles a no-op
+            # change alongside a copy-pasted report — that residual gap is
+            # accepted, not solved, given this workflow's trust model
+            # (single-maintainer repo, not a customer-facing boundary).
+            before="${{ github.event.before }}"
+            if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ] \
+              && git cat-file -e "${before}^{commit}" 2>/dev/null; then
+              changed_files=$(git diff --name-only "$before" "${{ github.sha }}")
+              report_touched=$(echo "$changed_files" | grep -Fx "tasks/last-gate-report.md" || true)
+              other_touched=$(echo "$changed_files" | grep -Fxv "tasks/last-gate-report.md" || true)
+              if [ -n "$report_touched" ] && [ -n "$other_touched" ]; then
+                echo "fresh=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "fresh=false" >> "$GITHUB_OUTPUT"
+              fi
+            else
+              echo "fresh=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "No gate report yet — run the /gate protocol before merging." > /tmp/pr_body.md
             echo "has_report=false" >> "$GITHUB_OUTPUT"
             echo "blocked=false" >> "$GITHUB_OUTPUT"
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
           fi
 
       # Uses `gh pr create`/`gh pr edit` directly instead of an action that
@@ -68,7 +111,7 @@ jobs:
           fi
 
       - name: Auto-merge on fresh non-BLOCKED gate report
-        if: steps.gate.outputs.has_report == 'true' && steps.gate.outputs.blocked == 'false'
+        if: steps.gate.outputs.has_report == 'true' && steps.gate.outputs.blocked == 'false' && steps.gate.outputs.fresh == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

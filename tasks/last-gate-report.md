@@ -1,44 +1,50 @@
 # Quality Gate Report
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff:** Practices gets an auto-generated code; Modules gets an
-auto-generated code, a human-assigned `moduleCode`, and an unvalidated
-`practiceId` link; every table now exposes a `markedDeleted` (Yes/No)
-field and GET routes include soft-deleted rows — plus a follow-up commit
-addressing every finding below.
-**Verdict: ⚠️ WARN — merge allowed, no FAIL/Critical findings.**
+**Diff:** Remediates an unresolved Critical security finding from an
+earlier gate run (`.claude/settings.json` still auto-approved
+`mcp__Supabase__execute_sql`) and fixes the auto-PR CI workflow itself
+(`.github/workflows/auto-pr.yml`) — its auto-merge check only verified
+that `tasks/last-gate-report.md` existed and wasn't BLOCKED, with no
+freshness check, so a stale report from a prior, unrelated feature had
+been silently authorizing every subsequent push to squash-merge to
+`main` regardless of what that push actually contained. That gap is
+how the `execute_sql` permission (and other diffs) reached `main`
+without ever passing a real gate.
+**Verdict: ⚠️ WARN — merge allowed, no FAIL/Critical findings remaining.**
 
 ## First pass (8 gate agents, parallel)
 
 | Agent | Verdict | Key findings |
 |---|---|---|
-| `code-reviewer` | WARN | Soft-deleted rows and active rows competed for the same paginated page — once a table holds more soft-deleted rows than the page size, active rows could silently drop off the end of the list. Also flagged PATCH's `??` fallback treats an explicit `practiceId: null` the same as "not sent," so a mapped module could never be unmapped again. Minor: `.claude/rules/api.md`'s status-code deviation wasn't documented for the new GET-returns-200-for-soft-deleted behavior. |
-| `security-auditor` | PASS | New migrations' `SECURITY DEFINER` trigger functions verified to match the already-audited `search_path`-pinned pattern. `practiceId`'s lack of FK validation traced end-to-end — no injection, no access-control implication (it carries no authorization semantics). Disclosed, non-blocking note: soft-deleted rows' actor names are now visible on the (pre-existing, already-unauthenticated) GET routes — low severity, no PII/secrets, business master data only. |
-| `debugger` | PASS | Confirmed `markedDeleted`'s `!= null` check can't throw and correctly treats missing/null the same. Verified via the installed `pg` driver source that an omitted `practiceId` serializes to SQL `NULL`, not an error. Confirmed the frontend can't crash on a `null` `practiceId` or a "Yes"/"No" `markedDeleted` value. Verified live against Supabase that `modules` currently has 0 rows, so migration 0010's temporary `''` default never touches a real row. |
-| `test-writer` | WARN | The new `markedDeleted` derivation is 100% unit-tested (all 3 branches). The router-level GET behavior change (no longer filtering `deleted_at`) has no integration test — confirmed this project has zero router-level tests for any route, in old code or new; not a new regression, the same disclosed, established gap noted in the prior gate report. |
-| `refactorer` | WARN | `src/lib/masterDataApi.js`'s shared `AUDIT_COLUMNS` array was being bypassed by 3 of 6 table configs, which spelled out the same 5 columns inline with drifted label wording — now a 2nd instance of the same finding from the prior gate report, worth fixing rather than re-disclosing again. |
-| `doc-writer` | PASS | `backend/README.md` and `mcp-server/README.md` fully updated — new `markedDeleted` field, the new GET-includes-soft-deleted behavior, and the new `practices`/`modules` fields and auto-generated codes are all accurately documented. No stale "excludes soft-deleted" text found anywhere. |
-| `silent-failure-hunter` | WARN | Independently confirmed the same active/deleted-row pagination-crowding risk as code-reviewer, plus traced that nothing downstream (frontend, MCP tools) filters on `markedDeleted`, so a future aggregation/report over `GET /<table>` would silently include soft-deleted rows unless it remembers to filter client-side. |
-| `pr-test-analyzer` | WARN | Confirmed the router-level GET behavior change has zero test coverage at any level, but weighed against this project's already-disclosed, pre-existing testing ceiling (no test DB, no `supertest`, no router tests for any route ever) — not a new regression, the new unit-level `markedDeleted` tests are genuine and correctly scoped to what's testable without infrastructure. |
+| `code-reviewer` | **Critical** (fixed) | On a force-push, `github.event.before` can point to a commit no longer reachable in history (`fetch-depth: 0` only guarantees ancestry of the *current* ref). The added `git diff` call would then fail under bash's default `-e`, aborting the whole "Prepare gate report body" step — breaking routine PR creation/update, not just auto-merge. |
+| `security-auditor` | **Warning → FAIL per §9.5** (fixed) | The freshness check only proved the report's *path* was touched between commits, not that a real re-gate happened — a trivial re-save of a stale report would pass `fresh=true`. Settings.json removal itself confirmed clean (no re-added equivalent grant). |
+| `debugger` | PASS | Confirmed the check fails *closed* (no auto-merge) on any git error — `pipefail` correctly propagates a failed `git diff` into the `else` branch. No dangling reference to the removed permission anywhere. Minor note: same pre-existing `${{ }}`-in-bash interpolation pattern as the rest of the file (not attacker-controlled, not a new regression). |
+| `test-writer` | PASS | `cd backend && npm test` — 50/50 pass. No CI-testing harness exists for GitHub Actions YAML in this repo (by design); manual review of the bash logic is the appropriate verification level. |
+| `refactorer` | PASS | Minor observation: `fresh == 'true'` now already implies `has_report == 'true'`, making the separate check on the merge step slightly redundant — not worth removing since `has_report` is also used for the PR-body step. |
+| `doc-writer` | PASS | Workflow's top-of-file and inline comments fully explain the new freshness contract and why it exists; CLAUDE.md §9.3 Step 5 already used the word "fresh" and needed no update. |
+| `silent-failure-hunter` | PASS | Independently confirmed the same content-vs-path-touch gap as security-auditor (now closed by the second fix below) and that the mechanism fails closed on any git/shell error, not open. |
+| `pr-test-analyzer` | PASS | Bash logic is simple and fully auditable; fail-closed design is correct for all identified edge cases (new branch, force-push). A real push is the only way to confirm GitHub's exact runtime behavior for `before`/`sha` on those edge cases, but that's an environment detail, not a logic defect. |
 
-## Remediation (follow-up commit, before this report)
+## Remediation (before this report)
 
-- **Pagination crowding-out (2 agents converged — code-reviewer, silent-failure-hunter):** `GET /` now orders active rows before soft-deleted ones (`order by (deleted_at is not null), name asc`), so soft-deleted rows — which accumulate forever — can never push active rows off the page once a table's soft-deleted count exceeds the page size.
-- **PATCH can't clear an optional field back to null (code-reviewer):** the router now distinguishes "key absent from the body" (keep current value) from "key present and set to `null`" (clear it) via `Object.hasOwn`, instead of `??` collapsing both cases into "keep current." `validateBody` now accepts an explicit `null` for a non-required field as a valid "clear this" signal (matching the existing precedent in `teamMemberSchema.js`) rather than rejecting it as a type error. 2 new tests cover both the accept-null-for-optional and reject-null-for-required cases.
-- **`.claude/rules/api.md` deviation undocumented (code-reviewer):** added the GET-returns-200-with-`markedDeleted`-instead-of-404 deviation to the rule file's own "Deliberate deviation pattern" section.
-- **`AUDIT_COLUMNS` duplication, 2nd occurrence (refactorer):** all 6 tables now spread the single shared `AUDIT_COLUMNS` array; its labels were unified to the clearer "Created At"/"Updated By" wording (matching what 3 of the tables already used) so switching to the shared constant doesn't change what's on screen.
+- **Force-push crash (code-reviewer):** guarded the freshness diff with `git cat-file -e "${before}^{commit}"` before calling `git diff`, so an unreachable `before` (post-force-push) falls through to `fresh=false` instead of aborting the step and taking PR creation down with it.
+- **Path-touch vs. content-diff gaming (security-auditor, independently confirmed by silent-failure-hunter):** the freshness check now also requires this push to have changed at least one file *other than* `tasks/last-gate-report.md` — a genuine gate run always accompanies real code changes, so a report-only push (e.g. a cosmetic re-save of an old report) can no longer authorize a merge on its own. Documented as a heuristic, not a cryptographic guarantee: this closes the accidental-staleness bug actually observed, but a determined actor bundling a trivial unrelated change alongside a copy-pasted report is an accepted residual risk given this workflow's trust model (single-maintainer repo, not a customer-facing security boundary).
 
 ## Re-verification after fixes
 
-- `cd backend && npm test` — 42/42 pass (38 from the previous round + 2 markedDeleted tests + 2 null-clearing tests).
-- `npm run build` (frontend) — clean, 40 modules.
-- `npx oxlint src/ backend/src/ mcp-server/src/` — clean except the pre-existing, non-blocking `react/set-state-in-effect` warning.
+- `cd backend && npm test` — 50/50 pass.
+- `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/auto-pr.yml'))"` — valid YAML.
+- Manual trace of both new edge-case guards (`before` unreachable; report-only push) confirms both resolve to `fresh=false`.
 
 ## Disclosed, non-blocking gaps (not remediated — judgment calls, not oversights)
 
-- **No router-level integration tests exist for any route** (confirmed: no test DB, no `supertest`, `node --test` unit tests only). The GET behavior change (soft-deleted rows now included) sits at this same, already-disclosed testing ceiling — revisit if/when a test-DB pattern is introduced for this project.
-- **`practiceId` has no FK/existence validation** — deliberate, explicit product decision (a module can be created before its Practice is decided, mapped later via PATCH). A dangling reference is possible by design; not remediated since enforcing it would contradict the stated requirement.
-- **Soft-deleted rows' actor names visible on unauthenticated GET** — pre-existing unauthenticated-read design (per `.claude/rules/api.md`, forward-looking/not-yet-enforced), now surfaces slightly more of the same non-sensitive business data. Not remediated; flagged by security-auditor as low severity.
+- **The "other file also changed" heuristic is not airtight** — a bad-faith actor with push access could still pair a copy-pasted report with an unrelated trivial change to pass the check. Closing this completely would require signing/timestamping infrastructure disproportionate to this repo's actual trust model. Revisit if the repo ever gains untrusted contributors.
+- **No CI-testing harness exists for GitHub Actions workflow YAML in this repo** — verification of this fix relied on manual review plus YAML syntax validation, not an automated test. Consistent with this project's existing, already-disclosed testing ceiling.
+- **Debugger's interpolation-style note** (`${{ github.event.before }}` inlined into bash rather than passed via `env:`) is a pre-existing pattern across this whole file, not introduced by this diff, and both code-reviewer and debugger independently confirmed no real injection risk since the values are GitHub-populated commit SHAs, never free text.
 
 No Critical findings remain. No FAIL gates remain. Verdict: **WARN**,
-merge allowed on "Merge to Main" per CLAUDE.md §9.5.
+merge allowed on this push per CLAUDE.md §9.5 (the freshness check
+this very report satisfies also applies to itself — the auto-merge
+job will only fire if this file, plus the settings.json/workflow
+fixes above, land together in the same push).
