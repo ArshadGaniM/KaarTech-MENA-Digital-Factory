@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { pool } from "./db.js";
-import { notFound, isUniqueViolation, duplicateFieldError } from "./errors.js";
+import {
+  notFound,
+  isUniqueViolation,
+  duplicateFieldError,
+  isForeignKeyViolation,
+  referenceNotFoundError,
+} from "./errors.js";
 import {
   toResponse,
   validateBody,
@@ -34,6 +40,17 @@ const DEFAULT_ACTOR = "Arshad Gani";
 // interpolating them into the SQL below is safe — Postgres has no
 // bind-parameter syntax for identifiers, and all actual values still go
 // through numbered bound parameters.
+
+// validateReferences() already rejects a bad FK before every INSERT/UPDATE
+// runs, so this only matters for the narrow race where the referenced row
+// is removed between that check and the write — still needs the same 422
+// treatment as a unique-violation rather than a leaked 500.
+function mapWriteError(err, fields) {
+  if (isUniqueViolation(err)) return duplicateFieldError(err, fields);
+  if (isForeignKeyViolation(err)) return referenceNotFoundError(err, fields);
+  return err;
+}
+
 export function createMasterDataRouter(table) {
   const { tableName, resourceName, fields } = table;
   const router = Router();
@@ -105,7 +122,7 @@ export function createMasterDataRouter(table) {
       );
       res.status(201).json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
+      next(mapWriteError(err, fields));
     }
   });
 
@@ -143,7 +160,7 @@ export function createMasterDataRouter(table) {
       if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
+      next(mapWriteError(err, fields));
     }
   });
 

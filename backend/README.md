@@ -46,7 +46,8 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `competencies`, `resource-cost`, `teams`, `resource-deployment` | `name` (required) |
+| `competencies`, `teams`, `resource-deployment` | `name` (required) |
+| `resource-cost` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
@@ -58,6 +59,26 @@ Per-table fields, as of this writing:
 `"string"` field can set `maxLength` to override the default 255-char cap
 (`resources.skill` uses `maxLength: 20000`, since real skill lists run
 past 12,000 characters).
+
+**FK validation (`field.references`):** a field can carry a
+`references: { table, column }` descriptor to enforce that its value
+matches an existing, non-soft-deleted row in that table/column before the
+write is allowed (`validateReferences()` in `src/masterDataSchema.js`) —
+e.g. `resource-cost.employeeId` must exist in `resources.employee_id`.
+This is opt-in per field; a field without `references` behaves exactly
+like `modules.practiceId` (accepted, never validated). A bad reference
+returns a 422 `validation_error` naming the field.
+
+**Live-lookup fields (`table.lookups`):** a table can carry a `lookups`
+array (`[{ table, localColumn, foreignColumn, projections }]`) to expose
+read-only fields resolved via a LEFT JOIN at read time rather than stored
+columns — e.g. `resource-cost.employeeName`/`employeeDesignation` are
+joined live from `resources` on every GET, so they always reflect the
+referenced row's *current* name/designation rather than a stale copy.
+These fields are never accepted on POST/PATCH; a soft-deleted or missing
+referenced row resolves them to `null`, not stale data (the join's
+`ON` clause filters `deleted_at is null`, not a `WHERE`, so the base row
+itself is still returned).
 
 **Duplicate unique values** (e.g. two `resources` with the same
 `employeeId`) return a 422 `validation_error` naming the offending field,
@@ -119,6 +140,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0010_add_module_columns.sql` | `modules`-specific: `code` (auto-generated via trigger), `module_code` (human-assigned, required), `practice_id` (nullable `uuid`, indexed but **not** a foreign key — deliberately unenforced so a module can be inserted before its Practice is decided). |
 | `0011_create_additional_master_data_tables.sql` | 3 new tables (`resource_cost`, `teams`, `resource_deployment`), created directly with the full shape the original 6 accumulated (name-only, same starting point `practices`/`competencies`/etc. had before their own follow-up migrations). |
 | `0012_add_resource_columns.sql` | `resources`-specific: 16 real columns imported from an HR export, including `employee_id integer unique not null` — the first caller-supplied (not auto-generated) unique identifier in this schema — and a `location_type` `CHECK` constraint (`Onsite`/`Offshore`, matching the source data's casing). |
+| `0013_add_resource_cost_columns.sql` | `resource_cost`-specific: drops the placeholder `name` column, adds `employee_id integer not null` (with `fk_resource_cost_resources` foreign key to `resources.employee_id` and `ix_resource_cost_employee_id` index), `offshore_cost numeric`, `onsite_cost numeric` — the first real foreign-key constraint in this schema (every prior cross-table reference, e.g. `modules.practice_id`, is deliberately app-layer-only). |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

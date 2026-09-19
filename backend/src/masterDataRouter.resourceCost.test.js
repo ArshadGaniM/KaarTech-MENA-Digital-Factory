@@ -219,6 +219,33 @@ test("PATCH /v1/resource-cost/:id rejects setting employeeId to a non-existent R
   assert.equal(updateCalled, false);
 });
 
+test("POST /v1/resource-cost maps a foreign_key_violation (23503) from the INSERT itself to a 422, not a raw 500", async (t) => {
+  // Simulates the narrow race validateReferences can't close: the FK check
+  // passes, then the referenced resources row is removed before the INSERT
+  // runs, so Postgres itself rejects it via fk_resource_cost_resources.
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.includes("select 1 from resources where employee_id")) return { rows: [{}] };
+    if (sql.startsWith("insert into resource_cost")) {
+      const err = new Error("insert or update on table violates foreign key constraint");
+      err.code = "23503";
+      err.constraint = "fk_resource_cost_resources";
+      throw err;
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-cost`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ employeeId: 42 }),
+  });
+
+  assert.equal(res.status, 422);
+  const body = await res.json();
+  assert.equal(body.error.code, "validation_error");
+  assert.ok(body.error.details.employeeId);
+});
+
 test("POST /v1/resource-cost without the internal API key is rejected with 401 before any query runs", async (t) => {
   let queryCalled = false;
   t.mock.method(pool, "query", async () => {
@@ -234,4 +261,64 @@ test("POST /v1/resource-cost without the internal API key is rejected with 401 b
 
   assert.equal(res.status, 401);
   assert.equal(queryCalled, false);
+});
+
+test("PATCH /v1/resource-cost/:id without the internal API key is rejected with 401 before any query runs", async (t) => {
+  let queryCalled = false;
+  t.mock.method(pool, "query", async () => {
+    queryCalled = true;
+    return { rows: [] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ offshoreCost: 1000 }),
+  });
+
+  assert.equal(res.status, 401);
+  assert.equal(queryCalled, false);
+});
+
+test("DELETE /v1/resource-cost/:id without the internal API key is rejected with 401 before any query runs", async (t) => {
+  let queryCalled = false;
+  t.mock.method(pool, "query", async () => {
+    queryCalled = true;
+    return { rows: [] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, { method: "DELETE" });
+
+  assert.equal(res.status, 401);
+  assert.equal(queryCalled, false);
+});
+
+test("DELETE /v1/resource-cost/:id soft-deletes the row and returns 204", async (t) => {
+  let updateSql;
+  t.mock.method(pool, "query", async (sql) => {
+    updateSql = sql;
+    return { rows: [{ id: RESOURCE_COST_ID }] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, {
+    method: "DELETE",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 204);
+  assert.match(updateSql, /update resource_cost set deleted_at = now\(\)/);
+  assert.match(updateSql, /where id = \$1 and deleted_at is null/);
+});
+
+test("DELETE /v1/resource-cost/:id on an already-deleted (or nonexistent) row returns 404", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [] }));
+
+  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, {
+    method: "DELETE",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 404);
+  const body = await res.json();
+  assert.equal(body.error.code, "resource_cost_not_found");
 });

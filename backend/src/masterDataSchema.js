@@ -62,6 +62,19 @@ export function toResponse(table, row) {
   return response;
 }
 
+// Presence/must-validate semantics shared by validateBody and
+// validateReferences: a required field is checked even when absent on
+// create (so the "missing" case itself gets flagged); on update, and for
+// any non-required field, it's only checked when the caller actually sent
+// it. Object.hasOwn (not `!== undefined`) is the presence test throughout
+// this codebase — see masterDataRouter.js's PATCH handler, which relies on
+// the same distinction to tell "key absent" (keep current value) apart
+// from "key present, set to null" (clear it).
+function fieldPresenceToValidate(field, safeBody, partial) {
+  const present = Object.hasOwn(safeBody, field.key);
+  return { present, mustValidate: field.required ? !partial || present : present };
+}
+
 export function validateBody(table, body, { partial = false } = {}) {
   // express.json() leaves req.body undefined for a request sent without a
   // JSON content-type — treat that the same as an empty object rather than
@@ -70,11 +83,7 @@ export function validateBody(table, body, { partial = false } = {}) {
   const details = {};
 
   for (const field of table.fields) {
-    const present = safeBody[field.key] !== undefined;
-    // Required fields must be validated on create even if omitted (so the
-    // "missing" case itself gets flagged); on update, and for non-required
-    // fields, only validate when the caller actually sent a value.
-    const mustValidate = field.required ? !partial || present : present;
+    const { mustValidate } = fieldPresenceToValidate(field, safeBody, partial);
     if (!mustValidate) continue;
 
     const value = safeBody[field.key];
@@ -113,31 +122,36 @@ export function validateBody(table, body, { partial = false } = {}) {
 // clear message rather than surfacing as a confusing "no matching row".
 export async function validateReferences(table, body, { partial = false } = {}) {
   const safeBody = body && typeof body === "object" ? body : {};
-  const details = {};
 
-  for (const field of table.fields) {
-    if (!field.references) continue;
-
-    // Same presence semantics as validateBody: required fields are
-    // checked on create even if absent (validateBody's own required
-    // check has already thrown by the time this runs), and on update
-    // only when the caller actually sent a value.
-    const present = Object.hasOwn(safeBody, field.key);
-    const mustValidate = field.required ? !partial || present : present;
-    if (!mustValidate) continue;
-
-    const value = safeBody[field.key];
-    // null only reaches here for a non-required field being explicitly
+  const fieldsToCheck = table.fields.filter((field) => {
+    if (!field.references) return false;
+    const { mustValidate } = fieldPresenceToValidate(field, safeBody, partial);
+    // null only reaches a check for a non-required field being explicitly
     // cleared — validateBody already rejects null on a required field.
-    if (value === null) continue;
+    return mustValidate && safeBody[field.key] !== null;
+  });
 
-    const { table: refTable, column: refColumn } = field.references;
-    const result = await pool.query(
-      `select 1 from ${refTable} where ${refColumn} = $1 and deleted_at is null limit 1`,
-      [value]
-    );
-    if (result.rows.length === 0) {
-      details[field.key] = `${field.key} must reference an existing ${refTable} row (no match for '${value}').`;
+  // Run every FK-existence check concurrently rather than one round trip
+  // per field in sequence — resource_cost only has one `references` field
+  // today, but a table with two (e.g. a future Project Assignments row
+  // validating both a project and a team) shouldn't pay for them one at a
+  // time.
+  const results = await Promise.all(
+    fieldsToCheck.map(async (field) => {
+      const value = safeBody[field.key];
+      const { table: refTable, column: refColumn } = field.references;
+      const result = await pool.query(
+        `select 1 from ${refTable} where ${refColumn} = $1 and deleted_at is null limit 1`,
+        [value]
+      );
+      return { field, value, found: result.rows.length > 0 };
+    })
+  );
+
+  const details = {};
+  for (const { field, value, found } of results) {
+    if (!found) {
+      details[field.key] = `${field.key} must reference an existing ${field.references.table} row (no match for '${value}').`;
     }
   }
 
