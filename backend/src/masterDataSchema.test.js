@@ -1,7 +1,15 @@
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import assert from "node:assert/strict";
-import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
+import {
+  toResponse,
+  validateBody,
+  validateActor,
+  validateReferences,
+  lookupJoinSql,
+  lookupSelectSql,
+} from "./masterDataSchema.js";
 import { isUniqueViolation, duplicateFieldError } from "./errors.js";
+import { pool } from "./db.js";
 
 const SIMPLE_TABLE = {
   fields: [{ key: "name", column: "name", required: true, type: "string" }],
@@ -19,6 +27,37 @@ const RESOURCE_LIKE_TABLE = {
     { key: "employeeId", column: "employee_id", required: true, type: "number" },
     { key: "sapExperience", column: "sap_experience", required: false, type: "number" },
     { key: "skill", column: "skill", required: false, type: "string", maxLength: 20000 },
+  ],
+};
+
+// Mirrors resource_cost's real descriptor in masterDataTables.js (FEAT-5):
+// employeeId is a validated FK reference (unlike modules.practiceId), and
+// employeeName/employeeDesignation are live-lookup fields, never stored
+// columns — see lookupJoinSql/lookupSelectSql/toResponse below.
+const RESOURCE_COST_TABLE = {
+  tableName: "resource_cost",
+  sortColumn: "employee_id",
+  lookups: [
+    {
+      table: "resources",
+      localColumn: "employee_id",
+      foreignColumn: "employee_id",
+      projections: [
+        { key: "employeeName", column: "name" },
+        { key: "employeeDesignation", column: "designation" },
+      ],
+    },
+  ],
+  fields: [
+    {
+      key: "employeeId",
+      column: "employee_id",
+      required: true,
+      type: "number",
+      references: { table: "resources", column: "employee_id" },
+    },
+    { key: "offshoreCost", column: "offshore_cost", required: false, type: "number" },
+    { key: "onsiteCost", column: "onsite_cost", required: false, type: "number" },
   ],
 };
 
