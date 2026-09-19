@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** wf_f8c55755-42a (FEAT-5, dev-team-feat5-resource-cost workflow)
+**Active run ID:** none
 
 **Feature counter:** 5
 
@@ -12,7 +12,7 @@
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
-| FEAT-5 | in_flight | Build out the Resource Cost table's real schema: `employeeId` (required, must reference an existing Resources row, enforced), `employeeName` and `employeeDesignation` (read-only, live-looked-up from the referenced resource — not stored/editable columns), `offshoreCost` and `onsiteCost` (both optional numeric). Plus standard audit columns (already present). | claude/trusting-curie-hlx1r6 |
+| FEAT-5 | halted | Build out the Resource Cost table's real schema: `employeeId` (required, must reference an existing Resources row, enforced), `employeeName` and `employeeDesignation` (read-only, live-looked-up from the referenced resource — not stored/editable columns), `offshoreCost` and `onsiteCost` (both optional numeric). Plus standard audit columns (already present). Halted at architecture-critic (stage 3.1): the shared `GET /v1/<table>` list query hardcodes `ORDER BY (deleted_at is not null), name asc` across all 9 tables — the SDD's plan to drop resource_cost's `name` column would break that query for this table only (Postgres "column name does not exist"). Fix: make the sort column configurable per table (default 'name' so the other 8 tables are untouched). Also flagged non-blocking: the planned employeeName/employeeDesignation join doesn't filter out soft-deleted resources. Resume via Workflow(scriptPath, resumeFromRunId: "wf_f8c55755-42a") once solution-architect amends the SDD. | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 

@@ -1,0 +1,118 @@
+{
+  "feature": "FEAT-5",
+  "stage": "solution-architect",
+  "pipeline_stage_number": "3",
+  "verdict": "PASS",
+  "revision_round": 1,
+  "summary": "Solution Design Document for Resource Cost's real schema (employeeId FK to resources.employee_id, live-lookup employeeName/employeeDesignation, independently-optional offshoreCost/onsiteCost). Constrained by tech-lead's FEAT-5 direction (generalized validateExists + lookup descriptor kinds, defense-in-depth DB FK + app-layer check, FK index, thin MCP layer, Employee-prefixed frontend labels) and database.md/api.md/frontend.md. No application code written at this stage per solution-architect.md's scope (SDD only) — schema/component structuring belongs to stage 3.3 (System Engineer), implementation to stage 3.5/4 (Engineer/Developer), and the migration must still be authored + applied live at those later stages, not here.",
+  "scope_note": "Stage 3 produces the design document that stages 3.1 (Architecture Critic), 3.3 (System Engineer) and 3.5 (Engineer/MVP) build from. No file was created or edited by this stage; all paths below are targets for later stages.",
+
+  "field_descriptor_extensions": {
+    "validateExists": {
+      "shape": "{ table: string, column: string }",
+      "attached_to": "a single field entry in MASTER_DATA_TABLES[*].fields (backend only) — e.g. the resource_cost table's employeeId field gets validateExists: { table: 'resources', column: 'employee_id' }",
+      "generality": "keyed purely by table/column name, never hardcoded to resource_cost/resources, so resource_deployment's future employeeId field (flagged by tech-lead as a likely sibling need) can reuse it by adding the same descriptor to its own field entry — zero new code required.",
+      "enforcement_point": "masterDataSchema.js gains a new async function, e.g. validateReferences(table, body, { partial }), called from masterDataRouter.js's POST and PATCH handlers immediately after the existing synchronous validateBody(). For each field with validateExists that is present in the request (required-on-create, present-on-update per the same partial-update semantics validateBody already uses), it runs `select 1 from ${ref.table} where ${ref.column} = $1 and deleted_at is null` and throws validationError({ [field.key]: '<key> must reference an existing, non-deleted <ref.table> row.' }) — a 422 per api.md, not a 404 (this is a bad request body, not a missing resource-by-id lookup) and not a generic '<resource>_not_found' (that code is reserved for notFound(), used for id-in-URL lookups).",
+      "why_not_reuse_notFound": "notFound() is shaped around 'the resource in the URL path doesn't exist'; this is a body-field reference check, so a dedicated validation_error under details[field.key] keeps api.md's error-shape distinction between 404 (URL resource missing) and 422 (request body invalid) intact.",
+      "must_run_before_insert": "app-layer check runs before the INSERT/UPDATE statement executes, so a bad employeeId never reaches Postgres and never risks surfacing as a raw FK-violation 500 — this satisfies tech-lead's 'app-layer check must run first' ordering requirement.",
+      "soft_delete_semantics": "deleted_at is null is mandatory in the existence check — a soft-deleted resource must not be a valid FK target, matching how PATCH/DELETE already refuse to act on soft-deleted rows elsewhere in masterDataRouter.js.",
+      "not_applied_to_modules_practiceId": "modules.practiceId keeps its current unvalidated behavviour untouched — validateExists is opt-in per field descriptor, so this is additive-only and does not change any of the other 8 tables."
+    },
+    "lookup": {
+      "shape": "{ table: string, on: string, select: { <responseKey>: <sourceColumnOnRefTable> } }",
+      "attached_to": "the table descriptor itself (a new top-level property on the resource_cost entry in MASTER_DATA_TABLES), not a field entry — because employeeName/employeeDesignation are never persisted, never validated, and never part of the INSERT/UPDATE column list. e.g. resource_cost's descriptor gains: lookups: { table: 'resources', on: 'employee_id', select: { employeeName: 'name', employeeDesignation: 'designation' } }",
+      "generality": "same table/column-keyed shape as validateExists so it composes with it (both point at 'resources'/'employee_id') and so resource_deployment can add the identical lookups block later without new router code.",
+      "read_path_change": "masterDataRouter.js's GET list and GET one handlers change their SQL only when table.lookups is present: instead of `select * from ${tableName}`, they build `select t.*, ${aliasedSelectColumns} from ${tableName} t left join ${lookups.table} j on j.${lookups.on} = t.${lookups.on} where ...` (LEFT JOIN, not INNER — a resource_cost row whose employeeId matches no resource, e.g. after the referenced resource is later soft-deleted or hard-removed by some future process, must still be listed rather than silently vanishing; employeeName/employeeDesignation simply come back null in that edge case, matching the existing 'row.column may be null' shape everywhere else in this file). Query builds the join condition off `lookups.on` generically (not hardcoded to employee_id), and the aliasedSelectColumns come from `lookups.select`'s values (e.g. `j.name as employee_name, j.designation as employee_designation`), so the SQL is generated from the descriptor, not written bespoke per table.",
+      "other_tables_unaffected": "the 8 tables with no `lookups` property keep the exact current `select * from ${tableName}` query untouched — this is the conditional branch tech-lead required to keep the change additive rather than a regression risk to the shared factory.",
+      "toResponse_change": "masterDataSchema.js's toResponse(table, row) gains: after the existing field-by-field loop, `if (table.lookups) for (const [responseKey, sourceCol] of Object.entries(table.lookups.select)) response[responseKey] = row[snake_case_alias_of(sourceCol)]` — reading off the joined/aliased columns the new SQL selected (e.g. row.employee_name -> response.employeeName), not off `table.fields`, since these two keys deliberately never appear in `fields[]`.",
+      "not_writable": "because employeeName/employeeDesignation are never added to resource_cost's `fields[]` array, validateBody/the INSERT column list/the UPDATE SET clause never reference them — a client POST/PATCH body containing employeeName is silently ignored (same behavior as sending any other unknown key today), which is correct: these are read-only projections, not editable inputs, per the requirement."
+    }
+  },
+
+  "resource_cost_table_descriptor_design": {
+    "backend_masterDataTables_js_entry": {
+      "route": "resource-cost",
+      "tableName": "resource_cost",
+      "resourceName": "resource_cost",
+      "lookups": { "table": "resources", "on": "employee_id", "select": { "employeeName": "name", "employeeDesignation": "designation" } },
+      "fields": [
+        { "key": "employeeId", "column": "employee_id", "required": true, "type": "number", "validateExists": { "table": "resources", "column": "employee_id" } },
+        { "key": "offshoreCost", "column": "offshore_cost", "required": false, "type": "number" },
+        { "key": "onsiteCost", "column": "onsite_cost", "required": false, "type": "number" }
+      ],
+      "note_on_dropping_name": "the current placeholder `name` field is replaced entirely by employeeId (the requirement gives resource_cost no independent 'name' concept once it's keyed to an employee) — System Engineer must confirm this against migration design: the existing `name not null` column either gets dropped in the same migration or, if any non-empty rows already exist and dropping is judged riskier than deprecating, the two-phase migration path in database.md (deprecate then remove) applies. Codebase-explorer's mapping did not report any existing resource_cost rows; if the table is empty, a direct drop in one migration is in-scope and preferred over an unnecessary two-phase deprecation for a table with no read-with-existing-data concern (database.md's two-phase rule exists to avoid breaking readers of live data, which does not apply to an empty placeholder table)."
+    },
+    "column_types": {
+      "employee_id": "integer not null — matches resources.employee_id's own type (integer, migration 0012) so the FK constraint and the equality join are type-compatible without casts.",
+      "offshore_cost": "numeric, nullable, no default — optional per requirement, independently of onsite_cost.",
+      "onsite_cost": "numeric, nullable, no default — same reasoning; requirement explicitly says do not enforce onsite-XOR-offshore at this layer."
+    }
+  },
+
+  "migration_design_for_system_engineer": {
+    "file": "backend/migrations/0013_add_resource_cost_columns.sql",
+    "pattern_source": "follows 0012_add_resource_columns.sql's shape (ADD COLUMN with a temporary default dropped immediately for the required column, since resource_cost may already hold placeholder rows whose name-only shape has no employee_id value to backfill with).",
+    "required_statements": [
+      "alter table public.resource_cost add column employee_id integer not null default -1 (temporary sentinel default only to let ADD COLUMN succeed against any existing rows; must be dropped in the same migration file directly below, mirroring 0012's drop-default pattern) — or, if the table is confirmed empty, add column employee_id integer not null with no default needed at all; System Engineer confirms row count before finalizing which form to use.",
+      "alter table public.resource_cost alter column employee_id drop default (only needed if the sentinel-default form above was used).",
+      "alter table public.resource_cost add column offshore_cost numeric, add column onsite_cost numeric (nullable, no default, no drop-default step needed since they're optional).",
+      "alter table public.resource_cost drop column name (dropping the placeholder column now that employeeId supersedes it — see note_on_dropping_name above for the two-phase alternative if the table is not confirmed empty).",
+      "alter table public.resource_cost add constraint resource_cost_employee_id_fkey foreign key (employee_id) references public.resources (employee_id) — the DB-level defense-in-depth constraint tech-lead required alongside the app-layer validateExists check; relies on resources.employee_id's existing unique constraint from migration 0012, which is what makes this FK meaningful.",
+      "create index ix_resource_cost_employee_id on public.resource_cost (employee_id) — required by database.md ('add an index on foreign keys') and doubles as the join-performance index for the lookups' LEFT JOIN."
+    ],
+    "must_be_applied_live": "per the task's instruction, this migration must be applied via mcp__Supabase__apply_migration by the stage that authors it (System Engineer/Engineer), not merely committed to disk — this SDD stage does not apply it, since no schema file has been written yet at this point in the pipeline.",
+    "rls_and_trigger_conventions": "resource_cost already has RLS-enabled-no-policies and the trg_resource_cost_updated_at trigger from migration 0011 — 0013 is a pure ADD/DROP COLUMN + constraint/index migration and must not touch either of those, consistent with 0012's treatment of resources."
+  },
+
+  "mcp_layer_design": {
+    "file": "mcp-server/src/masterDataTables.js",
+    "resource_cost_entry_fields_change": [
+      { "key": "employeeId", "label": "the linked Resource's employee ID (Resources.employeeId) — must reference an existing Resource; the backend rejects a create/update with an employeeId that does not exist in Resources", "required": true, "type": "number" },
+      { "key": "offshoreCost", "label": "offshore cost, in the company's standard currency unit — optional, independent of onsiteCost", "required": false, "type": "number" },
+      { "key": "onsiteCost", "label": "onsite cost, in the company's standard currency unit — optional, independent of offshoreCost", "required": false, "type": "number" }
+    ],
+    "no_bespoke_mcp_code_needed": "mcp-server/src/index.js already builds each add_/update_<slug> tool's zod shape generically off `fields[]` (z.number().finite() for type:'number', per the tool's own generation logic) — since employeeId/offshoreCost/onsiteCost are ordinary 'number' fields with no MCP-side existence concept, only the descriptor data above changes; add_resource_cost and update_resource_cost need no new code, matching tech-lead's 'MCP layer stays thin' direction.",
+    "validation_enforced_once": "the mcp-server calls the backend over HTTP (confirmed by tech-lead via apiClient.js) — the backend's 422 validation_error (from validateExists) or DB FK-violation-turned-422 propagates back through the existing HTTP-error-to-tool-error path unchanged; no duplicate validation logic is added on the MCP side, avoiding the two-mirrors-drifting-out-of-sync risk both enterprise-architect-pre and tech-lead flagged.",
+    "name_field_removed": "the current placeholder `{ key: 'name', ... }` field entry is removed from the resource_cost slug's fields[] in this mirror, matching the backend descriptor's replacement of name with employeeId/offshoreCost/onsiteCost."
+  },
+
+  "frontend_design": {
+    "file": "src/lib/masterDataApi.js",
+    "resource_cost_columns_change": [
+      { "key": "employeeId", "label": "Employee ID" },
+      { "key": "employeeName", "label": "Employee Name" },
+      { "key": "employeeDesignation", "label": "Employee Designation" },
+      { "key": "offshoreCost", "label": "Offshore Cost" },
+      { "key": "onsiteCost", "label": "Onsite Cost" }
+    ],
+    "column_order_rationale": "employeeId first (the caller-supplied key, matches the Resources table's own column ordering convention where employeeId leads), then the two live-looked-up display fields immediately after (mirrors how a human would want to see 'who' before 'what it costs'), then the two cost fields, then ...AUDIT_COLUMNS unchanged (spread exactly as every other table does).",
+    "labeling_convention_match": "'Employee ID' / 'Employee Name' / 'Employee Designation' match FEAT-6's just-applied 'Employee <Field>' convention on the Resources table (commit 5b1f29b) exactly, including that employeeId itself does NOT get a redundant second 'Employee' prefix beyond what's already in the key name, consistent with how Resources' own employeeId column is labeled plain 'Employee ID' rather than 'Employee Employee ID'.",
+    "no_other_frontend_change_needed": "the frontend is read-only (fetchMasterDataTable only GETs) and MasterDataTable renders whatever keys the GET response contains keyed by `columns[].key` — since employeeName/employeeDesignation arrive as ordinary top-level response keys via the backend's toResponse() lookup branch, no fetch logic, hook, or component behavior changes; this is a pure columns[] data change in one file."
+  },
+
+  "api_contract": {
+    "GET /v1/resource-cost and GET /v1/resource-cost/:id": "response `data` now includes employeeId, employeeName, employeeDesignation (nullable if the referenced resource is missing/soft-deleted after the fact), offshoreCost, onsiteCost, plus the unchanged audit fields — 200, per api.md's existing single/collection envelope shapes, no change to those envelopes.",
+    "POST /v1/resource-cost and PATCH /v1/resource-cost/:id": "request body takes employeeId (required on create, number), offshoreCost/onsiteCost (optional numbers, independently nullable). A body with employeeId not present in resources (or present but soft-deleted) is rejected 422 with `{ error: { code: 'validation_error', message: 'Request failed validation.', details: { employeeId: 'employeeId must reference an existing, non-deleted resources row.' } } }`, per api.md's error shape. employeeName/employeeDesignation in a request body are accepted but ignored (not part of `fields[]`), consistent with how any other unknown key is already ignored by the existing INSERT/UPDATE column-building logic.",
+    "no_new_routes": "no new endpoints are introduced — resource-cost keeps using the shared createMasterDataRouter(table) factory; only that factory's internals (validateExists check + lookups-aware SELECT) change to support the new descriptor kinds."
+  },
+
+  "out_of_scope_for_this_feature": [
+    "resource_deployment's own employeeId/lookup fields — tech-lead flagged this as a plausible future reuse of the same descriptors, not part of FEAT-5's requirement.",
+    "Any UI for writing resource-cost data — the task explicitly states writes happen only through the MCP server; the frontend dashboard stays read-only.",
+    "Enforcing onsite-XOR-offshore cost exclusivity — requirement explicitly says do not enforce this at this layer.",
+    "Auto-computing a derived 'total cost' or currency-formatting logic — not requested."
+  ],
+
+  "constraints_verified_against": [
+    "database.md: FK existence validated at the service layer (validateExists in masterDataSchema.js/masterDataRouter.js, not the route handler in isolation) plus a real DB-level foreign key constraint as defense-in-depth; index added on the new foreign key (ix_resource_cost_employee_id); migrations never edit an existing file, 0013 is new.",
+    "api.md: 422 for validation failures (bad employeeId reference), consistent error envelope `{ error: { code, message, details } }`, no new routes, response/request schemas remain the shared master-data GET/POST/PATCH/DELETE shape.",
+    "frontend.md: masterDataApi.js columns[] change only — no component logic added, no inline styles, presentation-only file touched.",
+    "CLAUDE.md Core Principles: minimal-impact additive descriptor kinds (validateExists, lookups) rather than a bespoke resource-cost-only code fork; the other 8 master-data tables' SQL and validation paths are provably unchanged (both gated behind `if (field.validateExists)` / `if (table.lookups)`)."
+  ],
+
+  "open_items_for_architecture_critic": [
+    "Confirm the LEFT JOIN (not INNER JOIN) decision in the lookups read-path design is the right call for a resource_cost row whose employeeId no longer matches any resources row.",
+    "Confirm whether dropping resource_cost.name outright in migration 0013 (vs. a two-phase deprecate-then-remove) is acceptable given database.md's destructive-change rule — this SDD's position is that the rule's purpose (protect readers of live data) doesn't bind an empty placeholder table, but System Engineer must verify row count before finalizing the migration.",
+    "Confirm the 422 validation_error shape (rather than a resource_cost-specific error code) is the right choice for the FK-reference failure, versus inventing a new machine-readable code like `employee_not_found` as a details-level hint."
+  ]
+}

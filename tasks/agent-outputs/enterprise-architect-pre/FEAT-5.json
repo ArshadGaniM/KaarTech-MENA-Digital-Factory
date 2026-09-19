@@ -1,0 +1,60 @@
+{
+  "feature_id": "FEAT-5",
+  "stage": "2-enterprise-architect-pre",
+  "reviewed_inputs": [
+    "tasks/agent-outputs/business-analyst/FEAT-5.json",
+    "backend/src/masterDataTables.js",
+    "backend/src/masterDataRouter.js",
+    "backend/src/masterDataSchema.js",
+    "mcp-server/src/masterDataTables.js (referenced, not re-read; explorer already mapped it)",
+    "src/lib/masterDataApi.js (referenced, not re-read; explorer already mapped it)",
+    "backend/migrations/0011_*.sql, 0012_add_resource_columns.sql",
+    ".claude/rules/database.md",
+    ".claude/rules/api.md",
+    ".claude/rules/frontend.md",
+    "CLAUDE.md §0, §1, §7.4, §23",
+    "tasks/pipeline-queue.md"
+  ],
+  "verdict": "PASS",
+  "decisions": [
+    {
+      "topic": "FK-existence validation for employeeId (missing capability #1 flagged by codebase-explorer)",
+      "decision": "APPROVED direction: generalize into the shared master-data machine as a new field-descriptor property, e.g. `validateExists: { table: 'resources', column: 'employee_id' }`, checked in masterDataRouter.js's POST/PATCH handlers (service layer, before insert/update) — not a bespoke resource-cost-only code path, and not pushed down as a bare DB foreign-key constraint alone. Mirror the same descriptor in mcp-server/src/masterDataTables.js so add_resource_cost/update_resource_cost reject an unknown employeeId before ever reaching the DB, giving a clean MCP-level error rather than surfacing a raw FK-violation/constraint error to the tool caller.",
+      "rationale": "database.md: 'Validate foreign keys exist at the service layer, not the route handler' (the generic router factory *is* the service layer here — one shared check point, not one per table). CLAUDE.md §1 Simplicity First / Minimal Impact: a generalized descriptor extends the existing generic-factory pattern that already drives every other master-data table, instead of forking resource_cost onto its own hand-written route file. This also correctly distinguishes it from modules.practiceId, which is a documented, deliberate exception (unvalidated) — resource_cost.employeeId must NOT reuse that precedent, per the task's explicit requirement.",
+      "risk_if_ignored": "A bespoke, one-off validation block hand-written inside a resource-cost-specific route handler would fork the generic-router abstraction the very first time a second table needs FK validation (e.g. resource_deployment likely also references resources), duplicating logic instead of extending the shared point once."
+    },
+    {
+      "topic": "Live-lookup (non-stored) response fields employeeName/employeeDesignation (missing capability #2 flagged by codebase-explorer)",
+      "decision": "APPROVED direction: generalize into the shared master-data machine as a new field-descriptor kind, e.g. `lookup: { table: 'resources', on: 'employee_id', column: 'name'|'designation' }`, resolved via a join in the GET list/GET one queries (or a follow-up batched lookup query) and reflected by toResponse()/validateBody() treating a `lookup` field as read-only/non-persisted (never included in INSERT/UPDATE column lists, never accepted from request body even if the caller sends it). Do not persist employeeName/employeeDesignation as columns on resource_cost under any circumstance — that is the one hard rule from the business requirement (avoids drift from the Resources table).",
+      "rationale": "database.md's naming/column conventions assume real stored columns; a computed/joined field is a genuine first-of-its-kind case in this codebase (as the codebase-explorer correctly flagged) and deserves a first-class, reusable descriptor rather than a resource-cost-only SQL join hardcoded into masterDataRouter.js's generic GET handlers. Keeping it inside the shared factory (parameterized by the descriptor) preserves the 'one factory drives every table' architecture instead of introducing a second, parallel GET-handler code path only for this table.",
+      "risk_if_ignored": "A one-off join hardcoded into the generic GET list/GET one handlers, gated by `table.tableName === 'resource_cost'` or similar, would be exactly the kind of inappropriate coupling this review stage exists to catch — the generic factory would silently grow table-specific branches instead of a declarative extension point."
+    },
+    {
+      "topic": "offshoreCost / onsiteCost independence",
+      "decision": "APPROVED as specified. Both are ordinary optional `type: 'number'` fields per the existing field-descriptor shape (matches e.g. resources.sapExperience) — no new capability needed, and no cross-field enforcement (e.g. 'exactly one must be set') is to be added at this layer, per the explicit requirement that both stay independently optional regardless of the resource's own locationType.",
+      "rationale": "Reuses the existing 'number' type path in masterDataSchema.js's validateBody as-is. Adding cross-field business-rule enforcement here would be scope creep beyond what was asked."
+    },
+    {
+      "topic": "Frontend labeling convention",
+      "decision": "APPROVED as specified. src/lib/masterDataApi.js's resource-cost columns[] entries get the same 'Employee <Field>' labeling convention just applied to Resources in FEAT-6 (commit 5b1f29b) — 'Employee ID', 'Employee Name', 'Employee Designation', 'Offshore Cost', 'Onsite Cost'. This is presentation-only; no new frontend capability is needed since the dashboard is already read-only and the lookup fields arrive from the backend as ordinary response JSON keys (employeeName/employeeDesignation) indistinguishable from stored fields at the API contract level.",
+      "rationale": "frontend.md + established sibling-feature precedent; no architectural risk."
+    },
+    {
+      "topic": "Migration approach",
+      "decision": "APPROVED as specified by the task: a new numbered migration (0013) adding real columns to the resource_cost placeholder table, following the 0012 pattern exactly (ADD COLUMN with temporary defaults dropped immediately for the new required employee_id column, existing RLS/trigger/soft-delete conventions untouched). No new table is introduced — do not create a separate 'resource_cost_employee_link' table or similar; a foreign-key-shaped column on resource_cost pointing at resources.employee_id is sufficient and matches the existing resources.employee_id unique-constraint precedent from 0012.",
+      "rationale": "database.md Migrations section; CLAUDE.md §1 Minimal Impact — no new table/entity is justified by the requirement as stated."
+    }
+  ],
+  "blocking_findings": [],
+  "flags_for_tech_lead_and_system_engineer": [
+    "The two new field-descriptor kinds (validateExists, lookup) are genuinely new surface area on the shared master-data machine, not just this feature's schema — Tech Lead (2.5) and System Engineer (3.3) should design their exact shape once, generally enough that resource_deployment (which will very plausibly also need an employeeId FK + live lookup, per its own name-only-placeholder sibling status) doesn't need a third variant later.",
+    "Confirm whether the FK-existence check (validateExists) should run as a single extra bound-parameter query before insert/update (simplest, matches 'service layer' wording literally) versus relying on a DB-level foreign key constraint on resource_cost.employee_id referencing resources.employee_id and mapping its violation to a clean 422 error. Either is architecturally acceptable; recommend the DB-level FK constraint (belt) plus the service-layer pre-check (suspenders, for a clean error message) rather than either alone, since resources.employee_id is already uniquely constrained (0012) and can be a valid FK target.",
+    "mcp-server/src/masterDataTables.js is a deliberate, by-design mirror of backend/src/masterDataTables.js (no workspace link, per codebase-explorer). Both files' resource-cost field descriptors must be updated together with the new validateExists/lookup metadata kept in sync, or the MCP tools and REST API will silently diverge on what they accept/return.",
+    "Reconcile tasks/pipeline-queue.md before continuing: it already shows FEAT-5 as in_flight under an existing run ID (wf_f8c55755-42a) from a prior commit. This architecture-review stage does not treat that as a from-scratch run and defers reconciliation to the orchestrator, per both the codebase-explorer's and business-analyst's prior notes — not re-litigated here since it's a process/workflow-state concern, not an architecture concern."
+  ],
+  "summary": "Reviewed the Business Analyst's FEAT-5 brief and the codebase-explorer's mapping of the master-data subsystem against this project's standing conventions (CLAUDE.md, database.md, api.md, frontend.md). The core requirement does not fit the existing generic master-data pattern unmodified, as both prior stages correctly identified — it needs two genuinely new capabilities: (1) FK-existence validation for employeeId against resources.employee_id, and (2) non-persisted, join-resolved response fields (employeeName/employeeDesignation) that must never drift from the Resources table. Both are approved to be added as new, reusable field-descriptor kinds on the shared master-data machine (backend/src/masterDataTables.js + mirrored mcp-server/src/masterDataTables.js), generalized so future tables (notably resource_deployment, a sibling name-only placeholder that will plausibly need the same pattern) can reuse them, rather than as bespoke resource-cost-only code paths in masterDataRouter.js/masterDataSchema.js — the latter would be exactly the kind of inappropriate coupling and pattern-duplication this review stage exists to reject. offshoreCost/onsiteCost need no new capability (ordinary independent optional number fields, no cross-field enforcement added). Frontend labeling and the 0013 migration approach are approved as specified, following the 0012 precedent exactly. No blocking findings; verdict PASS. This is a read-only architecture review — no application code, schema, or migration was created or edited in this stage; those belong to the Solution Architect (3), System Engineer (3.3), and Developer (4) stages that follow.",
+  "files_created": [
+    "tasks/agent-outputs/enterprise-architect-pre/FEAT-5.json"
+  ],
+  "files_edited": []
+}
