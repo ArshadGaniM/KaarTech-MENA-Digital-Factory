@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -16,7 +17,10 @@ function errorResult(err) {
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
-function fieldSchema(field) {
+// Exported for tests — the type -> zod mapping is pure data logic
+// (no network, no MCP transport) so it's tested directly rather than
+// only indirectly through a live tool call.
+export function fieldSchema(field) {
   let base;
   if (field.type === "enum") base = z.enum(field.values);
   else if (field.type === "number") base = z.number().finite();
@@ -89,5 +93,11 @@ for (const table of MASTER_DATA_TABLES) {
   );
 }
 
-await server.connect(new StdioServerTransport());
-console.error("[kaartech-mena-digital-factory-mcp] stdio server ready");
+// Guarded so importing this module (e.g. from a test, to reach the pure
+// fieldSchema()/MASTER_DATA_TABLES logic above) never starts a live stdio
+// server as a side effect — only running it directly (`node src/index.js`,
+// the "start" script) does.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await server.connect(new StdioServerTransport());
+  console.error("[kaartech-mena-digital-factory-mcp] stdio server ready");
+}

@@ -28,3 +28,19 @@ export function duplicateFieldError(err, fields) {
   const key = field?.key ?? "value";
   return validationError({ [key]: `${key} must be unique — this value is already in use.` });
 }
+
+// Postgres foreign_key_violation (23503) surfaces as a raw 500 by default.
+// validateReferences() already checks FK existence before every write, so
+// this only fires on the narrow race where the referenced row is deleted
+// between that check and the INSERT/UPDATE — still a real, reachable path
+// once any table's DELETE stops being a soft delete, so it needs the same
+// 422 treatment as a unique-violation rather than leaking a raw 500.
+export function isForeignKeyViolation(err) {
+  return err?.code === "23503";
+}
+
+export function referenceNotFoundError(err, fields) {
+  const field = fields.find((f) => f.references && err.constraint?.includes(f.references.table));
+  const key = field?.key ?? "value";
+  return validationError({ [key]: `${key} does not reference an existing row.` });
+}

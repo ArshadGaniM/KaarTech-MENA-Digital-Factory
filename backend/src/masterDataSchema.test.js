@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
+import {
+  toResponse,
+  validateBody,
+  validateActor,
+  validateReferences,
+  lookupJoinSql,
+  lookupSelectSql,
+} from "./masterDataSchema.js";
 import { isUniqueViolation, duplicateFieldError } from "./errors.js";
+import { pool } from "./db.js";
 
 const SIMPLE_TABLE = {
   fields: [{ key: "name", column: "name", required: true, type: "string" }],
@@ -19,6 +27,37 @@ const RESOURCE_LIKE_TABLE = {
     { key: "employeeId", column: "employee_id", required: true, type: "number" },
     { key: "sapExperience", column: "sap_experience", required: false, type: "number" },
     { key: "skill", column: "skill", required: false, type: "string", maxLength: 20000 },
+  ],
+};
+
+// Mirrors resource_cost's real descriptor in masterDataTables.js (FEAT-5):
+// employeeId is a validated FK reference (unlike modules.practiceId), and
+// employeeName/employeeDesignation are live-lookup fields, never stored
+// columns — see lookupJoinSql/lookupSelectSql/toResponse below.
+const RESOURCE_COST_TABLE = {
+  tableName: "resource_cost",
+  sortColumn: "employee_id",
+  lookups: [
+    {
+      table: "resources",
+      localColumn: "employee_id",
+      foreignColumn: "employee_id",
+      projections: [
+        { key: "employeeName", column: "name" },
+        { key: "employeeDesignation", column: "designation" },
+      ],
+    },
+  ],
+  fields: [
+    {
+      key: "employeeId",
+      column: "employee_id",
+      required: true,
+      type: "number",
+      references: { table: "resources", column: "employee_id" },
+    },
+    { key: "offshoreCost", column: "offshore_cost", required: false, type: "number" },
+    { key: "onsiteCost", column: "onsite_cost", required: false, type: "number" },
   ],
 };
 
@@ -264,4 +303,169 @@ test("isUniqueViolation matches Postgres error code 23505 only", () => {
   assert.equal(isUniqueViolation({ code: "23505" }), true);
   assert.equal(isUniqueViolation({ code: "23502" }), false);
   assert.equal(isUniqueViolation({}), false);
+});
+
+// --- lookupJoinSql / lookupSelectSql (FEAT-5: resource_cost's live lookup) ---
+
+test("lookupJoinSql returns an empty string for a table with no lookups descriptor", () => {
+  assert.equal(lookupJoinSql(SIMPLE_TABLE), "");
+});
+
+test("lookupSelectSql returns an empty array for a table with no lookups descriptor", () => {
+  assert.deepEqual(lookupSelectSql(SIMPLE_TABLE), []);
+});
+
+test("lookupJoinSql builds a soft-delete-safe LEFT JOIN keyed on the table's localColumn/foreignColumn", () => {
+  const sql = lookupJoinSql(RESOURCE_COST_TABLE);
+  assert.equal(
+    sql,
+    "left join resources lookup_0 on lookup_0.employee_id = resource_cost.employee_id and lookup_0.deleted_at is null"
+  );
+});
+
+test("lookupSelectSql projects each lookup column under its aliased column name", () => {
+  assert.deepEqual(lookupSelectSql(RESOURCE_COST_TABLE), [
+    "lookup_0.name as lookup_0_name",
+    "lookup_0.designation as lookup_0_designation",
+  ]);
+});
+
+// --- toResponse's lookup-projection branch (FEAT-5) ---
+
+test("toResponse resolves lookup projections into camelCase fields when the row was joined", () => {
+  const row = {
+    id: "1",
+    employee_id: 42,
+    offshore_cost: null,
+    onsite_cost: 1500,
+    lookup_0_name: "Jane Doe",
+    lookup_0_designation: "Senior Consultant",
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-01T00:00:00Z",
+    deleted_at: null,
+  };
+  const response = toResponse(RESOURCE_COST_TABLE, row);
+  assert.equal(response.employeeName, "Jane Doe");
+  assert.equal(response.employeeDesignation, "Senior Consultant");
+  assert.equal(response.offshoreCost, null);
+  assert.equal(response.onsiteCost, 1500);
+});
+
+test("toResponse nulls lookup fields when the row carries no join columns at all (a POST/PATCH's bare `returning *`)", () => {
+  const row = {
+    id: "1",
+    employee_id: 42,
+    offshore_cost: null,
+    onsite_cost: null,
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-01T00:00:00Z",
+    deleted_at: null,
+  };
+  const response = toResponse(RESOURCE_COST_TABLE, row);
+  assert.equal(response.employeeName, null);
+  assert.equal(response.employeeDesignation, null);
+});
+
+test("toResponse nulls a lookup field when the join matched nothing (soft-deleted or missing resource)", () => {
+  const row = {
+    id: "1",
+    employee_id: 999,
+    offshore_cost: null,
+    onsite_cost: null,
+    lookup_0_name: null,
+    lookup_0_designation: null,
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-01T00:00:00Z",
+    deleted_at: null,
+  };
+  const response = toResponse(RESOURCE_COST_TABLE, row);
+  assert.equal(response.employeeName, null);
+  assert.equal(response.employeeDesignation, null);
+});
+
+// --- validateReferences (FEAT-5: employeeId must exist in Resources, unlike modules.practiceId) ---
+
+test("validateReferences does not query the database at all for a table with no `references` fields", async (t) => {
+  const spy = t.mock.method(pool, "query", async () => ({ rows: [] }));
+  await assert.doesNotReject(() => validateReferences(SIMPLE_TABLE, { name: "SAP" }));
+  assert.equal(spy.mock.callCount(), 0);
+});
+
+test("validateReferences does not throw when the referenced row exists", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [{ "?column?": 1 }] }));
+  await assert.doesNotReject(() =>
+    validateReferences(RESOURCE_COST_TABLE, { employeeId: 42 })
+  );
+});
+
+test("validateReferences throws a 422 validation_error naming the field when no matching row exists", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [] }));
+  await assert.rejects(
+    () => validateReferences(RESOURCE_COST_TABLE, { employeeId: 999999 }),
+    (err) => {
+      assert.equal(err.status, 422);
+      assert.equal(err.code, "validation_error");
+      assert.ok(err.details.employeeId);
+      assert.match(err.details.employeeId, /999999/);
+      return true;
+    }
+  );
+});
+
+test("validateReferences queries with deleted_at is null, so a soft-deleted target row never counts as existing", async (t) => {
+  let capturedSql;
+  let capturedParams;
+  t.mock.method(pool, "query", async (sql, params) => {
+    capturedSql = sql;
+    capturedParams = params;
+    return { rows: [] };
+  });
+  await assert.rejects(() => validateReferences(RESOURCE_COST_TABLE, { employeeId: 42 }));
+  assert.match(capturedSql, /from resources where employee_id = \$1 and deleted_at is null/);
+  assert.deepEqual(capturedParams, [42]);
+});
+
+test("validateReferences skips a reference field the caller omitted (optional, not-required-on-create semantics)", async (t) => {
+  const OPTIONAL_REF_TABLE = {
+    fields: [
+      { key: "linkedId", column: "linked_id", required: false, type: "number", references: { table: "widgets", column: "id" } },
+    ],
+  };
+  const spy = t.mock.method(pool, "query", async () => ({ rows: [] }));
+  await assert.doesNotReject(() => validateReferences(OPTIONAL_REF_TABLE, {}));
+  assert.equal(spy.mock.callCount(), 0);
+});
+
+test("validateReferences skips an explicit null on a non-required reference field (clearing it)", async (t) => {
+  const OPTIONAL_REF_TABLE = {
+    fields: [
+      { key: "linkedId", column: "linked_id", required: false, type: "number", references: { table: "widgets", column: "id" } },
+    ],
+  };
+  const spy = t.mock.method(pool, "query", async () => ({ rows: [] }));
+  await assert.doesNotReject(() =>
+    validateReferences(OPTIONAL_REF_TABLE, { linkedId: null }, { partial: true })
+  );
+  assert.equal(spy.mock.callCount(), 0);
+});
+
+test("validateReferences only validates a required reference field on update when the caller actually sent it", async (t) => {
+  const spy = t.mock.method(pool, "query", async () => ({ rows: [{}] }));
+  await assert.doesNotReject(() =>
+    validateReferences(RESOURCE_COST_TABLE, { offshoreCost: 500 }, { partial: true })
+  );
+  assert.equal(spy.mock.callCount(), 0);
+});
+
+test("validateReferences re-validates a required reference field on update when the caller sends a new value", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [] }));
+  await assert.rejects(() =>
+    validateReferences(RESOURCE_COST_TABLE, { employeeId: 999999 }, { partial: true })
+  );
 });

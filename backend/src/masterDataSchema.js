@@ -1,12 +1,55 @@
+import { pool } from "./db.js";
 import { validationError } from "./errors.js";
 
 const MAX_TEXT_LENGTH = 255;
+
+// Builds the LEFT JOIN plan for a table's live-lookup fields (e.g.
+// resource_cost.employeeName/employeeDesignation from resources.name/
+// designation) — shared between the router's SELECT queries and
+// toResponse's field mapping so their column aliasing never drifts apart.
+// table.lookups comes only from the fixed masterDataTables.js descriptor,
+// never from request input, so interpolating it into SQL is safe (same
+// reasoning as tableName/column elsewhere in this codebase).
+function buildLookupPlan(table) {
+  return (table.lookups ?? []).map((lookup, index) => ({ ...lookup, alias: `lookup_${index}` }));
+}
+
+export function lookupJoinSql(table) {
+  return buildLookupPlan(table)
+    .map(
+      (lookup) =>
+        `left join ${lookup.table} ${lookup.alias} ` +
+        `on ${lookup.alias}.${lookup.foreignColumn} = ${table.tableName}.${lookup.localColumn} ` +
+        `and ${lookup.alias}.deleted_at is null`
+    )
+    .join(" ");
+}
+
+export function lookupSelectSql(table) {
+  const columns = [];
+  for (const lookup of buildLookupPlan(table)) {
+    for (const projection of lookup.projections) {
+      columns.push(`${lookup.alias}.${projection.column} as ${lookup.alias}_${projection.column}`);
+    }
+  }
+  return columns;
+}
 
 export function toResponse(table, row) {
   const response = { id: row.id };
   if (table.hasCode) response.code = row.code;
   for (const field of table.fields) {
     response[field.key] = row[field.column];
+  }
+  // A lookup column is only present on rows the router's own SELECT
+  // joined it into — a POST/PATCH's `returning *` never carries it, since
+  // it selects only the base table. `?? null` treats that the same as a
+  // join that matched nothing (soft-deleted or missing resource), rather
+  // than leaking `undefined` into the JSON response either way.
+  for (const lookup of buildLookupPlan(table)) {
+    for (const projection of lookup.projections) {
+      response[projection.key] = row[`${lookup.alias}_${projection.column}`] ?? null;
+    }
   }
   response.createdBy = row.created_by;
   response.createdAt = row.created_at;
@@ -19,6 +62,19 @@ export function toResponse(table, row) {
   return response;
 }
 
+// Presence/must-validate semantics shared by validateBody and
+// validateReferences: a required field is checked even when absent on
+// create (so the "missing" case itself gets flagged); on update, and for
+// any non-required field, it's only checked when the caller actually sent
+// it. Object.hasOwn (not `!== undefined`) is the presence test throughout
+// this codebase — see masterDataRouter.js's PATCH handler, which relies on
+// the same distinction to tell "key absent" (keep current value) apart
+// from "key present, set to null" (clear it).
+function fieldPresenceToValidate(field, safeBody, partial) {
+  const present = Object.hasOwn(safeBody, field.key);
+  return { present, mustValidate: field.required ? !partial || present : present };
+}
+
 export function validateBody(table, body, { partial = false } = {}) {
   // express.json() leaves req.body undefined for a request sent without a
   // JSON content-type — treat that the same as an empty object rather than
@@ -27,11 +83,7 @@ export function validateBody(table, body, { partial = false } = {}) {
   const details = {};
 
   for (const field of table.fields) {
-    const present = safeBody[field.key] !== undefined;
-    // Required fields must be validated on create even if omitted (so the
-    // "missing" case itself gets flagged); on update, and for non-required
-    // fields, only validate when the caller actually sent a value.
-    const mustValidate = field.required ? !partial || present : present;
+    const { mustValidate } = fieldPresenceToValidate(field, safeBody, partial);
     if (!mustValidate) continue;
 
     const value = safeBody[field.key];
@@ -55,6 +107,51 @@ export function validateBody(table, body, { partial = false } = {}) {
       details[field.key] = `${field.key} must be ${maxLength} characters or fewer.`;
     } else if (field.type === "enum" && !field.values.includes(value)) {
       details[field.key] = `${field.key} must be one of: ${field.values.join(", ")}.`;
+    }
+  }
+
+  if (Object.keys(details).length > 0) {
+    throw validationError(details);
+  }
+}
+
+// Enforces any field-level `references` descriptor (e.g. resource_cost's
+// employeeId must exist in resources) — unlike modules.practiceId, which
+// is deliberately left unvalidated. Must run after validateBody so a
+// non-number/absent-when-required value has already been rejected with a
+// clear message rather than surfacing as a confusing "no matching row".
+export async function validateReferences(table, body, { partial = false } = {}) {
+  const safeBody = body && typeof body === "object" ? body : {};
+
+  const fieldsToCheck = table.fields.filter((field) => {
+    if (!field.references) return false;
+    const { mustValidate } = fieldPresenceToValidate(field, safeBody, partial);
+    // null only reaches a check for a non-required field being explicitly
+    // cleared — validateBody already rejects null on a required field.
+    return mustValidate && safeBody[field.key] !== null;
+  });
+
+  // Run every FK-existence check concurrently rather than one round trip
+  // per field in sequence — resource_cost only has one `references` field
+  // today, but a table with two (e.g. a future Project Assignments row
+  // validating both a project and a team) shouldn't pay for them one at a
+  // time.
+  const results = await Promise.all(
+    fieldsToCheck.map(async (field) => {
+      const value = safeBody[field.key];
+      const { table: refTable, column: refColumn } = field.references;
+      const result = await pool.query(
+        `select 1 from ${refTable} where ${refColumn} = $1 and deleted_at is null limit 1`,
+        [value]
+      );
+      return { field, value, found: result.rows.length > 0 };
+    })
+  );
+
+  const details = {};
+  for (const { field, value, found } of results) {
+    if (!found) {
+      details[field.key] = `${field.key} must reference an existing ${field.references.table} row (no match for '${value}').`;
     }
   }
 

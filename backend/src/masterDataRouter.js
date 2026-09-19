@@ -1,7 +1,20 @@
 import { Router } from "express";
 import { pool } from "./db.js";
-import { notFound, isUniqueViolation, duplicateFieldError } from "./errors.js";
-import { toResponse, validateBody, validateActor } from "./masterDataSchema.js";
+import {
+  notFound,
+  isUniqueViolation,
+  duplicateFieldError,
+  isForeignKeyViolation,
+  referenceNotFoundError,
+} from "./errors.js";
+import {
+  toResponse,
+  validateBody,
+  validateActor,
+  validateReferences,
+  lookupJoinSql,
+  lookupSelectSql,
+} from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
 // No user/auth system exists yet — createdBy/updatedBy is caller-supplied
@@ -27,9 +40,33 @@ const DEFAULT_ACTOR = "Arshad Gani";
 // interpolating them into the SQL below is safe — Postgres has no
 // bind-parameter syntax for identifiers, and all actual values still go
 // through numbered bound parameters.
+
+// validateReferences() already rejects a bad FK before every INSERT/UPDATE
+// runs, so this only matters for the narrow race where the referenced row
+// is removed between that check and the write — still needs the same 422
+// treatment as a unique-violation rather than a leaked 500.
+function mapWriteError(err, fields) {
+  if (isUniqueViolation(err)) return duplicateFieldError(err, fields);
+  if (isForeignKeyViolation(err)) return referenceNotFoundError(err, fields);
+  return err;
+}
+
 export function createMasterDataRouter(table) {
   const { tableName, resourceName, fields } = table;
   const router = Router();
+
+  // Per-table override for the sort column the placeholder `name` field
+  // used to provide unconditionally — resource_cost (migration 0013)
+  // dropped `name`, so it sets sortColumn: "employee_id" instead. Every
+  // other table is unaffected: `table.sortColumn` is undefined for them,
+  // so this falls back to the original "name" behaviour exactly.
+  const sortColumn = table.sortColumn ?? "name";
+  const joinSql = lookupJoinSql(table);
+  const lookupColumns = lookupSelectSql(table);
+  // `${tableName}.*` (not bare `*`) so a joined lookup table's same-named
+  // columns (e.g. resources.name) can't collide with resource_cost's own
+  // — same reasoning for qualifying deleted_at/sortColumn in ORDER BY.
+  const selectList = [`${tableName}.*`, ...lookupColumns].join(", ");
 
   router.get("/", async (req, res, next) => {
     try {
@@ -41,7 +78,9 @@ export function createMasterDataRouter(table) {
         // (which are never removed and only accumulate) can't crowd active
         // rows out of the page once the table holds more than `limit` rows.
         pool.query(
-          `select * from ${tableName} order by (deleted_at is not null), name asc limit $1 offset $2`,
+          `select ${selectList} from ${tableName} ${joinSql}
+           order by (${tableName}.deleted_at is not null), ${tableName}.${sortColumn} asc
+           limit $1 offset $2`,
           [limit, offset]
         ),
         pool.query(`select count(*)::int as total from ${tableName}`),
@@ -55,7 +94,10 @@ export function createMasterDataRouter(table) {
 
   router.get("/:id", async (req, res, next) => {
     try {
-      const result = await pool.query(`select * from ${tableName} where id = $1`, [req.params.id]);
+      const result = await pool.query(
+        `select ${selectList} from ${tableName} ${joinSql} where ${tableName}.id = $1`,
+        [req.params.id]
+      );
       if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
@@ -66,6 +108,7 @@ export function createMasterDataRouter(table) {
   router.post("/", requireInternalApiKey, async (req, res, next) => {
     try {
       validateBody(table, req.body);
+      await validateReferences(table, req.body);
       const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
       validateActor(actor);
 
@@ -79,13 +122,14 @@ export function createMasterDataRouter(table) {
       );
       res.status(201).json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
+      next(mapWriteError(err, fields));
     }
   });
 
   router.patch("/:id", requireInternalApiKey, async (req, res, next) => {
     try {
       validateBody(table, req.body, { partial: true });
+      await validateReferences(table, req.body, { partial: true });
       const existing = await pool.query(
         `select * from ${tableName} where id = $1 and deleted_at is null`,
         [req.params.id]
@@ -116,7 +160,7 @@ export function createMasterDataRouter(table) {
       if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(isUniqueViolation(err) ? duplicateFieldError(err, fields) : err);
+      next(mapWriteError(err, fields));
     }
   });
 

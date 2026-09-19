@@ -1,0 +1,50 @@
+{
+  "feature": "FEAT-5",
+  "stage": "architecture-critic",
+  "pipeline_stage_number": "3.1",
+  "round": 2,
+  "verdict": "PASS",
+  "summary": "Adversarial review of round-2 SDD (tasks/agent-outputs/solution-architect/FEAT-5.json). Cross-checked every load-bearing claim directly against the live repo (backend/src/masterDataRouter.js, masterDataSchema.js, masterDataTables.js, errors.js, migrations 0011/0012) rather than trusting the SDD's prose, and against the live database via mcp__Supabase__execute_sql. Both of round-1's required fixes are correctly and completely resolved in this round: (1) the hardcoded `order by (deleted_at is not null), name asc` in masterDataRouter.js's GET / handler is confirmed to exist exactly as described, and the new opt-in `table.sortColumn ?? 'name'` design is additive-only (no change to the other 8 tables) and correctly makes dropping resource_cost.name safe. (2) The LEFT JOIN predicate now explicitly includes `and j.deleted_at is null`, which does fix the gap round 1 had (a soft-deleted resources row would otherwise still match and leak stale name/designation). No Critical or blocking findings. Two non-blocking Advisory findings raised below for System Engineer/Developer to fold in during implementation — neither invalidates the design or requires another architecture round.",
+
+  "open_items_from_round_1_verified": {
+    "sortColumn_fix": "CONFIRMED — Read backend/src/masterDataRouter.js line 44 directly: `order by (deleted_at is not null), name asc` is real, hardcoded, and shared by all 9 tables today. The proposed `${table.sortColumn ?? 'name'}` fallback is verified safe for the other 8 tables (none of them will set sortColumn, so their generated SQL is byte-for-byte unchanged) and resolves resource_cost's specific problem once migration 0013 drops its `name` column.",
+    "left_join_deleted_at_fix": "CONFIRMED — the round-2 join predicate (`on j.employee_id = t.employee_id and j.deleted_at is null`) is now internally consistent with the SDD's own stated soft-delete-null behavior. No remaining gap.",
+    "employeeId_validation_shape": "CONFIRMED — Read backend/src/errors.js and masterDataSchema.js directly: validationError() already produces the exact `{ error: { code: 'validation_error', message, details } }` 422 shape the SDD proposes reusing, and notFound() is correctly reserved for URL-path id lookups (`${resource}_not_found`), so keeping employeeId's bad-reference case under the generic validation_error/details.employeeId shape (not a bespoke code) is the right, minimal-impact call and matches api.md's 404-vs-422 distinction."
+  },
+
+  "no_inappropriate_coupling_or_duplication": "Confirmed by direct read of masterDataRouter.js/masterDataSchema.js: no existing FK-existence-check or join/lookup capability exists anywhere in the generic factory today, so validateExists/lookups/sortColumn are genuinely new, opt-in capabilities gated behind `if (field.validateExists)` / `if (table.lookups)` / `table.sortColumn ?? 'name'` — not a rebuild of something that already exists, and not a bespoke resource_cost-only fork. This is the right level of abstraction for a pattern tech-lead has already flagged as needed again by FEAT-7 (resource_deployment).",
+
+  "advisory_findings_non_blocking": [
+    {
+      "severity": "Advisory (non-blocking)",
+      "area": "database.md convention deviation — FK constraint naming",
+      "finding": "database.md's naming table is explicit: `Foreign key | fk_<table>_<ref_table> | fk_messages_sessions`. The SDD's migration_design_for_system_engineer specifies `alter table public.resource_cost add constraint resource_cost_employee_id_fkey foreign key (employee_id) references public.resources (employee_id)` — Postgres's own default-style name, not the project's documented `fk_<table>_<ref_table>` convention. It should be `fk_resource_cost_resources`.",
+      "recommendation": "System Engineer/Developer should rename the constraint to `fk_resource_cost_resources` when authoring migration 0013. Non-blocking because it's a pure naming fix with zero functional impact, but it is a direct, avoidable deviation from a rule this very review is scoped to catch (CLAUDE.md §7.4 stage description: 'deviations from .claude/rules/*.md')."
+    },
+    {
+      "severity": "Advisory (non-blocking)",
+      "area": "migration design — dead/unsafe sentinel-default branch",
+      "finding": "The SDD's required_statements offers two alternative forms for adding employee_id: (a) `add column employee_id integer not null default -1` + a later `drop default` step, for the case where resource_cost 'may already hold placeholder rows', or (b) `add column employee_id integer not null` with no default, if the table is confirmed empty. The document does not notice that these two branches are NOT independently safe: the very next required_statement unconditionally adds `foreign key (employee_id) references public.resources (employee_id)` in the same migration. If branch (a) is ever taken because real placeholder rows exist, the sentinel value -1 will never satisfy the FK constraint (no resources row has employee_id = -1), so the ADD CONSTRAINT statement would fail at apply time — the SDD's own 'System Engineer confirms row count before finalizing' guidance resolves which branch to pick, but the sentinel branch as written is not actually a viable option once the FK constraint is added, so presenting it as a live alternative is misleading. I verified directly via mcp__Supabase__execute_sql against the live project (xrofsteoywvpjkapumsg) that public.resource_cost currently has 0 rows (0 total, 0 soft-deleted), so in practice only branch (b) applies and the migration as planned is safe to apply as-is.",
+      "recommendation": "Drop the sentinel-default branch from the migration document entirely rather than carrying it into migration 0013 — write `alter table public.resource_cost add column employee_id integer not null` unconditionally (confirmed empty table, verified live), with no default/drop-default step. If a future table in this same family is NOT empty when this pattern is reused (e.g. resource_deployment for FEAT-7), the correct fix is a two-phase migration (nullable column + backfill + NOT NULL in a second migration) per database.md's own destructive/risky-change convention — not a sentinel value that can never resolve a same-migration FK constraint."
+    },
+    {
+      "severity": "Advisory (non-blocking, implementation clarity only)",
+      "area": "lookup toResponse column-alias derivation",
+      "finding": "field_descriptor_extensions.lookup.toResponse_change describes reading the joined value via `row[snake_case_alias_of(sourceCol)]` (sourceCol = e.g. 'name'/'designation'), but the SQL example just above it aliases the joined columns as `j.name as employee_name` — i.e., the alias is actually snake_case of the *responseKey* (`employeeName` -> `employee_name`), not of `sourceCol` ('name' -> would just be 'name', colliding with resource_cost's own future/other columns and ambiguous against any other lookup selecting the same source column under a different responseKey). This is a copy-edit-level inconsistency in the SDD's own prose, not a design flaw — the SQL example is correct, the toResponse description's variable name is just mislabeled.",
+      "recommendation": "System Engineer should alias joined columns by snake_case of the responseKey (not the source column) when implementing the lookups SELECT, exactly as the SDD's own worked example already shows, to avoid a same-table or cross-source-column alias collision."
+    }
+  ],
+
+  "constraints_re_verified_against_live_repo": [
+    "database.md — FK existence validated at service layer + real DB constraint as defense-in-depth: confirmed additive, no existing precedent broken; naming convention deviation flagged above (advisory).",
+    "api.md — 422/validation_error shape confirmed to already exist verbatim in errors.js; no new routes; no change to response envelope shapes.",
+    "frontend.md — masterDataApi.js columns[] change only, presentation-layer file, no component/hook logic touched, consistent with the file's existing role.",
+    "CLAUDE.md Core Principles (Simplicity First / Minimal Impact) — the three new descriptor kinds are gated behind conditionals so the other 8 tables' generated SQL is provably byte-for-byte unchanged; verified this directly by reading the current unconditional SQL in masterDataRouter.js rather than accepting the SDD's claim at face value."
+  ],
+
+  "files_created_or_edited": [
+    "tasks/agent-outputs/architecture-critic/FEAT-5.json"
+  ],
+
+  "notes": "Per this stage's role (adversarial SDD review only — no code), no application/migration files were created or edited. The migration file (backend/migrations/0013_*.sql) does not yet exist on disk and was not written by this stage; it remains stage 3.3/3.5's responsibility per the SDD's own scope_note. Live database was queried read-only (SELECT count(*)) to verify the empty-table assumption underlying advisory finding #2 — no schema or data was modified."
+}

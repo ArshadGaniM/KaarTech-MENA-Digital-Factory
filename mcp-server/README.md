@@ -73,8 +73,9 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency`, `resource_cost`, `team`, `resource_deployment` | `name` | `name` |
+| `competency`, `team`, `resource_deployment` | `name` | `name` |
 | `practice`, `department` | `name` | `name` |
+| `resource_cost` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
 | `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
 | `resource` | `employeeId`, `name`, `employmentStatus`, `employmentType`, `subDivision`, `position`, `locationType` (`Onsite` \| `Offshore`), `designation`, `geBatch`, `kaarExperience`, `totalExperience` | all of the above, plus `orgChart`, `region`, `onsiteLocation`, `offshoreLocation`, `skill`, `sapExperience` |
@@ -98,6 +99,16 @@ naming the field, not an auto-generated code collision. `resource`'s
 `skill` field accepts up to 20000 characters (other string fields cap at
 255) and numeric fields (`kaarExperience`, `sapExperience`,
 `totalExperience`) take a JS number, not a string.
+
+**`resource_cost`'s `employeeId`** is validated, unlike `module`'s
+`practiceId`: `add_resource_cost`/`update_resource_cost` reject an
+`employeeId` that doesn't match an existing (non-deleted) `resource`, with
+a 422 naming the field. `resource_cost` also exposes `employeeName` and
+`employeeDesignation` in every read, but these are **not** tool
+parameters on either `add_resource_cost` or `update_resource_cost` — they
+are resolved live from the referenced resource by the backend on every
+read, so they always reflect that resource's current name/designation
+rather than a value this server could set or go stale.
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
 `delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`, not
