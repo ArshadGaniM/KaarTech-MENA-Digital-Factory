@@ -1,17 +1,21 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import http from "node:http";
-import express from "express";
 import { pool } from "./db.js";
-import { createMasterDataRouter } from "./masterDataRouter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
+import {
+  startTestServer,
+  stopTestServer,
+  registerAuthGateTests,
+  registerDeleteTests,
+} from "./masterDataRouter.testHelpers.js";
 
 // Integration tests for FEAT-8 (Teams real schema): exercises the actual
 // teams table descriptor (from masterDataTables.js, not a re-typed copy)
-// through the real Express request/response cycle, mirroring
-// masterDataRouter.resourceCost.test.js's structure and its documented
-// pool.query-mocked-per-SQL-shape approach (see that file's header comment
-// for why: no live test Postgres is reachable from this pipeline sandbox).
+// through the real Express request/response cycle. Server bootstrap, the
+// 401-without-a-key tests, and the DELETE tests are shared via
+// masterDataRouter.testHelpers.js (extracted from this file and
+// masterDataRouter.resourceCost.test.js once the duplication between them
+// became real — see that helper file's header comment).
 //
 // Unlike resource_cost, teams keeps its `name` column (never dropped), so
 // sortColumn falls back to the router's default "name" — there is no
@@ -24,25 +28,11 @@ let server;
 let baseUrl;
 
 before(async () => {
-  process.env.INTERNAL_API_KEY = "test-secret";
-  const app = express();
-  app.use(express.json());
-  app.use(`/v1/${teamsTable.route}`, createMasterDataRouter(teamsTable));
-  // Mirrors index.js's error middleware exactly (never expose stack traces
-  // per api.md; 4xx errors pass their real code/message/details through).
-  app.use((err, req, res, _next) => {
-    const status = err.status || 500;
-    const code = err.code || "internal_error";
-    const message = status === 500 ? "An unexpected error occurred." : err.message;
-    res.status(status).json({ error: { code, message, details: err.details || {} } });
-  });
-  server = http.createServer(app);
-  await new Promise((resolve) => server.listen(0, resolve));
-  baseUrl = `http://127.0.0.1:${server.address().port}`;
+  ({ server, baseUrl } = await startTestServer(teamsTable));
 });
 
 after(async () => {
-  await new Promise((resolve) => server.close(resolve));
+  await stopTestServer(server);
 });
 
 function baseRow(overrides = {}) {
@@ -257,79 +247,18 @@ test("POST /v1/teams maps a foreign_key_violation (23503) from the INSERT itself
   assert.ok(body.error.details.departmentCode);
 });
 
-test("POST /v1/teams without the internal API key is rejected with 401 before any query runs", async (t) => {
-  let queryCalled = false;
-  t.mock.method(pool, "query", async () => {
-    queryCalled = true;
-    return { rows: [] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/teams`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: "Platform Team", departmentCode: "DEPT-001" }),
-  });
-
-  assert.equal(res.status, 401);
-  assert.equal(queryCalled, false);
+registerAuthGateTests({
+  getBaseUrl: () => baseUrl,
+  route: "teams",
+  getId: () => TEAM_ID,
+  postBody: { name: "Platform Team", departmentCode: "DEPT-001" },
+  patchBody: { name: "Renamed" },
 });
 
-test("PATCH /v1/teams/:id without the internal API key is rejected with 401 before any query runs", async (t) => {
-  let queryCalled = false;
-  t.mock.method(pool, "query", async () => {
-    queryCalled = true;
-    return { rows: [] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/teams/${TEAM_ID}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: "Renamed" }),
-  });
-
-  assert.equal(res.status, 401);
-  assert.equal(queryCalled, false);
-});
-
-test("DELETE /v1/teams/:id without the internal API key is rejected with 401 before any query runs", async (t) => {
-  let queryCalled = false;
-  t.mock.method(pool, "query", async () => {
-    queryCalled = true;
-    return { rows: [] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/teams/${TEAM_ID}`, { method: "DELETE" });
-
-  assert.equal(res.status, 401);
-  assert.equal(queryCalled, false);
-});
-
-test("DELETE /v1/teams/:id soft-deletes the row and returns 204", async (t) => {
-  let updateSql;
-  t.mock.method(pool, "query", async (sql) => {
-    updateSql = sql;
-    return { rows: [{ id: TEAM_ID }] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/teams/${TEAM_ID}`, {
-    method: "DELETE",
-    headers: { "x-internal-api-key": "test-secret" },
-  });
-
-  assert.equal(res.status, 204);
-  assert.match(updateSql, /update teams set deleted_at = now\(\)/);
-  assert.match(updateSql, /where id = \$1 and deleted_at is null/);
-});
-
-test("DELETE /v1/teams/:id on an already-deleted (or nonexistent) row returns 404", async (t) => {
-  t.mock.method(pool, "query", async () => ({ rows: [] }));
-
-  const res = await fetch(`${baseUrl}/v1/teams/${TEAM_ID}`, {
-    method: "DELETE",
-    headers: { "x-internal-api-key": "test-secret" },
-  });
-
-  assert.equal(res.status, 404);
-  const body = await res.json();
-  assert.equal(body.error.code, "team_not_found");
+registerDeleteTests({
+  getBaseUrl: () => baseUrl,
+  route: "teams",
+  getId: () => TEAM_ID,
+  tableName: "teams",
+  resourceName: "team",
 });

@@ -1,10 +1,13 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import http from "node:http";
-import express from "express";
 import { pool } from "./db.js";
-import { createMasterDataRouter } from "./masterDataRouter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
+import {
+  startTestServer,
+  stopTestServer,
+  registerAuthGateTests,
+  registerDeleteTests,
+} from "./masterDataRouter.testHelpers.js";
 
 // Integration tests for FEAT-5 (Resource Cost real schema): exercises the
 // actual resource_cost table descriptor (from masterDataTables.js, not a
@@ -12,22 +15,11 @@ import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 // routing, express.json() body parsing, requireInternalApiKey, and the
 // shared error middleware — so validateReferences/lookup-JOIN/sortColumn
 // wiring is proven end-to-end at the HTTP layer, not just as isolated
-// function calls (see masterDataSchema.test.js for those).
-//
-// Deviation from the ideal (documented per CLAUDE.md's "no laziness" —
-// this is a real constraint, not a shortcut): the Test Architect's plan
-// called for these to run against a real Postgres connection. No
-// DATABASE_URL / live Postgres is reachable from this pipeline stage's
-// sandbox (no test DB is provisioned for this repo yet, and every
-// existing backend test in this repo is DB-mocked, not DB-live — there is
-// no precedent to follow here either). pool.query is mocked per-test
-// instead, keyed on the exact SQL each route is known to issue (verified
-// by direct Read of masterDataRouter.js above) — this still proves the
-// route wiring, request validation, status codes, and response-shape
-// mapping are correct; it does not prove the raw SQL itself executes
-// correctly against a real Postgres server. That residual gap should be
-// closed by the Tester stage (7) if a test database becomes available,
-// or otherwise accepted as a known limitation of this pipeline run.
+// function calls (see masterDataSchema.test.js for those). Server
+// bootstrap, the 401-without-a-key tests, and the DELETE tests are shared
+// via masterDataRouter.testHelpers.js — see that file's header comment for
+// the pool.query-mocked-per-SQL-shape deviation this and every table using
+// the harness share.
 
 const resourceCostTable = MASTER_DATA_TABLES.find((t) => t.route === "resource-cost");
 const RESOURCE_COST_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -36,25 +28,11 @@ let server;
 let baseUrl;
 
 before(async () => {
-  process.env.INTERNAL_API_KEY = "test-secret";
-  const app = express();
-  app.use(express.json());
-  app.use(`/v1/${resourceCostTable.route}`, createMasterDataRouter(resourceCostTable));
-  // Mirrors index.js's error middleware exactly (never expose stack traces
-  // per api.md; 4xx errors pass their real code/message/details through).
-  app.use((err, req, res, _next) => {
-    const status = err.status || 500;
-    const code = err.code || "internal_error";
-    const message = status === 500 ? "An unexpected error occurred." : err.message;
-    res.status(status).json({ error: { code, message, details: err.details || {} } });
-  });
-  server = http.createServer(app);
-  await new Promise((resolve) => server.listen(0, resolve));
-  baseUrl = `http://127.0.0.1:${server.address().port}`;
+  ({ server, baseUrl } = await startTestServer(resourceCostTable));
 });
 
 after(async () => {
-  await new Promise((resolve) => server.close(resolve));
+  await stopTestServer(server);
 });
 
 function baseRow(overrides = {}) {
@@ -246,79 +224,18 @@ test("POST /v1/resource-cost maps a foreign_key_violation (23503) from the INSER
   assert.ok(body.error.details.employeeId);
 });
 
-test("POST /v1/resource-cost without the internal API key is rejected with 401 before any query runs", async (t) => {
-  let queryCalled = false;
-  t.mock.method(pool, "query", async () => {
-    queryCalled = true;
-    return { rows: [] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/resource-cost`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ employeeId: 42 }),
-  });
-
-  assert.equal(res.status, 401);
-  assert.equal(queryCalled, false);
+registerAuthGateTests({
+  getBaseUrl: () => baseUrl,
+  route: "resource-cost",
+  getId: () => RESOURCE_COST_ID,
+  postBody: { employeeId: 42 },
+  patchBody: { offshoreCost: 1000 },
 });
 
-test("PATCH /v1/resource-cost/:id without the internal API key is rejected with 401 before any query runs", async (t) => {
-  let queryCalled = false;
-  t.mock.method(pool, "query", async () => {
-    queryCalled = true;
-    return { rows: [] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ offshoreCost: 1000 }),
-  });
-
-  assert.equal(res.status, 401);
-  assert.equal(queryCalled, false);
-});
-
-test("DELETE /v1/resource-cost/:id without the internal API key is rejected with 401 before any query runs", async (t) => {
-  let queryCalled = false;
-  t.mock.method(pool, "query", async () => {
-    queryCalled = true;
-    return { rows: [] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, { method: "DELETE" });
-
-  assert.equal(res.status, 401);
-  assert.equal(queryCalled, false);
-});
-
-test("DELETE /v1/resource-cost/:id soft-deletes the row and returns 204", async (t) => {
-  let updateSql;
-  t.mock.method(pool, "query", async (sql) => {
-    updateSql = sql;
-    return { rows: [{ id: RESOURCE_COST_ID }] };
-  });
-
-  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, {
-    method: "DELETE",
-    headers: { "x-internal-api-key": "test-secret" },
-  });
-
-  assert.equal(res.status, 204);
-  assert.match(updateSql, /update resource_cost set deleted_at = now\(\)/);
-  assert.match(updateSql, /where id = \$1 and deleted_at is null/);
-});
-
-test("DELETE /v1/resource-cost/:id on an already-deleted (or nonexistent) row returns 404", async (t) => {
-  t.mock.method(pool, "query", async () => ({ rows: [] }));
-
-  const res = await fetch(`${baseUrl}/v1/resource-cost/${RESOURCE_COST_ID}`, {
-    method: "DELETE",
-    headers: { "x-internal-api-key": "test-secret" },
-  });
-
-  assert.equal(res.status, 404);
-  const body = await res.json();
-  assert.equal(body.error.code, "resource_cost_not_found");
+registerDeleteTests({
+  getBaseUrl: () => baseUrl,
+  route: "resource-cost",
+  getId: () => RESOURCE_COST_ID,
+  tableName: "resource_cost",
+  resourceName: "resource_cost",
 });
