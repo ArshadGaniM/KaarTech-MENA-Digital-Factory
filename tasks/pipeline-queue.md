@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** pending (FEAT-5 launching now)
+**Active run ID:** wf_f8c55755-42a (FEAT-5, dev-team-feat5-resource-cost workflow)
 
 **Feature counter:** 5
 
