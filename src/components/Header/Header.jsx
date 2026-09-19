@@ -3,7 +3,7 @@ import styles from './Header.module.css';
 
 const NAV_LINKS = [
   { label: 'Services', href: '#services' },
-  { label: 'Delivery Centers', href: '#delivery-centers' },
+  { label: 'Delivery Centers', href: '#our-delivery-centers' },
   { label: 'Dashboard', href: NAV_ITEMS[0].hash },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },

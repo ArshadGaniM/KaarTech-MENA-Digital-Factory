@@ -9,4 +9,13 @@ describe('Header', () => {
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', NAV_ITEMS[0].hash);
   });
+
+  it('links "Delivery Centers" to the marketing anchor, not the dashboard\'s colliding route', () => {
+    render(<Header />);
+
+    expect(screen.getByRole('link', { name: 'Delivery Centers' })).toHaveAttribute(
+      'href',
+      '#our-delivery-centers'
+    );
+  });
 });

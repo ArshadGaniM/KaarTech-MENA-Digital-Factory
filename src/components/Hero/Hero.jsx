@@ -1,3 +1,4 @@
+import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './Hero.module.css';
 
 function Hero() {
@@ -17,10 +18,13 @@ function Hero() {
           &mdash; not a series of one-off projects.
         </p>
         <div className={styles.actions}>
-          <a href="#services" className={styles.primaryAction}>
+          <a href={NAV_ITEMS[0].hash} className={styles.primaryAction}>
+            Enter the Application
+          </a>
+          <a href="#services" className={styles.secondaryAction}>
             Explore Our Services
           </a>
-          <a href="#delivery-centers" className={styles.secondaryAction}>
+          <a href="#our-delivery-centers" className={styles.secondaryAction}>
             See Our Delivery Centers
           </a>
         </div>
