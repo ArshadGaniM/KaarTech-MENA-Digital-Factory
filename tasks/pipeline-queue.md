@@ -6,7 +6,7 @@
 
 **Active run ID:** wf_f8c55755-42a (FEAT-5, round 2 — resumed with sort-column fix)
 
-**Feature counter:** 7
+**Feature counter:** 8
 
 ## Queue
 
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | FEAT-5 | in_flight | Build out the Resource Cost table's real schema: `employeeId` (required, must reference an existing Resources row, enforced), `employeeName` and `employeeDesignation` (read-only, live-looked-up from the referenced resource — not stored/editable columns), `offshoreCost` and `onsiteCost` (both optional numeric). Plus standard audit columns (already present). Round 1 halted at architecture-critic (shared list-query `ORDER BY ... name asc` would break once resource_cost's `name` column is dropped) — resumed round 2 with a per-table `sortColumn` fix and a soft-delete filter added to the employee join. | claude/trusting-curie-hlx1r6 |
 | FEAT-7 | queued | Build out the Resource Deployment table's real schema: `employeeId` (required, must reference an existing Resources row, enforced — same pattern as FEAT-5), `employeeName` (read-only, live-looked-up from the referenced resource), `positionId` (required, string — **no Positions table exists yet, deliberately left unvalidated**, same precedent as Modules.practiceId), `positionName` (required, plain manually-entered field for now — not a lookup, since there's no Positions table to look up from yet; convert to an auto-lookup once Positions is built). Plus standard audit columns (already present). Owner chose to run this right after FEAT-5 finishes rather than truly concurrently, since both features edit the same shared backend framework files (masterDataTables.js/masterDataRouter.js/masterDataSchema.js) and running two independent pipelines on those at once risked one silently clobbering the other's edits. Launch immediately once FEAT-5 reaches completed/halted. | claude/trusting-curie-hlx1r6 |
+| FEAT-8 | queued | Build out the Teams table's real schema: `code` (auto-generated business ID, immutable — same `hasCode` pattern as Practices/Delivery Centers/Departments/Modules, e.g. `TEAM-001`), `name` (manually entered, editable anytime), `departmentCode` (required, must reference an existing Departments row by its own auto-generated code, enforced), `departmentName` (read-only, live-looked-up from the referenced department). Plus standard audit columns (already present). Deliberately sequenced AFTER FEAT-5/FEAT-7 land, so it reuses the generic FK-validation + live-lookup framework mechanism they're building rather than reinventing it (and avoids the same shared-file collision risk). Launch once both FEAT-5 and FEAT-7 reach completed/halted. | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 
