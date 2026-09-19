@@ -31,6 +31,14 @@ describe('App', () => {
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
+  it('landing on NAV_ITEMS[0].hash — the same value Header\'s "Dashboard" link and Hero\'s "Enter the Application" CTA use — resolves to the Dashboard section', () => {
+    window.location.hash = NAV_ITEMS[0].hash;
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: NAV_ITEMS[0].label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+  });
+
   it('renders the marketing tree (Header + Footer) with AppShell absent for a non-app-shell hash', () => {
     window.location.hash = '';
     render(<App />);
