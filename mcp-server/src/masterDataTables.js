@@ -106,7 +106,22 @@ export const MASTER_DATA_TABLES = [
     slug: "resource_cost",
     route: "resource-cost",
     label: "Resource Cost",
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    // employeeName/employeeDesignation are NOT writable here — they're a
+    // live lookup against the Resources table's current data, returned
+    // by the backend's GET responses but never accepted on add_/update_.
+    fields: [
+      {
+        key: "employeeId",
+        label:
+          "employee ID — must match an existing Resources.employeeId; the backend rejects the " +
+          "request with a validation error if no such Resource exists (unlike modules.practiceId, " +
+          "this reference IS validated)",
+        required: true,
+        type: "number",
+      },
+      { key: "offshoreCost", label: "offshore cost (optional — independent of onsiteCost)", required: false, type: "number" },
+      { key: "onsiteCost", label: "onsite cost (optional — independent of offshoreCost)", required: false, type: "number" },
+    ],
   },
   {
     slug: "team",

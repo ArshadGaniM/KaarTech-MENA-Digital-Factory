@@ -1,0 +1,32 @@
+{
+  "feature": "FEAT-5",
+  "stage": "engineer-mvp",
+  "pipeline_stage_number": "3.5",
+  "verdict": "PASS",
+  "summary": "Built the first working version of Resource Cost's real schema on top of the DB migration system-engineer already applied live (backend/migrations/0013_add_resource_cost_columns.sql, confirmed via a fresh information_schema.columns read, not taken on trust). Implemented the two generic, opt-in extensions to the shared master-data machine that tech-lead/solution-architect/system-engineer specified: (1) a field-level `references: {table, column}` descriptor plus a new `validateReferences()` in backend/src/masterDataSchema.js, called from the shared router's POST/PATCH right after validateBody, enforcing employeeId's FK-must-exist rule as a 422 validation_error before any INSERT/UPDATE reaches Postgres (unlike modules.practiceId, deliberately left unvalidated); (2) a table-level `lookups` descriptor plus new `lookupJoinSql()`/`lookupSelectSql()` helpers (also in masterDataSchema.js) driving a soft-delete-safe LEFT JOIN in the shared GET / and GET /:id queries, with `toResponse()` projecting the joined columns into employeeName/employeeDesignation (`?? null` when the join found nothing, or on POST/PATCH's `returning *` which never carries them, per system-engineer's flagged nuance). Also added the `sortColumn` override (`table.sortColumn ?? 'name'`) so resource_cost's list query survives dropping the `name` column, and qualified every ORDER BY / `select *` / WHERE reference with `${tableName}.` once a JOIN was introduced, since resources also has `name` and `employee_id` columns that would otherwise collide or go ambiguous. All additions are gated behind `table.references`/`table.lookups`/`table.sortColumn` being present, so the other 8 master-data tables (whose descriptors don't set them) run the exact same SQL as before.",
+
+  "files_changed": [
+    "backend/src/masterDataTables.js",
+    "backend/src/masterDataSchema.js",
+    "backend/src/masterDataRouter.js",
+    "mcp-server/src/masterDataTables.js",
+    "src/lib/masterDataApi.js"
+  ],
+
+  "verification_performed": {
+    "static": "node --check on every changed .js file; npx oxlint on the same files — no errors.",
+    "live_db": [
+      "Re-read information_schema.columns for public.resource_cost directly (not taken on system-engineer's word) — employee_id/offshore_cost/onsite_cost present, name absent, matches migration 0013.",
+      "Inserted a real test row (employee_id=1, offshore_cost=100.5) and ran the exact SELECT the router now issues (qualified select *, LEFT JOIN resources with the deleted_at-is-null predicate) — confirmed lookup_0_name/lookup_0_designation correctly resolved to that employee's current Resources.name/designation.",
+      "Attempted an insert with employee_id=999999 (no matching Resources row) — confirmed Postgres rejects it via fk_resource_cost_resources (23503), the DB-layer defense-in-depth behind the app-layer validateReferences() check.",
+      "Deleted the test row afterward and re-confirmed `select count(*) from resource_cost` returns 0, restoring the pre-test empty state."
+    ]
+  },
+
+  "notes_for_downstream_stages": [
+    "MCP server (mcp-server/src/masterDataTables.js) mirror updated with employeeId/offshoreCost/onsiteCost as the add_resource_cost/update_resource_cost tool fields; employeeName/employeeDesignation are intentionally NOT tool inputs (live-lookup only, not writable). The mirror is descriptive only — actual enforcement is server-side in validateReferences(), consistent with 'validate at system boundaries'.",
+    "Frontend src/lib/masterDataApi.js column list updated to the 'Employee <Field>' labeling convention (Employee ID / Employee Name / Employee Designation / Offshore Cost / Onsite Cost) matching FEAT-6's Resources labeling; dashboard remains read-only per the task, so no form/pick-list component was needed.",
+    "Naming diverges slightly from system-engineer's illustrative shape (used `references` instead of `validateExists`, and `lookups` as an array of {table, localColumn, foreignColumn, projections} rather than a single object) — functionally equivalent, chosen so a future table needing more than one lookup source doesn't need a second table-level key.",
+    "Remaining pipeline stages (Database Specialist, Language Specialist, Code Reviewer, Frontend Engineer, etc.) should treat this as the accumulating 'code' object per CLAUDE.md §7.6 invariant 1 — improve in place, do not regenerate."
+  ]
+}

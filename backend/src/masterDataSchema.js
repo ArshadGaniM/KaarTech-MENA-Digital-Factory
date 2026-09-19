@@ -1,12 +1,55 @@
+import { pool } from "./db.js";
 import { validationError } from "./errors.js";
 
 const MAX_TEXT_LENGTH = 255;
+
+// Builds the LEFT JOIN plan for a table's live-lookup fields (e.g.
+// resource_cost.employeeName/employeeDesignation from resources.name/
+// designation) — shared between the router's SELECT queries and
+// toResponse's field mapping so their column aliasing never drifts apart.
+// table.lookups comes only from the fixed masterDataTables.js descriptor,
+// never from request input, so interpolating it into SQL is safe (same
+// reasoning as tableName/column elsewhere in this codebase).
+function buildLookupPlan(table) {
+  return (table.lookups ?? []).map((lookup, index) => ({ ...lookup, alias: `lookup_${index}` }));
+}
+
+export function lookupJoinSql(table) {
+  return buildLookupPlan(table)
+    .map(
+      (lookup) =>
+        `left join ${lookup.table} ${lookup.alias} ` +
+        `on ${lookup.alias}.${lookup.foreignColumn} = ${table.tableName}.${lookup.localColumn} ` +
+        `and ${lookup.alias}.deleted_at is null`
+    )
+    .join(" ");
+}
+
+export function lookupSelectSql(table) {
+  const columns = [];
+  for (const lookup of buildLookupPlan(table)) {
+    for (const projection of lookup.projections) {
+      columns.push(`${lookup.alias}.${projection.column} as ${lookup.alias}_${projection.column}`);
+    }
+  }
+  return columns;
+}
 
 export function toResponse(table, row) {
   const response = { id: row.id };
   if (table.hasCode) response.code = row.code;
   for (const field of table.fields) {
     response[field.key] = row[field.column];
+  }
+  // A lookup column is only present on rows the router's own SELECT
+  // joined it into — a POST/PATCH's `returning *` never carries it, since
+  // it selects only the base table. `?? null` treats that the same as a
+  // join that matched nothing (soft-deleted or missing resource), rather
+  // than leaking `undefined` into the JSON response either way.
+  for (const lookup of buildLookupPlan(table)) {
+    for (const projection of lookup.projections) {
+      response[projection.key] = row[`${lookup.alias}_${projection.column}`] ?? null;
+    }
   }
   response.createdBy = row.created_by;
   response.createdAt = row.created_at;
@@ -55,6 +98,46 @@ export function validateBody(table, body, { partial = false } = {}) {
       details[field.key] = `${field.key} must be ${maxLength} characters or fewer.`;
     } else if (field.type === "enum" && !field.values.includes(value)) {
       details[field.key] = `${field.key} must be one of: ${field.values.join(", ")}.`;
+    }
+  }
+
+  if (Object.keys(details).length > 0) {
+    throw validationError(details);
+  }
+}
+
+// Enforces any field-level `references` descriptor (e.g. resource_cost's
+// employeeId must exist in resources) — unlike modules.practiceId, which
+// is deliberately left unvalidated. Must run after validateBody so a
+// non-number/absent-when-required value has already been rejected with a
+// clear message rather than surfacing as a confusing "no matching row".
+export async function validateReferences(table, body, { partial = false } = {}) {
+  const safeBody = body && typeof body === "object" ? body : {};
+  const details = {};
+
+  for (const field of table.fields) {
+    if (!field.references) continue;
+
+    // Same presence semantics as validateBody: required fields are
+    // checked on create even if absent (validateBody's own required
+    // check has already thrown by the time this runs), and on update
+    // only when the caller actually sent a value.
+    const present = Object.hasOwn(safeBody, field.key);
+    const mustValidate = field.required ? !partial || present : present;
+    if (!mustValidate) continue;
+
+    const value = safeBody[field.key];
+    // null only reaches here for a non-required field being explicitly
+    // cleared — validateBody already rejects null on a required field.
+    if (value === null) continue;
+
+    const { table: refTable, column: refColumn } = field.references;
+    const result = await pool.query(
+      `select 1 from ${refTable} where ${refColumn} = $1 and deleted_at is null limit 1`,
+      [value]
+    );
+    if (result.rows.length === 0) {
+      details[field.key] = `${field.key} must reference an existing ${refTable} row (no match for '${value}').`;
     }
   }
 

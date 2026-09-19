@@ -1,0 +1,95 @@
+{
+  "feature": "FEAT-5",
+  "stage": "system-engineer",
+  "pipeline_stage_number": "3.3",
+  "verdict": "PASS",
+  "summary": "Finalized the concrete component structure and data flow for Resource Cost's real schema, building on solution-architect's round-2 SDD (tasks/agent-outputs/solution-architect/FEAT-5.json) and architecture-critic's PASS. Authored and applied backend/migrations/0013_add_resource_cost_columns.sql live via mcp__Supabase__apply_migration (per this task's instruction that a schema change isn't real/testable until applied, and per the SDD's own note assigning migration authorship to this stage). Confirmed resource_cost held 0 rows before altering it, so the plain (no sentinel-default) column-add form was used and `name` was dropped outright in the same migration, no two-phase deprecation needed. Live schema verified by direct SELECT against information_schema.columns after apply: id/created_at/updated_at/deleted_at/created_by/updated_by (unchanged) plus employee_id (integer, not null), offshore_cost (numeric, nullable), onsite_cost (numeric, nullable) — name column gone. Adopted architecture-critic's Advisory #1: the FK constraint is named fk_resource_cost_resources (database.md's fk_<table>_<ref_table> convention), not the SDD draft's resource_cost_employee_id_fkey.",
+
+  "migration_applied": {
+    "file": "backend/migrations/0013_add_resource_cost_columns.sql",
+    "applied_live": true,
+    "applied_via": "mcp__Supabase__apply_migration",
+    "project_id": "xrofsteoywvpjkapumsg",
+    "pre_migration_check": "select count(*) from resource_cost -> 0 rows, confirmed directly before writing the migration form (not taken on a prior stage's word, per subagent-verification discipline even though no subagent was involved here).",
+    "statements": [
+      "add column employee_id integer not null (no sentinel default — table was empty)",
+      "add column offshore_cost numeric (nullable, no default)",
+      "add column onsite_cost numeric (nullable, no default)",
+      "drop column name",
+      "add constraint fk_resource_cost_resources foreign key (employee_id) references public.resources (employee_id)",
+      "create index ix_resource_cost_employee_id on public.resource_cost (employee_id)"
+    ],
+    "rls_and_triggers_untouched": "resource_cost's RLS-enabled-no-policies state and trg_resource_cost_updated_at trigger (both from migration 0011) are unmodified — 0013 is pure ADD/DROP COLUMN + constraint/index, matching 0012's precedent.",
+    "post_apply_verification": "Read back information_schema.columns for resource_cost directly after apply_migration returned success — employee_id/offshore_cost/onsite_cost present with correct types/nullability, name absent."
+  },
+
+  "component_structure_for_stage_3.5_4": {
+    "principle": "Three opt-in extensions to the existing generic master-data machine (backend/src/masterDataTables.js descriptor shape, masterDataSchema.js, masterDataRouter.js), each gated so the other 8 tables' current code path is provably unchanged — no bespoke resource_cost route/controller file. This is what stage 3.5 (Engineer MVP) builds and stage 4 (Developer) completes.",
+
+    "1_masterDataTables.js_change": {
+      "what": "resource_cost's entry replaces its single `{ key: 'name', ... }` field with the three real fields, and gains two new table-level descriptor keys.",
+      "exact_shape": {
+        "route": "resource-cost",
+        "tableName": "resource_cost",
+        "resourceName": "resource_cost",
+        "sortColumn": "employee_id",
+        "lookups": { "table": "resources", "on": "employee_id", "select": { "employeeName": "name", "employeeDesignation": "designation" } },
+        "fields": [
+          { "key": "employeeId", "column": "employee_id", "required": true, "type": "number", "validateExists": { "table": "resources", "column": "employee_id" } },
+          { "key": "offshoreCost", "column": "offshore_cost", "required": false, "type": "number" },
+          { "key": "onsiteCost", "column": "onsite_cost", "required": false, "type": "number" }
+        ]
+      },
+      "other_tables": "practices/delivery_centers/competencies/modules/resources/departments/teams/resource_deployment entries are untouched — sortColumn/lookups absent on all of them, so masterDataRouter.js's fallback branches (`table.sortColumn ?? 'name'`, `if (table.lookups)`) take the old code path for every one of them."
+    },
+
+    "2_masterDataSchema.js_changes": {
+      "validateReferences": {
+        "signature": "export async function validateReferences(table, body, { partial = false } = {})",
+        "placement": "new function alongside the existing synchronous validateBody, called from masterDataRouter.js's POST/PATCH handlers immediately after validateBody() succeeds (so a plain type/required failure is reported before an extra DB round-trip for the FK check)",
+        "logic": "for each field with a `validateExists` descriptor, using validateBody's own present/mustValidate semantics (required-on-create, present-on-update): `select 1 from ${ref.table} where ${ref.column} = $1 and deleted_at is null limit 1`; zero rows -> throw validationError({ [field.key]: '<key> must reference an existing, non-deleted <ref.table> row.' })",
+        "identifier_safety": "ref.table/ref.column come only from the fixed MASTER_DATA_TABLES descriptor (never request input) — same interpolation-safety argument masterDataRouter.js's header comment already makes for tableName/column."
+      },
+      "toResponse_change": "after the existing per-field loop, `if (table.lookups) { for (const [responseKey, sourceCol] of Object.entries(table.lookups.select)) { response[responseKey] = row[toSnakeAlias(sourceCol)]; } }` — reads off the joined/aliased columns the new SELECT produces (see below), never off table.fields, since employeeName/employeeDesignation must never be writable."
+    },
+
+    "3_masterDataRouter.js_changes": {
+      "GET_list_and_GET_one_query": "when `table.lookups` is set, build `select t.*, j.name as employee_name, j.designation as employee_designation from ${tableName} t left join ${lookups.table} j on j.${lookups.on} = t.${lookups.on} and j.deleted_at is null where ...` instead of `select * from ${tableName}` — LEFT JOIN so a resource_cost row whose employee no longer resolves (soft-deleted or removed) still lists, with employeeName/employeeDesignation coming back null rather than the row vanishing. The select-list of joined columns is generated from `lookups.select`'s values, not hand-written per table, so a future table (e.g. resource_deployment) can reuse this by adding its own `lookups` descriptor with zero router changes.",
+      "ORDER_BY_change": "`order by (deleted_at is not null), name asc` -> `order by (deleted_at is not null), ${table.sortColumn ?? 'name'} asc`. resource_cost sets sortColumn: 'employee_id' (required, always present post-migration, unlike the independently-nullable cost fields) so the list query is valid against the post-migration schema (no `name` column left to sort by). Every other table keeps sorting by `name` via the fallback.",
+      "POST_and_PATCH_change": "call `await validateReferences(table, req.body, { partial: <true on PATCH> })` immediately after the existing `validateBody(...)` call, before the INSERT/UPDATE statement runs — so a bad employeeId is rejected as a 422 before it ever reaches Postgres (never surfaces as a raw FK-violation 500). The DB-level `fk_resource_cost_resources` constraint (already live) is defense-in-depth only, per database.md and tech-lead's direction; it should never actually fire against this endpoint once validateReferences is wired in correctly.",
+      "employeeName/employeeDesignation_not_writable": "since these two keys are never added to resource_cost's `fields[]`, the existing column-building logic in POST/PATCH (`fields.map(f => f.column)` / `fields.map(f => req.body[f.key])`) never references them — a request body containing employeeName is silently ignored, identical to today's handling of any other unknown key. No new code needed for this; it falls out of the existing field-driven column list."
+    },
+
+    "4_mcp_server_mirror": {
+      "file": "mcp-server/src/masterDataTables.js",
+      "change": "resource_cost's fields[] mirrors the backend's employeeId/offshoreCost/onsiteCost shape (numbers), dropping the old `name` field. add_resource_cost/update_resource_cost need no new code — mcp-server/src/index.js already builds each tool's zod shape generically off fields[] (z.number() for type:'number'), and the FK-must-exist requirement is enforced once, in the backend, and simply propagates back through the existing HTTP-error-to-tool-error path (per tech-lead's 'MCP layer stays thin, validate once' direction). Tool descriptions should state the FK-must-exist requirement in the employeeId field's label text, contrasting explicitly with modules.practiceId's 'not validated' language, so an MCP caller isn't surprised by the 422.",
+      "no_bespoke_validation_on_mcp_side": "confirmed via reading mcp-server/src/masterDataTables.js's structure (mirrors backend descriptors, forwards to backend HTTP API via apiClient.js) — adding a second employeeId-exists check there would create exactly the two-mirrors-drift risk enterprise-architect-pre and tech-lead both flagged; not done."
+    },
+
+    "5_frontend_change": {
+      "file": "src/lib/masterDataApi.js",
+      "change": "resource_cost's columns[] becomes employeeId (\"Employee ID\") / employeeName (\"Employee Name\") / employeeDesignation (\"Employee Designation\") / offshoreCost (\"Offshore Cost\") / onsiteCost (\"Onsite Cost\"), then ...AUDIT_COLUMNS unchanged — matches FEAT-6's Employee-<Field> convention. Display-only; dashboard stays read-only, so no form/pick-list component is built (writes go through the MCP server only, per this task's scope)."
+    }
+  },
+
+  "data_flow_summary": {
+    "read_path": "Client -> GET /v1/resource-cost[/:id] -> masterDataRouter (lookups-aware SELECT with LEFT JOIN resources) -> toResponse (fields[] columns + lookups.select projections) -> { data }",
+    "write_path": "MCP tool call (add_resource_cost/update_resource_cost, employeeId as z.number()) -> apiClient.js -> POST/PATCH /v1/resource-cost[/:id] (requireInternalApiKey) -> validateBody (type/required) -> validateReferences (employeeId exists in resources, not soft-deleted) -> INSERT/UPDATE (fields[] columns only, FK constraint as DB-level backstop) -> toResponse (re-fetch not required; INSERT/UPDATE ... returning * lacks the joined columns, so the write-path response omits employeeName/employeeDesignation unless the router re-queries with the join after insert/update — flagged below as an implementation nuance for stage 3.5)."
+  },
+
+  "caching_strategy": "None needed — matches every other master-data table (no caching layer exists anywhere in this codebase; resource_cost's read volume/shape gives no reason to introduce one here).",
+
+  "implementation_nuance_flagged_for_stage_3.5": "POST/PATCH currently build their response directly from the `insert/update ... returning *` row, which won't carry the joined employee_name/employee_designation aliases (those only exist in the lookups-aware SELECT). Stage 3.5/4 should either (a) have toResponse tolerate missing lookup columns by falling back to null when table.lookups is set but the row wasn't joined, or (b) have POST/PATCH re-run the lookups-aware SELECT for the affected id before responding, for consistency with GET. Recommend (a) for POST (the caller already knows what it sent) and either is acceptable for PATCH; this is an implementation detail within the SDD's design, not a new architectural decision, so it does not require another architecture-critic round.",
+
+  "files_created_or_edited": [
+    "backend/migrations/0013_add_resource_cost_columns.sql (new file, authored and applied live)",
+    "tasks/agent-outputs/system-engineer/FEAT-5.json (this stage's own output)"
+  ],
+  "files_not_yet_touched_left_for_stage_3.5_4": [
+    "backend/src/masterDataTables.js",
+    "backend/src/masterDataSchema.js",
+    "backend/src/masterDataRouter.js",
+    "mcp-server/src/masterDataTables.js",
+    "src/lib/masterDataApi.js"
+  ]
+}

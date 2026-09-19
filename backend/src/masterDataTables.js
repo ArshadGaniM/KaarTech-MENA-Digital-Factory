@@ -105,7 +105,45 @@ export const MASTER_DATA_TABLES = [
     route: "resource-cost",
     tableName: "resource_cost",
     resourceName: "resource_cost",
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    // Dropped the placeholder `name` column (migration 0013) — the list
+    // query's ORDER BY needs an explicit override since it no longer has
+    // one to fall back on (see masterDataRouter.js's `sortColumn` usage).
+    sortColumn: "employee_id",
+    // employeeName/employeeDesignation are NOT stored columns — they're a
+    // live join against resources at read time, so this table never has
+    // its own copy of Resources' data to drift out of sync. See
+    // masterDataSchema.js's lookupJoinSql/lookupSelectSql/toResponse.
+    lookups: [
+      {
+        table: "resources",
+        localColumn: "employee_id",
+        foreignColumn: "employee_id",
+        projections: [
+          { key: "employeeName", column: "name" },
+          { key: "employeeDesignation", column: "designation" },
+        ],
+      },
+    ],
+    fields: [
+      {
+        key: "employeeId",
+        column: "employee_id",
+        required: true,
+        type: "number",
+        // Unlike modules.practiceId (deliberately unvalidated), this FK
+        // is enforced: masterDataSchema.js's validateReferences() rejects
+        // the request with a 422 if no matching, non-deleted Resources
+        // row exists. `references.table`/`.column` come from this fixed
+        // descriptor only, never from request input, so interpolating
+        // them into SQL is safe (same reasoning as tableName/column above).
+        references: { table: "resources", column: "employee_id" },
+      },
+      // Independently optional — a resource is typically Onsite or
+      // Offshore (per its own Resources.locationType), but that's not
+      // enforced here; either, both, or neither may be set.
+      { key: "offshoreCost", column: "offshore_cost", required: false, type: "number" },
+      { key: "onsiteCost", column: "onsite_cost", required: false, type: "number" },
+    ],
   },
   {
     route: "teams",

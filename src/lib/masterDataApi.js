@@ -87,7 +87,14 @@ export const MASTER_DATA_TABLES = [
   {
     route: "resource-cost",
     label: "Resource Cost",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "employeeId", label: "Employee ID" },
+      { key: "employeeName", label: "Employee Name" },
+      { key: "employeeDesignation", label: "Employee Designation" },
+      { key: "offshoreCost", label: "Offshore Cost" },
+      { key: "onsiteCost", label: "Onsite Cost" },
+      ...AUDIT_COLUMNS,
+    ],
   },
   {
     route: "teams",
