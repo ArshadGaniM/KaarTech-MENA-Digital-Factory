@@ -1,50 +1,52 @@
 # Quality Gate Report
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff:** Remediates an unresolved Critical security finding from an
-earlier gate run (`.claude/settings.json` still auto-approved
-`mcp__Supabase__execute_sql`) and fixes the auto-PR CI workflow itself
-(`.github/workflows/auto-pr.yml`) — its auto-merge check only verified
-that `tasks/last-gate-report.md` existed and wasn't BLOCKED, with no
-freshness check, so a stale report from a prior, unrelated feature had
-been silently authorizing every subsequent push to squash-merge to
-`main` regardless of what that push actually contained. That gap is
-how the `execute_sql` permission (and other diffs) reached `main`
-without ever passing a real gate.
-**Verdict: ⚠️ WARN — merge allowed, no FAIL/Critical findings remaining.**
+**Diff:** FEAT-2 — each master-data table gets its own top-level
+sidebar item (Practices, Delivery Centers, Competencies, Modules,
+Resources, Departments, Resource Cost, Teams, Resource Deployment)
+instead of one generic "Master Data" entry with an inner tab bar.
+`NAV_ITEMS` is now derived directly from `MASTER_DATA_TABLES`. The
+now-unused `MasterDataView` tab-bar component is removed. The
+dashboard's top header is a static "Dashboard" heading (explicit,
+user-confirmed requirement — the sidebar's active-item state carries
+which section is selected instead). The marketing page's nav link is
+relabeled "Dashboard" and points at the first table's hash. Plus a
+follow-up commit addressing every finding below.
+**Verdict: ⚠️ WARN — merge allowed, no FAIL/Critical findings.**
 
 ## First pass (8 gate agents, parallel)
 
 | Agent | Verdict | Key findings |
 |---|---|---|
-| `code-reviewer` | **Critical** (fixed) | On a force-push, `github.event.before` can point to a commit no longer reachable in history (`fetch-depth: 0` only guarantees ancestry of the *current* ref). The added `git diff` call would then fail under bash's default `-e`, aborting the whole "Prepare gate report body" step — breaking routine PR creation/update, not just auto-merge. |
-| `security-auditor` | **Warning → FAIL per §9.5** (fixed) | The freshness check only proved the report's *path* was touched between commits, not that a real re-gate happened — a trivial re-save of a stale report would pass `fresh=true`. Settings.json removal itself confirmed clean (no re-added equivalent grant). |
-| `debugger` | PASS | Confirmed the check fails *closed* (no auto-merge) on any git error — `pipefail` correctly propagates a failed `git diff` into the `else` branch. No dangling reference to the removed permission anywhere. Minor note: same pre-existing `${{ }}`-in-bash interpolation pattern as the rest of the file (not attacker-controlled, not a new regression). |
-| `test-writer` | PASS | `cd backend && npm test` — 50/50 pass. No CI-testing harness exists for GitHub Actions YAML in this repo (by design); manual review of the bash logic is the appropriate verification level. |
-| `refactorer` | PASS | Minor observation: `fresh == 'true'` now already implies `has_report == 'true'`, making the separate check on the merge step slightly redundant — not worth removing since `has_report` is also used for the PR-body step. |
-| `doc-writer` | PASS | Workflow's top-of-file and inline comments fully explain the new freshness contract and why it exists; CLAUDE.md §9.3 Step 5 already used the word "fresh" and needed no update. |
-| `silent-failure-hunter` | PASS | Independently confirmed the same content-vs-path-touch gap as security-auditor (now closed by the second fix below) and that the mechanism fails closed on any git/shell error, not open. |
-| `pr-test-analyzer` | PASS | Bash logic is simple and fully auditable; fail-closed design is correct for all identified edge cases (new branch, force-push). A real push is the only way to confirm GitHub's exact runtime behavior for `before`/`sha` on those edge cases, but that's an environment detail, not a logic defect. |
+| `code-reviewer` | WARN | Static "Dashboard" title loses the per-section heading cue (see disclosed gap below — explicit requirement, not fixed). Info: no `key` prop on the rendered `MasterDataTable`; `NAV_ITEMS[0]` silently becomes the app's default table; sidebar has no grouping as tables grow. |
+| `security-auditor` | PASS | Frontend-only nav restructuring — no new data exposure, no secrets, no injection surface. Clean. |
+| `debugger` | PASS | `MASTER_DATA_TABLES`/`NAV_ITEMS` empty-array crash risk is theoretical (static literal, not runtime data) — flagged as a landmine for if the array ever becomes dynamic, not a live bug. Same TopBar-title observation as code-reviewer. |
+| `test-writer` | PASS | 26/26 frontend, 50/50 backend passing at the time of review. One gap: `Header`'s relabeled "Dashboard" link had no test. |
+| `refactorer` | PASS | Confirmed genuine simplification — `MasterDataView`'s duplicated tab-bar UI removed outright, not relocated; one level of indirection (`ActiveView` component lookup) removed from `AppShell`. |
+| `doc-writer` | WARN | `src/hooks/useLocationHash.js`'s comment still said "the master data view" — stale after this refactor. |
+| `silent-failure-hunter` | WARN | The `NAV_ITEMS.find(...) ?? NAV_ITEMS[0]` fallback (a no-op when there was one nav item) can now silently mask a real bug — a stale bookmark, typo'd link, or renamed `table.route` would silently render the wrong table with no visible signal, especially combined with the now-static TopBar title. |
+| `pr-test-analyzer` | PASS | Test updates are genuinely behavioral (real multi-item `NAV_ITEMS`, not a mocked fake registry). Minor gaps: no empty-`MASTER_DATA_TABLES` test, no duplicate-route test. |
 
 ## Remediation (before this report)
 
-- **Force-push crash (code-reviewer):** guarded the freshness diff with `git cat-file -e "${before}^{commit}"` before calling `git diff`, so an unreachable `before` (post-force-push) falls through to `fresh=false` instead of aborting the step and taking PR creation down with it.
-- **Path-touch vs. content-diff gaming (security-auditor, independently confirmed by silent-failure-hunter):** the freshness check now also requires this push to have changed at least one file *other than* `tasks/last-gate-report.md` — a genuine gate run always accompanies real code changes, so a report-only push (e.g. a cosmetic re-save of an old report) can no longer authorize a merge on its own. Documented as a heuristic, not a cryptographic guarantee: this closes the accidental-staleness bug actually observed, but a determined actor bundling a trivial unrelated change alongside a copy-pasted report is an accepted residual risk given this workflow's trust model (single-maintainer repo, not a customer-facing security boundary).
+- **Silent routing-fallback (silent-failure-hunter, independently echoed by debugger's "landmine" framing):** the initial-hash resolver now `console.warn`s when a hash doesn't match any dashboard section before falling back to the first one, so a stale link or typo shows up in the console instead of silently rendering the wrong table.
+- **Stale doc comment (doc-writer):** `useLocationHash.js`'s comment updated from "the master data view" to "the dashboard shell".
+- **Missing test (test-writer):** added `Header.test.jsx` asserting the "Dashboard" link's `href` matches `NAV_ITEMS[0].hash`.
+- **No `key` prop (code-reviewer, Info):** added `key={activeItem.id}` to the rendered `MasterDataTable` so React never implicitly reuses the instance across section switches, removing an implicit coupling on `useMasterDataTable`'s own route-keyed effect.
 
 ## Re-verification after fixes
 
+- `npx vitest run` — 27/27 pass (10 files).
 - `cd backend && npm test` — 50/50 pass.
-- `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/auto-pr.yml'))"` — valid YAML.
-- Manual trace of both new edge-case guards (`before` unreachable; report-only push) confirms both resolve to `fresh=false`.
+- `npm run build` — clean, 55 modules.
+- `npx oxlint src` — clean except the pre-existing, non-blocking `react/set-state-in-effect` warning.
 
 ## Disclosed, non-blocking gaps (not remediated — judgment calls, not oversights)
 
-- **The "other file also changed" heuristic is not airtight** — a bad-faith actor with push access could still pair a copy-pasted report with an unrelated trivial change to pass the check. Closing this completely would require signing/timestamping infrastructure disproportionate to this repo's actual trust model. Revisit if the repo ever gains untrusted contributors.
-- **No CI-testing harness exists for GitHub Actions workflow YAML in this repo** — verification of this fix relied on manual review plus YAML syntax validation, not an automated test. Consistent with this project's existing, already-disclosed testing ceiling.
-- **Debugger's interpolation-style note** (`${{ github.event.before }}` inlined into bash rather than passed via `env:`) is a pre-existing pattern across this whole file, not introduced by this diff, and both code-reviewer and debugger independently confirmed no real injection risk since the values are GitHub-populated commit SHAs, never free text.
+- **Static "Dashboard" TopBar title (code-reviewer, debugger, silent-failure-hunter all flagged this as reduced orientation/error-visibility):** this is the owner's explicit, confirmed requirement (top header reads "Dashboard" regardless of section) — not an oversight. The `console.warn` fix above addresses the *silent-bug* half of this concern (routing actually going to the wrong place undetected); the *UX* half (no per-section heading text) is an accepted, deliberate tradeoff. The sidebar's `aria-current` state remains the way to know which section is active.
+- **`NAV_ITEMS[0]` as the implicit default table (code-reviewer):** reordering `MASTER_DATA_TABLES` would silently change the dashboard's default/landing table. Low risk (a hand-maintained, rarely-reordered array); revisit if this array ever becomes more dynamic.
+- **No empty-`MASTER_DATA_TABLES`/duplicate-route test coverage (pr-test-analyzer):** the array is a static, non-empty literal today; this is a coverage nice-to-have for a failure mode that can't currently occur, not a live gap.
+- **Sidebar has no grouping/collapsing as tables grow (code-reviewer):** 9 flat items today; revisit if the table count grows meaningfully.
 
 No Critical findings remain. No FAIL gates remain. Verdict: **WARN**,
-merge allowed on this push per CLAUDE.md §9.5 (the freshness check
-this very report satisfies also applies to itself — the auto-merge
-job will only fire if this file, plus the settings.json/workflow
-fixes above, land together in the same push).
+merge allowed on "Merge to Main" per CLAUDE.md §9.5.

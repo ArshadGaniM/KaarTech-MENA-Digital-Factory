@@ -6,7 +6,7 @@
 
 **Active run ID:** none
 
-**Feature counter:** 1
+**Feature counter:** 2
 
 ## Queue
 
@@ -17,4 +17,5 @@
 
 | ID | Status | Requirement | Branch | Architectural decision |
 |---|---|---|---|---|
+| FEAT-2 | completed | Rework the AppShell sidebar/dashboard from FEAT-1: list each master-data table as its own separate sidebar item instead of one generic entry; clicking an item shows that table's data on the right. Remove "Master Data" from user-facing UI text. Top page header reads "Dashboard". | claude/trusting-curie-hlx1r6 | Built directly (owner chose not to run the full dev-team pipeline for this well-scoped, concrete change). `NAV_ITEMS` is now derived straight from `MASTER_DATA_TABLES` (one nav item per table, carrying `route`/`columns`) instead of holding a single generic entry with an inner tab-bar view — removed the now-unused `MasterDataView` component. `AppShell` renders `MasterDataTable` directly per selected item; `TopBar` shows a static "Dashboard" heading (sidebar's active-item state carries which section is selected). Marketing `Header`'s nav link relabeled "Dashboard", pointing at the first table's hash. 26/26 frontend tests pass, 50/50 backend tests pass, clean build/lint, self-reviewed via `/code-review` (no findings). |
 | FEAT-1 | completed | Redesign the frontend UI so it reads as a multi-user internal application (dashboard/app shell — nav, workspace chrome, data-dense views) rather than a public-facing "portal" landing-page style. | claude/trusting-curie-hlx1r6 | Round-1 architecture-critic halt (AC-1: AppShell wrapped in old marketing Header/Footer) resolved by solution-architect's round-2 SDD amendment: App.jsx now uses a single outermost `APP_SHELL_HASHES.includes(hash)` ternary so AppShell and the marketing Header/main/Footer tree never co-mount. New: AppShell/Sidebar/TopBar/UserBadge components, src/lib/navigation.js, src/lib/currentUser.js (mock, explicitly labeled — no real auth backend exists), src/hooks/useCurrentUser.js. MasterDataTable re-parented as a child view inside AppShell. Final enterprise-architect-post sign-off: PASS — clean `oxlint`, clean `npm run build` (58 modules), 25/25 tests passing, no stubs/TODOs/secrets, no unresolved findings. Ready for CLAUDE.md §9.1 auto-merge-to-main. |

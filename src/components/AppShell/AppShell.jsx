@@ -2,18 +2,27 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Sidebar from '../Sidebar';
 import TopBar from '../TopBar';
+import MasterDataTable from '../MasterDataTable';
 import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './AppShell.module.css';
 
-function resolveInitialViewId(initialHash) {
-  const match = NAV_ITEMS.find((item) => item.hash === initialHash);
-  return (match ?? NAV_ITEMS[0]).id;
+// A hash that doesn't match any NAV_ITEMS entry (stale bookmark, typo'd
+// link, a renamed table route) silently falls back to the first item —
+// with the TopBar title now static ("Dashboard" for every section), that
+// fallback would otherwise be undetectable. Warn so it shows up in the
+// console instead of just quietly rendering the wrong table.
+function resolveViewId(id) {
+  const match = NAV_ITEMS.find((item) => item.id === id || item.hash === id);
+  if (!match) {
+    console.warn(`No dashboard section matches "${id}" — falling back to ${NAV_ITEMS[0].label}.`);
+    return NAV_ITEMS[0].id;
+  }
+  return match.id;
 }
 
 function AppShell({ initialHash = '' }) {
-  const [activeViewId, setActiveViewId] = useState(() => resolveInitialViewId(initialHash));
+  const [activeViewId, setActiveViewId] = useState(() => resolveViewId(initialHash));
   const activeItem = NAV_ITEMS.find((item) => item.id === activeViewId) ?? NAV_ITEMS[0];
-  const ActiveView = activeItem.component;
 
   return (
     <div className={styles.shell}>
@@ -22,9 +31,9 @@ function AppShell({ initialHash = '' }) {
       </a>
       <Sidebar items={NAV_ITEMS} activeId={activeViewId} onSelect={setActiveViewId} />
       <div className={styles.workspace}>
-        <TopBar title={activeItem.label} />
+        <TopBar title="Dashboard" />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
-          <ActiveView />
+          <MasterDataTable key={activeItem.id} route={activeItem.route} columns={activeItem.columns} />
         </main>
       </div>
     </div>

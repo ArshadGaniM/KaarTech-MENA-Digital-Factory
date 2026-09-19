@@ -8,7 +8,8 @@ REST API (see `backend/README.md` for the routes it calls).
 
 "delete" is a soft delete: it sets `deleted_at` on the row rather than
 removing it. Records added/modified/deleted here are visible in the
-frontend's "Master Data" view (`#master-data`), which reads directly from
+frontend's dashboard, where each table is its own sidebar section (e.g.
+`#resources`, `#delivery-centers`) — the dashboard reads directly from
 the backend and does not go through this MCP server.
 
 ## Setup

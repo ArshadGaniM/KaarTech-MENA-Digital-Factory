@@ -1,9 +1,10 @@
+import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './Header.module.css';
 
 const NAV_LINKS = [
   { label: 'Services', href: '#services' },
   { label: 'Delivery Centers', href: '#delivery-centers' },
-  { label: 'Master Data', href: '#master-data' },
+  { label: 'Dashboard', href: NAV_ITEMS[0].hash },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
 ];

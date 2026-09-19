@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import { NAV_ITEMS } from './lib/navigation';
 
-// App's app-shell branch mounts MasterDataView, which fetches over the
+// App's app-shell branch mounts MasterDataTable, which fetches over the
 // network via useMasterDataTable; stub fetch so this routing-boundary test
 // stays deterministic and offline.
 beforeEach(() => {
@@ -22,7 +23,7 @@ afterEach(() => {
 
 describe('App', () => {
   it('renders AppShell alone (no marketing Header/Footer) for an app-shell hash — locks in AC-1', () => {
-    window.location.hash = '#master-data';
+    window.location.hash = NAV_ITEMS[0].hash;
     render(<App />);
 
     expect(screen.getByRole('navigation', { name: 'Workspace sections' })).toBeInTheDocument();

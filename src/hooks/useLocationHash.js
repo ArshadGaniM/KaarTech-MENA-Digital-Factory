@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // Tracks window.location.hash so App can switch between the landing page
-// and the master data view without adding a router dependency.
+// and the dashboard shell without adding a router dependency.
 export function useLocationHash() {
   const [hash, setHash] = useState(window.location.hash);
 
