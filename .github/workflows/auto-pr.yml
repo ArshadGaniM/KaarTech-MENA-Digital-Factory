@@ -2,8 +2,11 @@ name: Auto PR
 
 # Opens/updates a PR on push to any branch except main, using
 # tasks/last-gate-report.md as the PR body when present (CLAUDE.md §9.3).
-# Auto-merges only when that push carries a fresh, non-BLOCKED gate report —
-# see CLAUDE.md §9.3 Step 5 for the full contract.
+# Auto-merges only when THIS push's own commits modified
+# tasks/last-gate-report.md (the "fresh" check below) and it isn't BLOCKED —
+# see CLAUDE.md §9.3 Step 5 for the full contract. A report merely present
+# in the repo from an earlier, unrelated push does not count — that gap let
+# every subsequent push auto-merge ungated until this check was added.
 
 on:
   push:
@@ -38,10 +41,29 @@ jobs:
               echo "blocked=false" >> "$GITHUB_OUTPUT"
             fi
             echo "has_report=true" >> "$GITHUB_OUTPUT"
+
+            # Freshness check: the report only authorizes auto-merge if THIS
+            # push actually touched it. Without this, a report from an old,
+            # unrelated feature sits in the repo forever and silently
+            # auto-merges every future push, gate or no gate — which is
+            # exactly what happened before this check existed (see
+            # tasks/lessons.md). before == all-zeros (new branch) or missing
+            # means we can't diff, so default to "not fresh" — safe side.
+            before="${{ github.event.before }}"
+            if [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ]; then
+              if git diff --name-only "$before" "${{ github.sha }}" -- tasks/last-gate-report.md | grep -q .; then
+                echo "fresh=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "fresh=false" >> "$GITHUB_OUTPUT"
+              fi
+            else
+              echo "fresh=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "No gate report yet — run the /gate protocol before merging." > /tmp/pr_body.md
             echo "has_report=false" >> "$GITHUB_OUTPUT"
             echo "blocked=false" >> "$GITHUB_OUTPUT"
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
           fi
 
       # Uses `gh pr create`/`gh pr edit` directly instead of an action that
@@ -68,7 +90,7 @@ jobs:
           fi
 
       - name: Auto-merge on fresh non-BLOCKED gate report
-        if: steps.gate.outputs.has_report == 'true' && steps.gate.outputs.blocked == 'false'
+        if: steps.gate.outputs.has_report == 'true' && steps.gate.outputs.blocked == 'false' && steps.gate.outputs.fresh == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
