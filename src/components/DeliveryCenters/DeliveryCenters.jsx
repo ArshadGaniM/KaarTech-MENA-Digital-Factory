@@ -8,8 +8,12 @@ const DELIVERY_CENTERS = [
 ];
 
 function DeliveryCenters() {
+  // Deliberately not "#delivery-centers" — that hash is also the dashboard's
+  // Delivery Centers table route (see MASTER_DATA_TABLES), and APP_SHELL_HASHES
+  // treats it as an app-shell hash. Sharing it would send this marketing
+  // anchor into the dashboard instead of scrolling to this section.
   return (
-    <section id="delivery-centers" className={styles.section}>
+    <section id="our-delivery-centers" className={styles.section}>
       <div className={styles.inner}>
         <p className={styles.eyebrow}>Where We Deliver From</p>
         <h2>Four ODCs, working as one factory</h2>
