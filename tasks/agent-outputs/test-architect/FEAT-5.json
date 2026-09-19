@@ -1,0 +1,70 @@
+{
+  "feature_id": "FEAT-5",
+  "stage": "5.9",
+  "role": "test-architect",
+  "verdict": "PASS",
+  "verified_via_direct_read": [
+    "backend/migrations/0013_add_resource_cost_columns.sql",
+    "backend/src/masterDataSchema.js",
+    "backend/src/masterDataRouter.js",
+    "backend/src/masterDataTables.js (resource_cost descriptor: employeeId/offshoreCost/onsiteCost, sortColumn, lookups, references)",
+    "backend/src/masterDataSchema.test.js (existing suite — confirmed zero tests reference resource_cost/validateReferences/lookupJoinSql/lookupSelectSql today)",
+    "backend/package.json (test script: node --test src/*.js)",
+    "mcp-server/src/masterDataTables.js (resource_cost add_/update_ tool fields)",
+    "mcp-server/package.json (confirmed: no test script, no test infra at all)",
+    "src/lib/masterDataApi.js (resource-cost columns/labels)",
+    "tasks/agent-outputs/business-analyst/FEAT-5.json (REQ-1..REQ-6)"
+  ],
+  "critical_infrastructure_gap": {
+    "finding": "Backend already has a working test runner (node --test src/*.test.js, per backend/package.json) and backend/src/masterDataSchema.test.js is a real, populated suite (267 lines) — no new backend infra needed. mcp-server has ZERO test infrastructure: no test script in mcp-server/package.json, no *.test.js anywhere under mcp-server/src. Frontend infra (vitest + RTL) already exists from FEAT-1's stage 6 setup and needs no reinstallation.",
+    "why_it_matters": "CLAUDE.md §9.4 fails the test-writer gate agent below 70% coverage. The new employeeId FK-validation and lookup-JOIN logic (validateReferences, lookupJoinSql, lookupSelectSql, toResponse's lookup projection) is genuinely new backend code with zero existing test coverage today — this is the real, non-trivial coverage gap for this feature, not a placeholder-table rename. The mcp-server mirror (add_resource_cost/update_resource_cost with a numeric employeeId) is also new and untested, but mcp-server has never had a test runner in this repo, so a same-repo precedent must be chosen rather than inherited.",
+    "required_before_stage_6": [
+      "Backend: no toolchain change needed — just add test cases to the existing backend/src/masterDataSchema.test.js (or a new backend/src/masterDataRouter.test.js if router-level HTTP tests are added — see integration_scope below) using the existing node --test/node:assert style already in the file.",
+      "mcp-server: add a minimal node --test setup mirroring the backend's own pattern (mcp-server/package.json test script: \"node --test src/*.test.js\"; no new dependency needed — node:test/node:assert are built in, consistent with the backend's zero-dependency choice) rather than introducing a different framework just for this one table's tool mirror.",
+      "Frontend: no action needed — MasterDataTable's existing generic tests already cover resource_cost's row rendering via its columns-driven design; no resource_cost-specific frontend test is required since there is no form/pick-list UI for this table (dashboard is read-only per the task)."
+    ],
+    "ownership": "Plumbing only for mcp-server (single obvious choice, matches the backend's own runner, no competing approach) — does not require another architecture round. Flagging as a stage-6 prerequisite since no prior stage added it."
+  },
+  "test_architecture": {
+    "unit_vs_integration_boundary": {
+      "principle": "Unit tests isolate the new pure/DB-touching helper functions in masterDataSchema.js with a stubbed or real-but-scoped pool. Integration tests exercise the shared masterDataRouter.js factory end-to-end against the live/test Postgres schema for the resource_cost table specifically, since the FK-existence check and the LEFT JOIN are inherently DB-dependent behavior that a pure mock would only restate, not verify.",
+      "unit_scope": [
+        "backend/src/masterDataSchema.js:validateReferences — mock pool.query to return zero/one rows and assert: (a) throws validationError with the correct field key + message when the referenced employeeId does not exist, (b) does not throw when it does, (c) is skipped entirely when the field is optional and omitted, (d) is skipped for an explicit null on a non-required reference field (the 'clearing it' case, mirroring validateBody's existing null-handling tests), (e) required-but-missing-on-create is already caught by validateBody before this ever runs (assert the sequencing contract, not duplicate the check)",
+        "backend/src/masterDataSchema.js:lookupJoinSql / lookupSelectSql (pure string builders, table.lookups is fixed descriptor data — no DB needed) — assert the generated SQL for resource_cost's lookups descriptor: correct alias (lookup_0), correct ON clause (foreignColumn = table.localColumn), the added 'and lookup_0.deleted_at is null' soft-delete predicate, and correct projection column aliases (lookup_0_name, lookup_0_designation)",
+        "backend/src/masterDataSchema.js:toResponse for resource_cost — feed a row object with lookup_0_name/lookup_0_designation present (simulates a GET's joined row) and again with them absent (simulates a POST/PATCH's bare 'returning *' row) and assert employeeName/employeeDesignation are the joined values in the first case and exactly null (not undefined) in the second, plus offshoreCost/onsiteCost pass through as null when the DB column is null",
+        "mcp-server/src/masterDataTables.js's resource_cost field list (pure data, no network) — assert employeeId/offshoreCost/onsiteCost are present with type: 'number', employeeId is required, and employeeName/employeeDesignation are absent from the writable field list (locks in 'read-only lookup, never a writable MCP field')"
+      ],
+      "integration_scope": [
+        "backend/src/masterDataRouter.js against resource_cost, run against a real (test/dev) Postgres connection per the existing masterDataSchema.test.js style of exercising real DB behavior where the logic is DB-shaped: POST with a non-existent employeeId returns 422 with a validation_error body (not a raw Postgres 500) before any row is inserted; POST with a valid employeeId that exists in resources succeeds and the row is retrievable; GET /resource_cost and GET /resource_cost/:id both return employeeName/employeeDesignation correctly resolved from the current resources row for that employeeId; updating the underlying resources.name/designation and re-fetching resource_cost shows the updated values (locks in 'live lookup, not a stored/stale copy' — this is the single most important behavioral assertion for this feature, since a stale-copy regression would be invisible from resource_cost's own table alone); a soft-deleted resources row (deleted_at set) yields employeeName/employeeDesignation === null on the resource_cost side, not the old values; GET / (list) for resource_cost does not 500 (locks in the sortColumn fix — this is exactly the round-1 regression architecture-critic/solution-architect already fixed, and it must have a regression test now that the fix exists, not just a manual verification note); PATCH can independently set/null offshoreCost and onsiteCost without touching the other (locks in 'independently optional, no cross-field rule')",
+        "mcp-server's add_resource_cost/update_resource_cost tools (mcp-server/src/index.js's zod-generated handlers) — with apiClient.js's HTTP call mocked at the fetch/apiClient boundary (not the backend), assert: employeeId is required and typed as a number by the zod schema (a string or missing employeeId is rejected before any HTTP call is made); a backend 422 (FK-not-found) response is surfaced as {isError: true, ...} with the real message, not swallowed or generalized; employeeName/employeeDesignation are not accepted as input parameters on either tool"
+      ],
+      "explicitly_out_of_scope_for_this_feature": [
+        "The other 8 master-data tables' router/schema code paths — sortColumn/lookups/references are opt-in descriptor keys that default to prior behavior; no regression tests needed for tables that don't set them (CLAUDE.md §1 Minimal Impact — this stage doesn't retrofit coverage onto untouched tables)",
+        "FEAT-7's positionId (deliberately unvalidated, modules.practiceId-style) — separate feature, separate queue entry, out of scope here",
+        "Any resource_cost frontend form/pick-list component — none exists or is planned; the dashboard is read-only for this table per the task, so MasterDataTable's existing generic-component tests (already covering loading/error/empty/success states from FEAT-1) are sufficient without a resource_cost-specific frontend test"
+      ]
+    },
+    "mock_strategy": {
+      "database": "Unit-level tests for validateReferences mock pool.query directly (vi/node:test's built-in mocking or a hand-rolled stub object, matching whatever minimal-dependency style backend/src/masterDataSchema.test.js already uses) so the FK-existence branch logic is tested without a live connection. Integration-level tests for the router (GET/POST/PATCH against resource_cost, including the live-lookup and sortColumn assertions) run against a real Postgres connection — mocking the LEFT JOIN and its soft-delete predicate would just restate the SQL string being tested rather than verify it actually resolves correctly, which is the one property this feature most needs proven.",
+      "mcp_server": "apiClient.js's HTTP layer is mocked (not the backend) when testing the MCP tool handlers, so tool-level tests assert request shaping (numeric employeeId, no employeeName/employeeDesignation params) and error-surfacing without needing a running backend process — consistent with 'validate at system boundaries, MCP just forwards' from the architecture stages.",
+      "no_snapshot_tests": "Per frontend.md (extended here to backend/mcp-server response-shape assertions by convention): all assertions are explicit field/value checks, never snapshot dumps of a full response object."
+    },
+    "coverage_plan": {
+      "gate_threshold": "70% (CLAUDE.md §9.4) computed over this feature's new/changed files only",
+      "in_scope_files_for_coverage": [
+        "backend/src/masterDataSchema.js (new: validateReferences, lookupJoinSql, lookupSelectSql, and toResponse's lookup-projection branch)",
+        "backend/src/masterDataRouter.js (new: validateReferences() call in POST/PATCH, lookup-join wiring in GET list/detail, sortColumn usage in ORDER BY)",
+        "backend/src/masterDataTables.js (resource_cost's descriptor is data, not logic — covered indirectly via the router/schema tests above, no separate test file needed)",
+        "mcp-server/src/masterDataTables.js (resource_cost's tool-field descriptor)",
+        "mcp-server/src/index.js (only the generic add_/update_ tool-generation logic as it applies to resource_cost's new numeric employeeId field — not the whole file, which is untouched by this feature otherwise)"
+      ],
+      "expected_coverage": "Comfortably above 70% for masterDataSchema.js and masterDataRouter.js given the unit+integration scope above covers every new branch (FK-found, FK-not-found, FK-skipped-optional-omitted, FK-skipped-explicit-null, joined-row-present, joined-row-absent, soft-deleted-join-target, sortColumn-active list query). mcp-server's coverage depends entirely on the required_before_stage_6 test-infra addition landing first — without it, coverage is mechanically 0% for the new mcp-server/src/masterDataTables.js field additions.",
+      "risk_if_skipped": "Without mcp-server test infra, the MCP-layer half of this feature (add_resource_cost/update_resource_cost) has no coverage path at all, which is an automatic FAIL on the test-writer gate agent per CLAUDE.md §9.5 for that portion of the diff, independent of the backend's own coverage. Without the sortColumn list-query regression test specifically, the exact defect architecture-critic/solution-architect already caught and fixed in round 1 has no test locking it in place — a future unrelated change to masterDataRouter.js's ORDER BY could silently reintroduce it with nothing to catch it."
+    }
+  },
+  "handoff_to_stage_6_test_script_writer": {
+    "must_do_first": "Add the minimal node --test setup to mcp-server/package.json (test script only — no new dependency) per critical_infrastructure_gap; backend and frontend infra are already in place and need no changes.",
+    "then": "Add unit tests to backend/src/masterDataSchema.test.js for validateReferences/lookupJoinSql/lookupSelectSql/toResponse's lookup branch (co-located with the existing suite, following its existing node:test/node:assert style); add integration tests exercising masterDataRouter.js's resource_cost routes against a real Postgres connection (new file, e.g. backend/src/masterDataRouter.resourceCost.test.js, or extend an existing router test file if one already exists — verify before creating a new one); add a new mcp-server/src/masterDataTables.test.js for the resource_cost tool-field assertions and mocked-apiClient tool-handler tests.",
+    "acceptance_criteria_source": "tasks/agent-outputs/business-analyst/FEAT-5.json REQ-1..REQ-6, cross-referenced against the FK-validation/live-lookup/independently-optional-costs/sortColumn constraints confirmed by every stage from enterprise-architect-pre through code-simplifier."
+  }
+}
