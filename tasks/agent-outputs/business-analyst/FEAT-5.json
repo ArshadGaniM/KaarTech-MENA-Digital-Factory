@@ -1,0 +1,96 @@
+{
+  "feature_id": "FEAT-5",
+  "stage": "business-analyst",
+  "verdict": "PASS",
+  "requirement_plain": "Resource Cost is currently a name-only placeholder master-data table (migration 0011). Give it a real schema: a required employeeId that must reference an existing Resources row (by Resources' business-key employee_id, not the resources.id uuid) and is rejected server-side if it doesn't exist; employeeName and employeeDesignation are NOT columns on Resource Cost at all — they must be resolved live from the matching Resources row at read time so they can never drift from that resource's current name/designation; offshoreCost and onsiteCost are both independently optional numeric fields (no cross-field enforcement that only one is set). Writes happen only via the MCP server's add_resource_cost/update_resource_cost tools (frontend dashboard stays read-only), so employeeId must be a validated numeric parameter there too, not free text.",
+  "requirements_traceability_matrix": [
+    {
+      "id": "REQ-1",
+      "requirement": "employeeId column: required, numeric, FK-like reference to Resources.employee_id",
+      "source": "task description, bullet 1",
+      "acceptance_criteria": [
+        "POST/PATCH to resource-cost rejects a missing employeeId",
+        "POST/PATCH rejects an employeeId with no matching row in resources.employee_id",
+        "Accepted employeeId is stored on resource_cost",
+        "Validation is against resources.employee_id (the unique business key), not resources.id (uuid)"
+      ],
+      "ambiguity": "None — task explicitly contrasts this with modules.practiceId's deliberately-unvalidated precedent and says this one must be enforced."
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "employeeName and employeeDesignation are live-lookup, non-persisted response fields sourced from the matching Resources row's current name/designation",
+      "source": "task description, bullet 2",
+      "acceptance_criteria": [
+        "No employee_name / employee_designation column added to resource_cost",
+        "GET (list and single) responses include employeeName/employeeDesignation reflecting Resources' CURRENT data for that employeeId at request time",
+        "If the Resources row is later renamed/redesignated, resource_cost's GET output changes accordingly without any write to resource_cost",
+        "A resource_cost row whose employeeId no longer resolves (should not normally occur, see Ambiguity) does not crash the read path"
+      ],
+      "ambiguity": "What happens on read if a previously-valid employeeId's Resources row is later hard-deleted or soft-deleted? Resources rows appear to use markedDeleted (soft delete) per api.md's documented deviation, so the FK likely still resolves via a lookup that doesn't filter deleted rows — but this is a design decision for the Architect/System Engineer stage, not decided here. Flagging so it isn't missed."
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "offshoreCost and onsiteCost: both optional numeric columns, independently nullable, no mutual-exclusivity enforcement",
+      "source": "task description, bullet 3",
+      "acceptance_criteria": [
+        "POST/PATCH accepts either field, both, or neither",
+        "Both may be null/omitted simultaneously without validation error",
+        "No business-rule check ties these to Resources.locationType (Onsite/Offshore) — that correlation is real-world context only, not an enforced constraint"
+      ],
+      "ambiguity": "None — task explicitly says do not enforce the Onsite/Offshore exclusivity at this layer."
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Standard audit columns already exist via shared master-data base shape — no change needed",
+      "source": "task description, bullet 4",
+      "acceptance_criteria": [
+        "createdBy/createdAt/updatedBy/updatedAt/markedDeleted remain functioning as-is for resource_cost after the migration"
+      ],
+      "ambiguity": "None."
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Frontend read-only display labels use the 'Employee <Field>' convention: 'Employee ID', 'Employee Name', 'Employee Designation', 'Offshore Cost', 'Onsite Cost'",
+      "source": "task description, bullet 5, cross-referencing FEAT-6's Resources labeling",
+      "acceptance_criteria": [
+        "src/lib/masterDataApi.js resource-cost column definitions show exactly these label strings",
+        "Column ordering/labels match the sibling Resources table's just-applied convention (FEAT-6, commit 5b1f29b) for consistency"
+      ],
+      "ambiguity": "None — but implementer should read the FEAT-6 diff for the exact labeling precedent (e.g. whether employeeId's own label omits or includes the 'Employee' prefix given the field name already starts with 'employee') rather than guessing independently."
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "MCP server add_resource_cost/update_resource_cost tools take a numeric employeeId parameter, validated against Resources server-side — not a free-text/unvalidated field",
+      "source": "task description, bullet 6",
+      "acceptance_criteria": [
+        "mcp-server/src/masterDataTables.js resource-cost field descriptor for employeeId is typed number, required",
+        "The same existence check used by the REST layer (REQ-1) is not bypassable by going through the MCP path — MCP calls the backend API (or equivalent shared validation), it does not write directly around it",
+        "add_resource_cost fails clearly (machine-readable error) when given a non-existent employeeId, per api.md's error-shape convention"
+      ],
+      "ambiguity": "Whether the MCP server calls the REST API or talks to the DB directly is an implementation/architecture decision (system already has 'no workspace link' duplication between backend and mcp-server field mirrors per the explorer's findings) — not decided here."
+    }
+  ],
+  "design_brief": {
+    "summary": "FEAT-5 upgrades resource_cost from a name-only placeholder (migration 0011) to a real table with a validated foreign-key-like reference to Resources plus two independently-optional cost figures, and introduces two response fields whose values are computed by a live join/lookup rather than stored. This is the first master-data table in the app that needs (a) FK-existence validation and (b) non-stored, joined response fields — both are new capabilities for the shared master-data machine (masterDataTables.js / masterDataRouter.js / masterDataSchema.js and their mcp-server mirror), not just a copy of the migration-0012 pattern used for Resources.",
+    "in_scope": [
+      "New migration (backend/migrations/0013_...) adding employee_id (numeric, required), offshore_cost (numeric, nullable), onsite_cost (numeric, nullable) to resource_cost, following the 0012 pattern (temporary defaults dropped immediately, RLS/trigger conventions preserved)",
+      "Applying that migration live via mcp__Supabase__apply_migration",
+      "Backend: FK-existence validation of employeeId against resources.employee_id at the service layer (per database.md's explicit rule), and live lookup of name/designation for GET responses",
+      "MCP server: numeric, validated employeeId parameter on add_resource_cost/update_resource_cost",
+      "Frontend: relabeling resource-cost's read-only columns to the 'Employee <Field>'/'Offshore Cost'/'Onsite Cost' convention, including the two computed fields in the read-only column list"
+    ],
+    "out_of_scope": [
+      "Any write UI/form on the frontend (dashboard stays read-only per the task)",
+      "Enforcing mutual exclusivity between offshoreCost and onsiteCost",
+      "Changing Resources' own schema or labels (FEAT-6 already did that)",
+      "Deciding whether FK-validation and live-lookup become generic, reusable field-descriptor features of the shared master-data machine, or a resource-cost-specific bespoke path — that decision belongs to the Architect/System Engineer stages, not to this analysis"
+    ],
+    "open_questions_for_architecture": [
+      "How should FK-existence validation be expressed in the field descriptor / schema layer generically enough to not be a one-off? (raised by codebase-explorer, carried forward here as REQ-1's implementation concern)",
+      "How should a computed/joined response field be expressed in toResponse() / the list-get queries generically? (raised by codebase-explorer, carried forward here as REQ-2's implementation concern)",
+      "Read-path behavior when employeeId's Resources row is soft-deleted (see REQ-2 ambiguity)",
+      "Whether MCP-layer validation is enforced by delegating to the same backend code path as the REST API, to avoid a second, potentially-diverging validation implementation (see REQ-6 ambiguity)"
+    ]
+  },
+  "process_note": "tasks/pipeline-queue.md already shows FEAT-5 as in_flight with active run wf_f8c55755-42a recorded in the immediately-preceding commit; per §7.7 this run should be resumed/reconciled against that queue state rather than treated as a fresh start. No queue-file edits made at this stage — that is the orchestrator's responsibility, not the business-analyst stage's."
+}
