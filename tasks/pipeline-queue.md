@@ -6,12 +6,13 @@
 
 **Active run ID:** none
 
-**Feature counter:** 1
+**Feature counter:** 2
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
+| FEAT-2 | queued | Rework the AppShell sidebar/dashboard from FEAT-1: list each master-data table as its own separate sidebar item (Delivery Centers, Practices, Departments, Competencies, Modules, Resources, Resource Cost, Teams, Resource Deployment) instead of one generic entry; clicking an item shows that table's data on the right, same row/column layout as today. Remove the words "Master Data" from all user-facing UI text — no umbrella label, only the individual section names. Top page header reads "Dashboard". | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 
