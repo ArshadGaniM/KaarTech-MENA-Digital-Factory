@@ -183,4 +183,35 @@ export const MASTER_DATA_TABLES = [
     resourceName: "resource_deployment",
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
+  {
+    route: "positions",
+    tableName: "positions",
+    resourceName: "position",
+    hasCode: true,
+    // teamName is NOT a stored column — it's a live lookup against teams
+    // at read time (see lookupJoinSql/lookupSelectSql/toResponse above),
+    // same mechanism as teams.departmentName.
+    lookups: [
+      {
+        table: "teams",
+        localColumn: "team_code",
+        foreignColumn: "code",
+        projections: [{ key: "teamName", column: "name" }],
+      },
+    ],
+    fields: [
+      { key: "name", column: "name", required: true, type: "string" },
+      {
+        key: "teamCode",
+        column: "team_code",
+        required: true,
+        type: "string",
+        // Enforced FK, same mechanism as teams.departmentCode ->
+        // departments.code: validateReferences() 422s if no matching,
+        // non-deleted Teams row exists. References teams' own
+        // auto-generated `code` column, not `id`.
+        references: { table: "teams", column: "code" },
+      },
+    ],
+  },
 ];

@@ -1,9 +1,9 @@
 # KaarTech MENA Digital Factory — Master Data MCP Server
 
-An MCP server (stdio transport) exposing 27 tools — `add_`/`update_`/`delete_` for
-each of the 9 master data tables (`practice`, `delivery_center`, `competency`,
+An MCP server (stdio transport) exposing 30 tools — `add_`/`update_`/`delete_` for
+each of the 10 master data tables (`practice`, `delivery_center`, `competency`,
 `module`, `resource`, `department`, `resource_cost`, `team`,
-`resource_deployment`). Each tool is a thin client over the backend's
+`resource_deployment`, `position`). Each tool is a thin client over the backend's
 REST API (see `backend/README.md` for the routes it calls).
 
 "delete" is a soft delete: it sets `deleted_at` on the row rather than
@@ -63,7 +63,7 @@ e.g. in `claude_desktop_config.json` (Claude Desktop) or a project's
 
 For each of `practice`, `delivery_center`, `competency`, `module`,
 `resource`, `department`, `resource_cost`, `team`, `resource_deployment`,
-there's an `add_<table>`, `update_<table>`, and `delete_<table>` tool.
+`position`, there's an `add_<table>`, `update_<table>`, and `delete_<table>` tool.
 Each table's own fields differ — see
 `src/masterDataTables.js` for the authoritative list — but every
 `add_`/`update_` tool additionally accepts an optional `updatedBy: string`
@@ -77,6 +77,7 @@ user/auth system exists yet). On create this sets both `createdBy` and
 | `practice`, `department` | `name` | `name` |
 | `resource_cost` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
 | `team` | `name`, `departmentCode` (string — must reference an existing `department`'s own auto-generated code, enforced) | `name`, `departmentCode` |
+| `position` | `name`, `teamCode` (string — must reference an existing `team`'s own auto-generated code, enforced) | `name`, `teamCode` |
 | `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
 | `resource` | `employeeId`, `name`, `employmentStatus`, `employmentType`, `subDivision`, `position`, `locationType` (`Onsite` \| `Offshore`), `designation`, `geBatch`, `kaarExperience`, `totalExperience` | all of the above, plus `orgChart`, `region`, `onsiteLocation`, `offshoreLocation`, `skill`, `sapExperience` |
@@ -119,6 +120,16 @@ also exposes `departmentName` in every read and an auto-generated,
 immutable `code` (`TEAM-001`, ...) — neither is a tool parameter on
 `add_team`/`update_team`; `departmentName` is resolved live the same way
 `resource_cost`'s `employeeName` is, and `code` is set by a database
+trigger.
+
+**`position`'s `teamCode`** follows the identical pattern one level down:
+validated against `team`'s own auto-generated `code` (not the team's
+`id`), `add_position`/`update_position` reject a `teamCode` that doesn't
+match an existing (non-deleted) `team`, with a 422 naming the field.
+`position` also exposes `teamName` in every read and an auto-generated,
+immutable `code` (`POS-001`, ...) — neither is a tool parameter on
+`add_position`/`update_position`; `teamName` is resolved live the same
+way `team`'s `departmentName` is, and `code` is set by a database
 trigger.
 
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;

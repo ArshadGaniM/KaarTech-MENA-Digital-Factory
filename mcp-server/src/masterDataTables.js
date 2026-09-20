@@ -150,4 +150,25 @@ export const MASTER_DATA_TABLES = [
     label: "Resource Deployment",
     fields: [{ key: "name", label: "name", required: true, type: "string" }],
   },
+  {
+    slug: "position",
+    route: "positions",
+    label: "Position",
+    hasCode: true,
+    // teamName is NOT writable here — it's a live lookup against the
+    // Teams table's current data, returned by the backend's GET
+    // responses but never accepted on add_/update_.
+    fields: [
+      { key: "name", label: "name", required: true, type: "string" },
+      {
+        key: "teamCode",
+        label:
+          "the linked Team's business code (from the Teams table's own auto-generated code, " +
+          "e.g. TEAM-001) — must match an existing, non-deleted Team; the backend rejects the " +
+          "request with a validation error if no such Team exists",
+        required: true,
+        type: "string",
+      },
+    ],
+  },
 ];

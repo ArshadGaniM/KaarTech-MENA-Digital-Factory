@@ -28,9 +28,9 @@ npm run dev
 | PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
 | DELETE | `/v1/team-members/:id` | — | Hard delete |
 
-### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`
+### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`
 
-All nine routes share the same shape (`src/masterDataRouter.js`), but each
+All ten routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
 authoritative per-table field list (key, required, type).
 
@@ -49,6 +49,7 @@ Per-table fields, as of this writing:
 | `competencies`, `resource-deployment` | `name` (required) |
 | `resource-cost` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
+| `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
@@ -143,6 +144,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0012_add_resource_columns.sql` | `resources`-specific: 16 real columns imported from an HR export, including `employee_id integer unique not null` — the first caller-supplied (not auto-generated) unique identifier in this schema — and a `location_type` `CHECK` constraint (`Onsite`/`Offshore`, matching the source data's casing). |
 | `0013_add_resource_cost_columns.sql` | `resource_cost`-specific: drops the placeholder `name` column, adds `employee_id integer not null` (with `fk_resource_cost_resources` foreign key to `resources.employee_id` and `ix_resource_cost_employee_id` index), `offshore_cost numeric`, `onsite_cost numeric` — the first real foreign-key constraint in this schema (every prior cross-table reference, e.g. `modules.practice_id`, is deliberately app-layer-only). |
 | `0014_add_team_code_and_department.sql` | `teams`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`/`departments`/`practices`), `department_code text not null` (with `fk_teams_departments` foreign key to `departments.code` and `ix_teams_department_code` index) — `name` stays as-is, no longer a placeholder. |
+| `0015_create_positions.sql` | New table `positions`, created directly with its full real shape in one migration (unlike `resource_cost`/`teams`, which started as name-only placeholders): base shape (`id`/`name`/timestamps/`deleted_at`/`created_by`/`updated_by`), `code` (auto-generated via trigger, immutable — `POS-001`, ...), `team_code text not null` (with `fk_positions_teams` foreign key to `teams.code` and `ix_positions_team_code` index). |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):
