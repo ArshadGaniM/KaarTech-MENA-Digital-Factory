@@ -193,4 +193,28 @@ export const MASTER_DATA_TABLES = [
       },
     ],
   },
+  {
+    slug: "project",
+    route: "projects",
+    label: "Project",
+    // No hasCode — unlike every other business-identifier table, none of
+    // Project's fields are auto-generated: all three are manually entered
+    // by the caller. No FK/lookup fields either — no reference table was
+    // named for projectProfitCenterCode.
+    fields: [
+      {
+        key: "projectId",
+        label: "project ID — caller-supplied, not auto-generated, must be unique",
+        required: true,
+        type: "string",
+      },
+      { key: "projectName", label: "project name", required: true, type: "string" },
+      {
+        key: "projectProfitCenterCode",
+        label: "profit center code (plain string, no FK validation)",
+        required: true,
+        type: "string",
+      },
+    ],
+  },
 ];

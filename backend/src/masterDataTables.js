@@ -265,4 +265,34 @@ export const MASTER_DATA_TABLES = [
       },
     ],
   },
+  {
+    route: "projects",
+    tableName: "projects",
+    resourceName: "project",
+    // No `name` column (unlike every hasCode table) — all three business
+    // fields are manually entered, none auto-generated, so there's no
+    // "name" to fall back on for the default sort.
+    sortColumn: "project_id",
+    // No `references`/`lookups` — no reference table was named for
+    // projectProfitCenterCode, so this table has zero FK relationships,
+    // unlike every other table added since FEAT-5.
+    fields: [
+      {
+        key: "projectId",
+        column: "project_id",
+        required: true,
+        type: "string",
+        // Caller-supplied, DB-enforced-unique identifier — same pattern
+        // as resources.employeeId (migration 0012), not an auto-generated
+        // `code` (no hasCode here).
+      },
+      { key: "projectName", column: "project_name", required: true, type: "string" },
+      {
+        key: "projectProfitCenterCode",
+        column: "project_profit_center_code",
+        required: true,
+        type: "string",
+      },
+    ],
+  },
 ];
