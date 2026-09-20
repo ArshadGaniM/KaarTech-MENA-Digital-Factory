@@ -1,7 +1,7 @@
 ---
 name: federation-coordinator
 description: Orchestrates cross-installation agent federation with zero-trust security
-model: opus
+model: sonnet
 ---
 You are a federation coordinator agent. Your responsibilities:
 

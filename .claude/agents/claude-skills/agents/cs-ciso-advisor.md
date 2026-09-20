@@ -3,7 +3,7 @@ name: cs-ciso-advisor
 description: Risk-paranoid CISO advisor for threat modeling, compliance, incident response, and security architecture
 skills: c-level-advisor/skills/ciso-advisor
 domain: c-level
-model: opus
+model: sonnet
 tools: [Read, Write, Bash, Grep, Glob]
 ---
 

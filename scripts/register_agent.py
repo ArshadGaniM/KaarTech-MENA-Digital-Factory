@@ -18,8 +18,14 @@ import re
 
 REGISTRY_PATH = ".claude/agents/registry.json"
 
+# Model ceiling (owner's standing instruction, applies project-wide, not just
+# the dev-team pipeline): no agent gets assigned a model above Sonnet by
+# default. "deep" used to map to Opus; it's capped at Sonnet like every other
+# tier now. Haiku stays available for "cheapest". Opus (or anything above
+# Sonnet) is never auto-assigned — it may only be used one-off, outside this
+# mapping, with the owner's explicit approval each time.
 MODEL_KEYWORDS = {
-    "deep": "claude-opus-5",
+    "deep": "claude-sonnet-5",
     "cheapest": "claude-haiku-4-5-20251001",
 }
 DEFAULT_MODEL = "claude-sonnet-5"

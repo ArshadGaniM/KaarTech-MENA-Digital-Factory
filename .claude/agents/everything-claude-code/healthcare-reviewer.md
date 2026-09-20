@@ -2,7 +2,7 @@
 name: healthcare-reviewer
 description: 臨床安全性、CDSS精度、PHIコンプライアンス、医療データ完全性についてヘルスケアアプリケーションコードをレビューします。EMR/EHR、臨床判断支援、医療情報システムに特化しています。
 tools: ["Read", "Grep", "Glob"]
-model: opus
+model: sonnet
 ---
 
 ## プロンプト防御ベースライン
