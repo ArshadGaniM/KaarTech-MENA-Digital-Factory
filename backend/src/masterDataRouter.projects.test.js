@@ -190,6 +190,36 @@ test("PATCH /v1/projects/:id can update projectName without touching projectId o
   assert.equal(body.data.projectProfitCenterCode, "PC-500");
 });
 
+test("PATCH /v1/projects/:id maps a unique_violation (23505) on projectId to a 422 naming the field, not a raw 500", async (t) => {
+  // Unlike teams/positions (whose FK-checked fields are never part of a
+  // unique constraint), projectId is a full `table.fields` entry included
+  // in PATCH's SET clause — so the same UPDATE that renames a project can
+  // just as easily collide with another row's projectId as the INSERT can.
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from projects where id")) {
+      return { rows: [baseRow()] };
+    }
+    if (sql.startsWith("update projects set")) {
+      const err = new Error("duplicate key value violates unique constraint");
+      err.code = "23505";
+      err.constraint = "projects_project_id_unique";
+      throw err;
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/projects/${PROJECT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ projectId: "PRJ-1001" }),
+  });
+
+  assert.equal(res.status, 422);
+  const body = await res.json();
+  assert.equal(body.error.code, "validation_error");
+  assert.ok(body.error.details.projectId);
+});
+
 registerAuthGateTests({
   getBaseUrl: () => baseUrl,
   route: "projects",
