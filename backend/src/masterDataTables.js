@@ -68,6 +68,12 @@ export const MASTER_DATA_TABLES = [
     route: "resources",
     tableName: "resources",
     resourceName: "resource",
+    // FEAT-12 (Entity Relationship page): the single source-of-truth
+    // identity field for a table with no `hasCode` trigger — caller-
+    // supplied and DB-enforced-unique, not auto-generated. Purely
+    // descriptive metadata; nothing in masterDataRouter.js/masterDataSchema.js
+    // reads this field, only backend/src/entityRelationships.js does.
+    identityField: "employeeId",
     fields: [
       { key: "employeeId", column: "employee_id", required: true, type: "number" },
       { key: "name", column: "name", required: true, type: "string" },
@@ -269,6 +275,8 @@ export const MASTER_DATA_TABLES = [
     route: "projects",
     tableName: "projects",
     resourceName: "project",
+    // See resources.identityField's comment — same reasoning.
+    identityField: "projectId",
     // No `name` column (unlike every hasCode table) — all three business
     // fields are manually entered, none auto-generated, so there's no
     // "name" to fall back on for the default sort.

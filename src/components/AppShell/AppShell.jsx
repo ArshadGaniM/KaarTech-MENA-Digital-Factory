@@ -4,6 +4,7 @@ import Sidebar from '../Sidebar';
 import TopBar from '../TopBar';
 import MasterDataTable from '../MasterDataTable';
 import DashboardPlaceholder from '../DashboardPlaceholder';
+import EntityRelationship from '../EntityRelationship';
 import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './AppShell.module.css';
 
@@ -34,8 +35,10 @@ function AppShell({ initialHash = '' }) {
       <div className={styles.workspace}>
         <TopBar title="Dashboard" />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
-          {activeItem.route ? (
+          {activeItem.kind === 'table' ? (
             <MasterDataTable key={activeItem.id} route={activeItem.route} columns={activeItem.columns} />
+          ) : activeItem.kind === 'entity-relationship' ? (
+            <EntityRelationship key={activeItem.id} />
           ) : (
             <DashboardPlaceholder key={activeItem.id} />
           )}
