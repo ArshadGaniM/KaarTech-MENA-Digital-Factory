@@ -28,7 +28,7 @@ npm run dev
 | PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
 | DELETE | `/v1/team-members/:id` | — | Hard delete |
 
-### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`
+### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`
 
 All ten routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
@@ -56,6 +56,7 @@ Per-table fields, as of this writing:
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** validated against `practices`; can be set/changed later via PATCH) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
+| `projects` | `projectId` (required, **caller-supplied and unique — not auto-generated**, same pattern as `resources.employeeId`), `projectName` (required), `projectProfitCenterCode` (required, plain string — no FK/lookup, no reference table named) — the first table with zero enforced FK relationships since FEAT-5 |
 
 **Field types beyond `string`/`enum`:** a field's `type` can also be
 `"number"` (a finite JS number — no length/enum checks apply), and any
@@ -147,6 +148,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0014_add_team_code_and_department.sql` | `teams`-specific: `code` (auto-generated via trigger, immutable — same pattern as `delivery_centers`/`departments`/`practices`), `department_code text not null` (with `fk_teams_departments` foreign key to `departments.code` and `ix_teams_department_code` index) — `name` stays as-is, no longer a placeholder. |
 | `0015_create_positions.sql` | New table `positions`, created directly with its full real shape in one migration (unlike `resource_cost`/`teams`, which started as name-only placeholders): base shape (`id`/`name`/timestamps/`deleted_at`/`created_by`/`updated_by`), `code` (auto-generated via trigger, immutable — `POS-001`, ...), `team_code text not null` (with `fk_positions_teams` foreign key to `teams.code` and `ix_positions_team_code` index). |
 | `0016_add_resource_deployment_columns.sql` | `resource_deployment`-specific: drops the placeholder `name` column, adds `employee_id integer not null` (with `fk_resource_deployment_resources` foreign key to `resources.employee_id` and `ix_resource_deployment_employee_id` index) and `position_code text not null` (with `fk_resource_deployment_positions` foreign key to `positions.code` and `ix_resource_deployment_position_code` index) — the first table with two foreign-key constraints and two indexes added in a single migration. |
+| `0017_create_projects.sql` | New table `projects`, created directly with its full real shape in one migration (same reasoning as `positions`, 0015 — the table starts empty). No `name` column and no `hasCode` trigger — all three business columns (`project_id`, `project_name`, `project_profit_center_code`) are manually entered, none auto-generated. `project_id` is caller-supplied and DB-enforced-unique (`projects_project_id_unique`), same mechanism as `resources.employee_id` (0012), not the `code`-sequence-and-trigger pattern every other table uses. No foreign keys — the first table since FEAT-5 with zero FK relationships. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

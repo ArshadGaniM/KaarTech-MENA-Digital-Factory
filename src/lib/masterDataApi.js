@@ -129,6 +129,16 @@ export const MASTER_DATA_TABLES = [
       ...AUDIT_COLUMNS,
     ],
   },
+  {
+    route: "projects",
+    label: "Projects",
+    columns: [
+      { key: "projectId", label: "Project ID" },
+      { key: "projectName", label: "Project Name" },
+      { key: "projectProfitCenterCode", label: "Profit Center Code" },
+      ...AUDIT_COLUMNS,
+    ],
+  },
 ];
 
 export async function fetchMasterDataTable(route) {

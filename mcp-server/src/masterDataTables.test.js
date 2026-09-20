@@ -206,3 +206,38 @@ test("fieldSchema maps resource_deployment's two FK fields to their own distinct
   assert.equal(positionIdSchema.safeParse("POS-001").success, true);
   assert.equal(positionIdSchema.safeParse(42).success, false);
 });
+
+// FEAT-10: project's mirrored tool-field descriptor. Unlike every table
+// added since FEAT-5, this one has zero FK-validated fields — all three
+// are manually entered, none live-looked-up — so there's no
+// "labels document FK validation" assertion to mirror here.
+
+function projectTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "project");
+  assert.ok(table, "project entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("project's writable fields are exactly projectId/projectName/projectProfitCenterCode", () => {
+  const fieldKeys = projectTable().fields.map((f) => f.key).sort();
+  assert.deepEqual(fieldKeys, ["projectId", "projectName", "projectProfitCenterCode"]);
+});
+
+test("project has no hasCode flag — none of its fields are auto-generated", () => {
+  assert.ok(!projectTable().hasCode);
+});
+
+test("project's three fields are all required strings", () => {
+  const table = projectTable();
+  for (const key of ["projectId", "projectName", "projectProfitCenterCode"]) {
+    const field = table.fields.find((f) => f.key === key);
+    assert.equal(field.type, "string");
+    assert.equal(field.required, true);
+  }
+});
+
+test("fieldSchema maps project's fields to zod strings that reject a non-string value", () => {
+  const projectId = fieldSchema(projectTable().fields.find((f) => f.key === "projectId"));
+  assert.equal(projectId.safeParse("PRJ-1001").success, true);
+  assert.equal(projectId.safeParse(1001).success, false);
+});
