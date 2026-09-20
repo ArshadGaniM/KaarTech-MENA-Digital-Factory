@@ -1,67 +1,44 @@
 # Merge-to-Main Gate Report
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff scope:** FEAT-11 (Project Assignments — chained/transitive lookup + cross-field date validation)
+**Diff scope:** FEAT-12 (Entity Relationship sidebar page — self-updating from `MASTER_DATA_TABLES`)
 **Verdict: ✅ PASS**
 
 ## Feature summary
 
-FEAT-11 adds "Project Assignments", a brand-new master-data table linking a
-Project to a Team over a date range: `projectId`/`teamId` (both pick-list-only
-FK references — the second table with two concurrent FK fields, after
-`resource_deployment`), `projectAssignmentStartDate`/`projectAssignmentEndDate`
-(both required `date`-typed fields).
+FEAT-12 adds an "Entity Relationship" sidebar section explaining how every
+master-data table connects to the others — each table's identity field
+(auto-generated code / caller-supplied unique field / none), its enforced
+FK relationships, and its live lookups (including chained ones).
 
-This is the first feature to require **two brand-new generic framework
-capabilities**, both added to `backend/src/masterDataSchema.js`:
+Built self-updating by construction, per the original requirement: a new
+`backend/src/entityRelationships.js` derives everything from
+`MASTER_DATA_TABLES` (the same descriptors the real backend runs on) rather
+than hand-written prose — a new `GET /v1/schema/entity-relationships`
+route exposes it, and the frontend fetches and renders it. A new optional
+`identityField` metadata property was added to `resources`/`projects` in
+the descriptor (documented as pure metadata, consumed only by this new
+endpoint). `src/lib/navigation.js` now appends this as the last
+`NAV_ITEMS` entry (so it never shifts any table's index), and
+`AppShell.jsx` branches on a new `kind` field instead of a route-truthiness
+ternary.
 
-1. **Chained/transitive lookups (`lookup.via`)** — `departmentId`/
-   `departmentName` are not a column on `project_assignments` at all; they
-   resolve through the linked Team's own `department_code`. A lookup entry
-   can now set `via: "<earlier lookup's table>"` to join off that lookup's
-   own alias instead of off the base table (`buildLookupPlan`/
-   `lookupJoinSql`).
-2. **Cross-field validation (`table.crossFieldValidations`)** — a
-   `"dateRange"` rule enforces `projectAssignmentEndDate >=
-   projectAssignmentStartDate`, wired into both POST and PATCH
-   (`validateCrossFields`). A PATCH that only sends one of the two dates is
-   still checked against the other's current, stored value. Mirrored as a
-   DB-layer `CHECK` constraint (migration 0018) as defense-in-depth, the
-   same pattern used for every FK's app-layer + DB-layer pair.
-
-A new `"date"` field type was added alongside (`validateBody`, and
-`z.string().date()` in the mcp-server's `fieldSchema`).
-
-Migration `0018_create_project_assignments.sql` applied live to Supabase —
-verified via `mcp__Supabase__list_tables` (both FK constraints and the
-CHECK constraint present on the deployed schema).
-
-Built directly, per the owner's most recent standing instruction (the
-Workflow pipeline was reinstated and then immediately reverted back to
-direct builds within the same session).
+Verified end-to-end in a real browser (backend + frontend dev servers,
+headless Chromium) — renders correctly including the chained
+Teams→Departments lookup and the "no single identity field" case for
+Project Assignments.
 
 ## Gate agent results
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | PASS | Confirmed `validateCrossFields`'s PATCH handling and the equal-dates boundary are correct. Flagged an Important, non-blocking robustness note: `buildLookupPlan`'s `via` resolution finds the *first* matching table name in the array, not "the nearest earlier entry" — not exploitable by today's config (no duplicate table names, `via` correctly ordered after its target), but worth hardening before a second chained lookup is added. |
-| security-auditor | PASS | Confirmed every SQL identifier the `via` mechanism interpolates comes only from the fixed `masterDataTables.js` descriptor, never request input. No raw SQL interpolation of user values, no secrets, no injection risk in the date-comparison logic. |
-| debugger | PASS | Traced the `via`-throw path (fires at server startup, not per-request — fail-fast on a config bug, by design) and confirmed `current` is always safely available in `validateCrossFields`'s call sites. Noted one non-triggered latent fragility (missing null-guard if a future `crossFieldValidations` entry typos a field key) — not a defect in this diff. |
-| test-writer | PASS (was WARN, self-fixed) | Found two real gaps: `masterDataSchema.js` had no direct unit tests for `via`/`validateCrossFields` (only exercised indirectly through the router), and the FK-violation-race test only covered the `teams`-side constraint, not `projects`. Added both. 163/163 backend, 33/33 mcp-server tests pass. |
-| refactorer | PASS | Confirmed the `via` mechanism and `validateCrossFields` are minimally scoped to the actual use case (no speculative generalization), and the new test file reuses the shared harness. |
-| doc-writer | PASS (was WARN, self-fixed) | Found two real gaps: `mcp-server/README.md`'s opening paragraph was stale ("30 tools"/"10 tables"); `backend/README.md`'s migration-0018 row omitted the new index names, unlike every prior FK-adding migration row. Both fixed; new "Chained/transitive lookups" and "Cross-field validation" doc sections verified byte-accurate against the code. |
-| silent-failure-hunter | PASS | Confirmed the `via`-throw fails loudly at startup rather than silently misrouting a join, and that `validateCrossFields`'s null-skip path is unreachable with invalid data given validation ordering (`validateBody` always runs first). |
-| pr-test-analyzer | PASS | Traced the JOIN-alias regex test and the PATCH-cross-field test — both are genuine, load-bearing regression guards, not restated mocks. One Optional note: the null-propagation test alone doesn't prove LEFT JOIN semantics (it mocks the row directly) — that proof lives in the separate JOIN-SQL regex test. No sign of reduced rigor for the two brand-new capabilities; if anything this file is the first in the suite to assert on generated JOIN SQL at all. |
+| code-reviewer | PASS | Confirmed no crash risk against real data, correct route placement/auth convention, behavior-preserving `kind`-based branch. Two Optional/cosmetic notes (a test title/data mismatch, the documented `hasCode`-wins-over-`identityField` precedence) — neither blocking. |
+| security-auditor | PASS | Endpoint only restates already-public schema metadata, correctly unauthenticated matching every other GET route, zero user input so no injection surface. |
+| debugger | PASS | Traced every current real table's descriptor against `entityRelationships.js`'s assumptions (`table.fields`, `lookup.projections`) — no throw risk today; flagged two latent (non-triggered) fragilities for future tables, addressed below. |
+| test-writer | PASS (was WARN, self-fixed) | Found two real gaps: no test for `labelFor()`'s raw-route-string fallback, and no HTTP-layer test for the new route (only the pure function was tested). Added both — a new `entityRelationships.route.test.js` and a frontend fallback test. 178/178 backend, 42/42 frontend tests pass. |
+| refactorer | PASS | Confirmed `entityRelationships.js` is minimally scoped (three small pure functions), the frontend's `LABELS_BY_ROUTE` reuse is the correct level (not duplicating `NAV_ITEMS`), and the `AppShell.jsx` branch is the minimal shape for three render cases. |
+| doc-writer | PASS (was WARN, self-fixed) | Found a real gap: the new endpoint's example JSON response in `backend/README.md` only showed 2 of the actual 5 `lookups` entries for `project-assignments`. Fixed to match `buildEntityRelationships`'s real output exactly. |
+| silent-failure-hunter | PASS (was WARN, fixed) | Found two real, non-blocking gaps: (1) `resource-cost`/`resource-deployment` fell through to identity type `"none"` with no comment explaining it was deliberate, unlike `project-assignments`; (2) `labelFor()`'s fallback silently degrades to a raw route string with no signal that the backend/frontend `MASTER_DATA_TABLES` may have drifted out of sync. Both fixed — added explanatory comments to the two tables, and a `console.warn` on the fallback path. |
+| pr-test-analyzer | PASS | Traced the real-data chained-lookup test, the frontend chained-vs-direct rendering test — both genuine regression guards. One Optional note: the `hasCode`+`identityField` precedence test exercises real code but a currently-unreachable input combination (disclosed by its own test name, not misleading). |
 
 No Critical findings. No FAIL gates remain.
-
-## Also this session
-
-Set up a scheduled Routine ("KaarTech Digital Factory — Dev Pipeline
-Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) per the owner's
-standing instruction to keep executing queued pipeline features across
-session limits (CLAUDE.md §7.3). **Known limitation, disclosed to the
-owner:** the Routine was created with no MCP connectors attached (this
-session held none it could pass through), so fired sessions run without
-Supabase/GitHub MCP tools until it's recreated from a session or the
-claude.ai Routines UI that holds those connector grants.
