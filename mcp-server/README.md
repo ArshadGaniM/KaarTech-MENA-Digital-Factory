@@ -73,8 +73,9 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency`, `resource_deployment` | `name` | `name` |
+| `competency` | `name` | `name` |
 | `practice`, `department` | `name` | `name` |
+| `resource_deployment` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced), `positionId` (string — must reference an existing `position`'s own auto-generated code, enforced) | `employeeId`, `positionId` (independently settable) |
 | `resource_cost` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
 | `team` | `name`, `departmentCode` (string — must reference an existing `department`'s own auto-generated code, enforced) | `name`, `departmentCode` |
 | `position` | `name`, `teamCode` (string — must reference an existing `team`'s own auto-generated code, enforced) | `name`, `teamCode` |
@@ -131,6 +132,18 @@ immutable `code` (`POS-001`, ...) — neither is a tool parameter on
 `add_position`/`update_position`; `teamName` is resolved live the same
 way `team`'s `departmentName` is, and `code` is set by a database
 trigger.
+
+**`resource_deployment`'s `employeeId` and `positionId`** are the first
+pair of independent FK fields validated on the same table at once:
+`add_resource_deployment`/`update_resource_deployment` reject an
+`employeeId` that doesn't match an existing (non-deleted) `resource`
+and/or a `positionId` that doesn't match an existing (non-deleted)
+`position`, each with its own field named in the 422 — both can fail
+together in one response. `resource_deployment` also exposes
+`employeeName` (from the matched `resource`) and `positionName` (from
+the matched `position`) in every read; neither is a tool parameter on
+`add_resource_deployment`/`update_resource_deployment` — both are
+resolved live the same way `resource_cost`'s `employeeName` is.
 
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.

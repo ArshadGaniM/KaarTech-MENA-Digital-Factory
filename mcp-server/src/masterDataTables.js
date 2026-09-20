@@ -148,7 +148,29 @@ export const MASTER_DATA_TABLES = [
     slug: "resource_deployment",
     route: "resource-deployment",
     label: "Resource Deployment",
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    // employeeName/positionName are NOT writable here — they're live
+    // lookups against the Resources/Positions tables' current data,
+    // returned by the backend's GET responses but never accepted on
+    // add_/update_.
+    fields: [
+      {
+        key: "employeeId",
+        label:
+          "employee ID — must match an existing Resources.employeeId; the backend rejects the " +
+          "request with a validation error if no such Resource exists",
+        required: true,
+        type: "number",
+      },
+      {
+        key: "positionId",
+        label:
+          "the linked Position's business code (from the Positions table's own auto-generated " +
+          "code, e.g. POS-001) — must match an existing, non-deleted Position; the backend rejects " +
+          "the request with a validation error if no such Position exists",
+        required: true,
+        type: "string",
+      },
+    ],
   },
   {
     slug: "position",

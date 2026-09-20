@@ -153,3 +153,56 @@ test("fieldSchema maps position's string-type fields to zod strings that reject 
   assert.equal(schema.safeParse("TEAM-001").success, true);
   assert.equal(schema.safeParse(12345).success, false);
 });
+
+// FEAT-7: resource_deployment's mirrored tool-field descriptor. The first
+// table on this enforced-FK/lookup shape with TWO concurrent reference
+// fields of two different types (employeeId -> resources.employee_id,
+// numeric; positionId -> positions.code, string) — mirrors
+// resourceCostTable()/teamTable()/positionTable()'s assertions above,
+// extended to check both FK fields independently rather than just one.
+
+function resourceDeploymentTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "resource_deployment");
+  assert.ok(table, "resource_deployment entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("resource_deployment's writable fields are exactly employeeId/positionId", () => {
+  const fieldKeys = resourceDeploymentTable().fields.map((f) => f.key).sort();
+  assert.deepEqual(fieldKeys, ["employeeId", "positionId"]);
+});
+
+test("resource_deployment never exposes employeeName/positionName as a writable MCP field (live lookup only)", () => {
+  const fieldKeys = resourceDeploymentTable().fields.map((f) => f.key);
+  assert.ok(!fieldKeys.includes("employeeName"));
+  assert.ok(!fieldKeys.includes("positionName"));
+});
+
+test("resource_deployment's employeeId and positionId are both required, with distinct types", () => {
+  const table = resourceDeploymentTable();
+  const employeeId = table.fields.find((f) => f.key === "employeeId");
+  const positionId = table.fields.find((f) => f.key === "positionId");
+  assert.equal(employeeId.type, "number");
+  assert.equal(employeeId.required, true);
+  assert.equal(positionId.type, "string");
+  assert.equal(positionId.required, true);
+});
+
+test("resource_deployment's employeeId and positionId labels both independently document that their FK IS validated", () => {
+  const table = resourceDeploymentTable();
+  const employeeId = table.fields.find((f) => f.key === "employeeId");
+  const positionId = table.fields.find((f) => f.key === "positionId");
+  assert.match(employeeId.label, /validated|rejects/i);
+  assert.match(positionId.label, /validated|rejects/i);
+});
+
+test("fieldSchema maps resource_deployment's two FK fields to their own distinct zod types (number vs string), not sharing one schema", () => {
+  const table = resourceDeploymentTable();
+  const employeeIdSchema = fieldSchema(table.fields.find((f) => f.key === "employeeId"));
+  const positionIdSchema = fieldSchema(table.fields.find((f) => f.key === "positionId"));
+
+  assert.equal(employeeIdSchema.safeParse(42).success, true);
+  assert.equal(employeeIdSchema.safeParse("42").success, false);
+  assert.equal(positionIdSchema.safeParse("POS-001").success, true);
+  assert.equal(positionIdSchema.safeParse(42).success, false);
+});

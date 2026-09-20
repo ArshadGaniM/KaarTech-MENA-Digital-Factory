@@ -181,7 +181,58 @@ export const MASTER_DATA_TABLES = [
     route: "resource-deployment",
     tableName: "resource_deployment",
     resourceName: "resource_deployment",
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    // Dropped the placeholder `name` column (migration 0016) — same
+    // reasoning as resource_cost (0013): the list query's ORDER BY needs
+    // an explicit override since it no longer has one to fall back on.
+    sortColumn: "employee_id",
+    // employeeName/positionName are NOT stored columns — they're live
+    // joins against resources/positions at read time (see
+    // masterDataSchema.js's lookupJoinSql/lookupSelectSql/toResponse).
+    // This is the first table needing two lookup entries at once;
+    // buildLookupPlan already maps generically over `table.lookups ?? []`,
+    // aliasing each `lookup_${index}`, so this is a plain two-entry array.
+    lookups: [
+      {
+        table: "resources",
+        localColumn: "employee_id",
+        foreignColumn: "employee_id",
+        projections: [{ key: "employeeName", column: "name" }],
+      },
+      {
+        table: "positions",
+        localColumn: "position_code",
+        foreignColumn: "code",
+        projections: [{ key: "positionName", column: "name" }],
+      },
+    ],
+    fields: [
+      {
+        key: "employeeId",
+        column: "employee_id",
+        required: true,
+        type: "number",
+        // Enforced FK, same mechanism as resource_cost.employeeId ->
+        // resources.employee_id: validateReferences() 422s if no
+        // matching, non-deleted Resources row exists.
+        references: { table: "resources", column: "employee_id" },
+      },
+      {
+        key: "positionId",
+        column: "position_code",
+        required: true,
+        type: "string",
+        // This was originally planned as an unvalidated placeholder
+        // (matching modules.practiceId) because Positions didn't exist
+        // yet — Positions now exists (FEAT-9), so this is a real
+        // enforced FK, same mechanism as positions.teamCode ->
+        // teams.code. References positions' own auto-generated `code`
+        // column, not `id`. The column is named `position_code` (per
+        // the naming-the-column-after-what-it-stores convention,
+        // matching department_code/team_code) even though the JSON/API
+        // key stays `positionId`.
+        references: { table: "positions", column: "code" },
+      },
+    ],
   },
   {
     route: "positions",

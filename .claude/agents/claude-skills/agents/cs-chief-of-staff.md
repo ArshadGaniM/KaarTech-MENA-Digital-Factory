@@ -3,7 +3,7 @@ name: cs-chief-of-staff
 description: Routing-and-synthesis chief of staff for orchestrating the virtual boardroom, logging decisions, and surfacing stale ones
 skills: c-level-advisor/skills/chief-of-staff
 domain: c-level
-model: opus
+model: sonnet
 tools: [Read, Write, Bash, Grep, Glob]
 ---
 

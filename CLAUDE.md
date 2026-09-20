@@ -46,9 +46,36 @@ the tooling/process layer and applies regardless of feature domain.
 
 ## 2. Model Strategy
 
+**Model ceiling (owner's standing instruction — applies to every agent on
+this project, not just the dev-team pipeline):** no agent, of any kind,
+runs on a model above Sonnet by default. Where an agent already has Haiku
+assigned, it stays on Haiku. Where an agent is assigned Sonnet, it stays on
+Sonnet. Any agent that was assigned Opus (or anything above Sonnet) has
+been brought down to Sonnet — see `scripts/register_agent.py`'s
+`MODEL_KEYWORDS` mapping (the concrete tier-to-model resolution) and,
+once agent auto-registration runs per §14 (forward-looking — no backend
+exists yet to register against), `.claude/agents/registry.json` as the
+resulting inventory. Opus (or any
+higher-than-Sonnet model) may be used **only** when Sonnet/Haiku
+demonstrably cannot achieve the task, and **only** with the owner's
+explicit, one-time ("allow once") approval for that specific use — never
+pre-approved, never assigned as a default for a role.
+
+**Trigger condition — when to ask:** if the assigned model (Sonnet or
+Haiku) fails at a task repeatedly for the same agent/role — not one
+retry, a genuine pattern (e.g. the same stage errors out or produces
+unusable output across multiple consecutive attempts) — stop retrying
+blindly on the same model and do not silently give up either. Instead,
+explicitly ask the owner for one-time permission to use a higher model
+for that specific job, stating what was tried and why a higher model is
+believed necessary. Only after the owner approves that specific request
+does the higher-model call happen — and only for that one job. The
+approval never carries over to the next failure or the next agent; ask
+again each time.
+
 | Phase | Model tier | When |
 |---|---|---|
-| **Planning** | Deep-reasoning tier (Opus-class) | Any task with 3+ steps, architectural decisions, ambiguous requirements |
+| **Planning** | Deep-reasoning tier (Sonnet-class, capped per the model ceiling above) | Any task with 3+ steps, architectural decisions, ambiguous requirements |
 | **Execution** | Fast/execution tier (Sonnet-class) | All regular prompts, all agent runs, all code writing |
 
 **Rule:** Before writing a single line of code on any non-trivial task, invoke a planning agent (deep-reasoning tier) via `/plan <description>`. The planning tier thinks, the execution tier builds.
@@ -304,6 +331,10 @@ A recurring scheduled trigger (Routine/cron) does the resurrecting across sessio
 | 9 | Enterprise/Solution Architect *(post)* | fast | Final architectural verdict — **always runs** |
 
 ### 7.5 Model Tiers
+
+Per §2's model ceiling: "Deep-reasoning" resolves to Sonnet, not Opus —
+these roles still get the most capable model available under the ceiling,
+just not one above it.
 
 | Tier | Roles |
 |---|---|

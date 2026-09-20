@@ -3,7 +3,7 @@ name: cs-cdo-advisor
 description: Decision-driven Chief Data Officer advisor for AI training data rights, data product strategy (warehouse/lakehouse/mesh + build-vs-buy), B2B customer-data-as-asset valuation, and data team org evolution. Strategic only — does not duplicate engineering data skills.
 skills: c-level-advisor/skills/chief-data-officer-advisor
 domain: c-level
-model: opus
+model: sonnet
 tools: [Read, Write, Bash, Grep, Glob]
 ---
 
