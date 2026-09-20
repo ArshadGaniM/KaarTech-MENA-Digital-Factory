@@ -1,0 +1,119 @@
+{
+  "feature": "FEAT-7",
+  "stage": "system-engineer",
+  "pipeline_stage_number": "3.3",
+  "verdict": "PASS",
+  "summary": "Designed and applied the concrete database schema for Resource Deployment's real schema, building on solution-architect's SDD and architecture-critic's PASS. This is the first master-data table needing TWO FK relationships (employeeId -> resources.employee_id, positionId -> positions.code) and TWO lookups (employeeName from resources.name, positionName from positions.name) at once. Directly re-verified (not just trusted) prior stages' claims before writing the migration: resource_deployment held 0 rows (confirmed via SELECT count(*)), resources.employee_id carries a unique index (resources_employee_id_unique, migration 0012) and positions.code carries a unique index (ix_positions_code, migration 0015) — both are what make each FK meaningful. Authored and applied backend/migrations/0016_add_resource_deployment_columns.sql live via mcp__Supabase__apply_migration in one shot (drop placeholder name + add both FK columns + both FK constraints + both FK indexes), matching 0013's single-migration-on-empty-table shape doubled, exactly as tech-lead and solution-architect directed. Verified the live schema by querying information_schema.columns and pg_indexes directly after apply, then proved BOTH FK constraints are real (not just declared) with two separate rollback-wrapped INSERTs: one with a nonexistent employee_id (raised 23503 on fk_resource_deployment_resources), one with a valid employee_id but a nonexistent position_code (raised 23503 on fk_resource_deployment_positions) — confirming the two constraints are independently enforced and correctly attributable by name, which matters for errors.js's referenceNotFoundError() field-matching heuristic (substring match against err.constraint).",
+
+  "migration_applied": {
+    "file": "backend/migrations/0016_add_resource_deployment_columns.sql",
+    "applied_live": true,
+    "applied_via": "mcp__Supabase__apply_migration",
+    "project_id": "xrofsteoywvpjkapumsg",
+    "pre_migration_check": "select count(*) from resource_deployment -> 0 rows, confirmed directly before writing the migration form (not taken on a prior stage's word).",
+    "statements_summary": [
+      "add column employee_id integer not null (no sentinel default — table was empty)",
+      "add column position_code text not null (no sentinel default — table was empty)",
+      "drop column name (placeholder, no live readers, single-migration per database.md's empty-table carve-out, same as 0013)",
+      "fk_resource_deployment_resources: employee_id references resources(employee_id)",
+      "fk_resource_deployment_positions: position_code references positions(code)",
+      "ix_resource_deployment_employee_id (FK index, also the join-performance index for the employeeName lookup's LEFT JOIN)",
+      "ix_resource_deployment_position_code (FK index, also the join-performance index for the positionName lookup's LEFT JOIN)"
+    ],
+    "post_apply_verification": {
+      "columns": "id(uuid,NOT NULL) / created_at,updated_at(timestamptz,NOT NULL) / deleted_at(timestamptz,NULL) / created_by,updated_by(text,NOT NULL) / employee_id(integer,NOT NULL) / position_code(text,NOT NULL) — name column gone — confirmed via information_schema.columns",
+      "indexes": "resource_deployment_pkey, ix_resource_deployment_employee_id, ix_resource_deployment_position_code — confirmed via pg_indexes",
+      "fk_behavior_proven": [
+        "begin; insert into resource_deployment (employee_id, position_code, created_by, updated_by) values (999999, 'POS-999', 'sys', 'sys'); rollback; -> raised 23503 on fk_resource_deployment_resources ('Key (employee_id)=(999999) is not present in table \"resources\"')",
+        "begin; insert into resource_deployment (employee_id, position_code, created_by, updated_by) values (1, 'NO-SUCH-CODE', 'sys', 'sys'); rollback; -> raised 23503 on fk_resource_deployment_positions ('Key (position_code)=(NO-SUCH-CODE) is not present in table \"positions\"'), using employee_id=1, a real, non-deleted resources row confirmed to exist first"
+      ]
+    }
+  },
+
+  "component_structure_for_stage_3.5_4": {
+    "principle": "Pure config-driven extension of the existing generic master-data machine (backend/src/masterDataTables.js descriptor shape, masterDataSchema.js, masterDataRouter.js) — zero changes to any of the three generic files. validateReferences() already runs FK checks concurrently via Promise.all, generic over any number of `references` fields; buildLookupPlan/lookupJoinSql/lookupSelectSql/toResponse are generic over any number of `lookups` entries. This is what stage 3.5 (Engineer MVP) builds and stage 4 (Developer) completes; nothing below has been written to disk by this stage except the migration.",
+
+    "1_backend_masterDataTables.js_replacement_entry": {
+      "where": "replace the existing resource_deployment placeholder entry in the MASTER_DATA_TABLES array (currently a name-only `fields` array) in place",
+      "exact_shape": {
+        "route": "resource-deployment",
+        "tableName": "resource_deployment",
+        "resourceName": "resource_deployment",
+        "sortColumn": "employee_id",
+        "lookups": [
+          {
+            "table": "resources",
+            "localColumn": "employee_id",
+            "foreignColumn": "employee_id",
+            "projections": [{ "key": "employeeName", "column": "name" }]
+          },
+          {
+            "table": "positions",
+            "localColumn": "position_code",
+            "foreignColumn": "code",
+            "projections": [{ "key": "positionName", "column": "name" }]
+          }
+        ],
+        "fields": [
+          {
+            "key": "employeeId",
+            "column": "employee_id",
+            "required": true,
+            "type": "number",
+            "references": { "table": "resources", "column": "employee_id" }
+          },
+          {
+            "key": "positionId",
+            "column": "position_code",
+            "required": true,
+            "type": "string",
+            "references": { "table": "positions", "column": "code" }
+          }
+        ]
+      },
+      "naming_note": "The JSON key is `positionId` per the task's explicit tool-parameter naming, but the column is `position_code` — same camelCase-key-vs-snake_case-column split the codebase already accepts (e.g. resource_cost.employeeId -> employee_id is a coincidental match, but teams.departmentCode/positions.teamCode already establish that the column is named after what it stores, not after the JSON key). This is required because sortColumn: \"employee_id\" is mandatory once the placeholder `name` field is fully removed — without it, masterDataRouter.js's `table.sortColumn ?? \"name\"` fallback would reference a column that no longer exists.",
+      "other_tables_untouched": "practices/delivery_centers/competencies/modules/resources/departments/teams/resource_cost/positions entries are not modified."
+    },
+
+    "2_masterDataSchema.js_and_masterDataRouter.js": {
+      "changes_needed": "none — validateReferences()'s Promise.all already handles two concurrent `references` fields (confirmed by direct reading of masterDataSchema.js:139 at this stage, and now proven live by the two independent rollback-wrapped INSERTs above), and buildLookupPlan/lookupJoinSql/lookupSelectSql/toResponse already handle two `lookups` entries generically (each aliased lookup_0/lookup_1, per masterDataSchema.js:14). index.js's route-mounting loop is unaffected — no new route file needed."
+    },
+
+    "3_mcp_server_mirror": {
+      "file": "mcp-server/src/masterDataTables.js",
+      "change": "replace the existing resource_deployment placeholder entry: slug: \"resource_deployment\", route: \"resource-deployment\", fields: [employeeId, positionId] only — employeeName and positionName excluded (derived, never writable), matching resource_cost/positions' exclusion-comment style exactly. add_resource_deployment/update_resource_deployment/delete_resource_deployment need no new code in mcp-server/src/index.js or apiClient.js — both already build tools generically off fields[]."
+    },
+
+    "4_frontend_change": {
+      "file": "src/lib/masterDataApi.js",
+      "change": "update the existing resource-deployment MASTER_DATA_TABLES entry's `columns` to: employeeId, employeeName, positionId, positionName, ...AUDIT_COLUMNS (drop the old `name` column) — data-driven per frontend.md, no new component code, since the dashboard stays read-only for this table per CLAUDE.md and this task's explicit scope."
+    },
+
+    "5_test_file": {
+      "file": "backend/src/masterDataRouter.resourceDeployment.test.js",
+      "guidance": "use the shared harness (backend/src/masterDataRouter.testHelpers.js: startTestServer/stopTestServer/registerAuthGateTests/registerDeleteTests), mirroring masterDataRouter.resourceCost.test.js's structure — this is the fourth table on the shared harness, no bootstrap/401/DELETE boilerplate duplicated again. Resource-Deployment-specific cases beyond the shared harness: POST/PATCH reject an unknown employeeId (422, details.employeeId) and an unknown positionId (422, details.positionId) independently; POST/PATCH reject BOTH being unknown at once and surface both keys in one 422 response body (proves the two-field Promise.all concurrency, not just sequential validation); GET resolves employeeName and positionName live and independently null when either referenced row is soft-deleted or missing; sortColumn regression lock (list ordering falls back to employee_id, not a nonexistent name column); FK-violation-from-INSERT-race mapping to 422 for each of the two constraints via errors.js's referenceNotFoundError, matching the two independent constraint names proven live above (fk_resource_deployment_resources vs fk_resource_deployment_positions) so the field-matching heuristic is exercised for both, not just one."
+    }
+  },
+
+  "data_flow_summary": {
+    "read_path": "Client -> GET /v1/resource-deployment[/:id] -> masterDataRouter (lookups-aware SELECT with two LEFT JOINs: resources ... and resources.deleted_at is null, positions ... and positions.deleted_at is null) -> toResponse (fields[] columns + two lookups' projections: employeeName/positionName from the joined rows, each independently null if unmatched or soft-deleted) -> { data }",
+    "write_path": "MCP tool call (add_resource_deployment/update_resource_deployment; employeeId (number) + positionId (string) only, never employeeName/positionName) -> apiClient.js -> POST/PATCH /v1/resource-deployment[/:id] (requireInternalApiKey) -> validateBody (type/required on employeeId/positionId) -> validateReferences (both FK checks run concurrently via Promise.all: employeeId exists in resources not soft-deleted, positionId exists in positions.code not soft-deleted) -> INSERT/UPDATE (fields[] columns only; fk_resource_deployment_resources + fk_resource_deployment_positions as DB-level backstops, both proven live above) -> toResponse.",
+    "delete_path": "DELETE /v1/resource-deployment/:id -> soft delete (sets deleted_at), same generic path every other master-data table uses; auth-gated (401 without internal API key) per registerAuthGateTests."
+  },
+
+  "caching_strategy": "None needed — matches every other master-data table; no caching layer exists anywhere in this codebase and Resource Deployment's read volume/shape gives no reason to introduce one.",
+
+  "two_fk_two_lookup_risk_review": "The only genuine risk flagged by tech-lead (naming-convention slip between positionId key and position_code column, and forgetting the sortColumn override) is addressed directly in the descriptor design above — position_code is the column name (matching department_code/team_code precedent) while positionId stays the API/MCP key, and sortColumn: \"employee_id\" is called out as a hard requirement in the exact entry stage 3.5/4 should paste in. The concurrent-Promise.all FK-check mechanism needed no framework change and is now proven live end-to-end (both constraints independently enforced, independently attributable by name).",
+
+  "files_created_or_edited": [
+    "backend/migrations/0016_add_resource_deployment_columns.sql (new file, authored and applied live via mcp__Supabase__apply_migration)",
+    "tasks/agent-outputs/system-engineer/FEAT-7.json (this stage's own output)"
+  ],
+  "files_not_yet_touched_left_for_stage_3.5_4": [
+    "backend/src/masterDataTables.js",
+    "mcp-server/src/masterDataTables.js",
+    "src/lib/masterDataApi.js",
+    "backend/src/masterDataRouter.resourceDeployment.test.js",
+    "backend/README.md (routes/migrations/base-shape tables — required update, per the same convention tech-lead/architecture-critic flagged for FEAT-9)"
+  ]
+}

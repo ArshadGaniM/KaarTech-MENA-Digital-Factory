@@ -1,0 +1,130 @@
+{
+  "feature_id": "FEAT-7",
+  "stage": "business-analyst",
+  "verdict": "PASS",
+  "requirement_plain": "Resource Deployment is currently a name-only placeholder master-data table (migration 0011, same pattern Resource Cost and Teams started from). Give it a real schema with TWO enforced foreign-key relationships instead of one: employeeId (required, numeric) must reference an existing Resources row by Resources' business key employee_id (not resources.id), reusing the exact validateReferences() mechanism FEAT-5 built for resource_cost.employeeId; positionId (required, string) must reference an existing Positions row by Positions' business key code (not positions.id) — this field was originally slated to be an unvalidated placeholder (matching modules.practiceId) only because Positions did not exist yet, but Positions now exists (FEAT-9, merged) so positionId must be a real enforced FK, not a manually-typed field. employeeName and positionName are NOT stored columns — both are live, read-time lookups (employeeName from the matched Resources row's current name, positionName from the matched Positions row's current name) via the existing generic lookups mechanism. This is the first master-data table needing two FK checks and two lookups concurrently, but the underlying framework (validateReferences() with Promise.all, multi-entry lookups array) was already built generically enough during FEAT-5/8/9 to need no changes. Writes happen only via the MCP server's add_resource_deployment/update_resource_deployment tools (frontend dashboard stays read-only), which must take employeeId (number) and positionId (string) only — never the derived name fields.",
+  "requirements_traceability_matrix": [
+    {
+      "id": "REQ-1",
+      "requirement": "employeeId column: required, numeric, FK reference to Resources.employee_id",
+      "source": "task description, bullet 1",
+      "acceptance_criteria": [
+        "POST/PATCH to resource-deployment rejects a missing employeeId",
+        "POST/PATCH rejects an employeeId with no matching row in resources.employee_id",
+        "Accepted employeeId is stored on resource_deployment",
+        "Validation is against resources.employee_id (the unique business key), not resources.id (uuid)",
+        "Implemented via the existing field-level `references: { table, column }` descriptor and validateReferences() — no new validation code path"
+      ],
+      "ambiguity": "None — task explicitly says reuse the resource_cost.employeeId mechanism verbatim."
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "employeeName is a live-lookup, non-persisted response field sourced from the matching Resources row's current name",
+      "source": "task description, bullet 2",
+      "acceptance_criteria": [
+        "No employee_name column added to resource_deployment",
+        "GET (list and single) responses include employeeName reflecting Resources' CURRENT name for that employeeId at request time",
+        "Implemented via the existing generic `lookups` descriptor (lookupJoinSql/lookupSelectSql/toResponse projection) — no new lookup code path"
+      ],
+      "ambiguity": "Read-path behavior when the referenced Resources row is soft-deleted is inherited, unresolved framework behavior from FEAT-5 (not re-litigated here); codebase-explorer's finding #7 flags a soft-deleted-reference test case, so this should surface again at the test-architect/tester stages rather than being decided here."
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "positionId column: required, string, FK reference to Positions.code (not positions.id) — must be a real enforced FK now that Positions exists, NOT the unvalidated-placeholder fallback originally scoped before Positions existed",
+      "source": "task description, bullet 3",
+      "acceptance_criteria": [
+        "POST/PATCH to resource-deployment rejects a missing positionId",
+        "POST/PATCH rejects a positionId with no matching row in positions.code",
+        "Accepted positionId is stored on resource_deployment (column likely named position_code per the departmentCode/teamCode column-naming precedent, even though the JSON/API key is positionId)",
+        "Implemented via the same `references: { table: 'positions', column: 'code' }` descriptor mechanism as teams.departmentCode -> departments.code and positions.teamCode -> teams.code",
+        "Does NOT reuse the modules.practiceId unvalidated/manual-entry pattern — that was only ever the pre-Positions fallback and must not be built"
+      ],
+      "ambiguity": "None — task is explicit that the original unvalidated-placeholder plan is superseded now that Positions exists, and names the exact FK target (positions.code, not positions.id)."
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "positionName is a live-lookup, non-persisted response field sourced from the matching Positions row's current name",
+      "source": "task description, bullet 4",
+      "acceptance_criteria": [
+        "No position_name column added to resource_deployment",
+        "GET (list and single) responses include positionName reflecting Positions' CURRENT name for that positionId at request time",
+        "Implemented via the same generic `lookups` mechanism as REQ-2, as a second entry in the table's lookups array"
+      ],
+      "ambiguity": "None."
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Resource Deployment is the first table needing two concurrent FK checks and two concurrent lookups; the generic framework must handle this without modification",
+      "source": "task description, bullet 5 / codebase-explorer findings 1 and 5",
+      "acceptance_criteria": [
+        "validateReferences() runs both FK checks concurrently via the existing Promise.all (no serial fallback, no framework edit required)",
+        "Both lookups resolve correctly and independently in the same response (resources.name -> employeeName, positions.name -> positionName)",
+        "Because the placeholder `name` field is being dropped entirely with no remaining string column, a `sortColumn` override (e.g. employee_id) must be added to the resource_deployment table descriptor, mirroring resource_cost's precedent when it dropped its own `name` field"
+      ],
+      "ambiguity": "None — codebase-explorer already confirmed the framework needs no change; this requirement is about correct application, not new capability."
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Standard audit columns already exist via shared master-data base shape — no change needed",
+      "source": "task description, bullet 6",
+      "acceptance_criteria": [
+        "createdBy/createdAt/updatedBy/updatedAt/markedDeleted remain functioning as-is for resource_deployment after the migration"
+      ],
+      "ambiguity": "None."
+    },
+    {
+      "id": "REQ-7",
+      "requirement": "MCP server add_resource_deployment/update_resource_deployment tools take employeeId (number) and positionId (string) only — never employeeName/positionName, which are derived",
+      "source": "task description, bullet 7",
+      "acceptance_criteria": [
+        "mcp-server/src/masterDataTables.js resource-deployment field descriptor exposes only employeeId (number) and positionId (string) as writable fields",
+        "employeeName and positionName are excluded from the MCP tools' writable fields array, matching the resource_cost/position precedent's 'not writable here' comment style",
+        "The same FK-existence checks used by the REST layer are not bypassable via the MCP path"
+      ],
+      "ambiguity": "None — task is explicit about tool parameter shape."
+    },
+    {
+      "id": "REQ-8",
+      "requirement": "Test coverage uses the shared HTTP-test harness (masterDataRouter.testHelpers.js), not duplicated bootstrap/401/DELETE boilerplate, and covers both FK fields and both lookups",
+      "source": "task description, testing paragraph",
+      "acceptance_criteria": [
+        "New test file backend/src/masterDataRouter.resourceDeployment.test.js uses startTestServer/stopTestServer/registerAuthGateTests/registerDeleteTests from the shared harness",
+        "Tests cover: FK-rejection on create/update for employeeId, FK-rejection on create/update for positionId, successful create with both lookups resolving, soft-deleted-reference behavior for at least one lookup, sortColumn regression lock, FK-violation-from-INSERT-race mapping to 422 for both FK fields",
+        "Structure mirrors masterDataRouter.resourceCost.test.js per codebase-explorer finding 7"
+      ],
+      "ambiguity": "None."
+    },
+    {
+      "id": "REQ-9",
+      "requirement": "No frontend changes — dashboard stays read-only for this table",
+      "source": "task description, closing paragraph / codebase-explorer finding 8",
+      "acceptance_criteria": [
+        "No new form, input, or write UI added to the frontend for resource_deployment",
+        "Any read-only display of the new columns (if the dashboard already lists resource_deployment) reflects the new field set, but this is incidental — not a scoped UI task"
+      ],
+      "ambiguity": "None."
+    }
+  ],
+  "design_brief": {
+    "summary": "FEAT-7 upgrades resource_deployment from a name-only placeholder (migration 0011) to a real table with TWO validated foreign-key relationships (employeeId -> resources.employee_id, positionId -> positions.code) and TWO corresponding live-lookup response fields (employeeName, positionName). Unlike FEAT-5/8/9, which each introduced exactly one FK + one lookup, this is the first table exercising the generic framework's multi-field capability end to end — concurrent validateReferences() checks via Promise.al, and a multi-entry lookups array — both already built and proven ahead of this need. No framework changes are anticipated; this is purely a descriptor-and-migration task layered on existing, working machinery.",
+    "in_scope": [
+      "New migration (backend/migrations/0016_...) dropping the placeholder name column and adding employee_id (numeric, required, FK to resources.employee_id) and position_code (string, required, FK to positions.code) to resource_deployment, following the 0013 pattern (empty-table single-phase drop, fk_<table>_<ref_table> constraint + ix_<table>_<fk_column> index for each of the two new FK columns)",
+      "Applying that migration live via mcp__Supabase__apply_migration",
+      "Backend: two `references` descriptor entries on resource_deployment's field list (employeeId -> resources.employee_id, positionId -> positions.code), two `lookups` entries (resources.name -> employeeName, positions.name -> positionName), and a `sortColumn` override (e.g. employee_id) replacing the dropped name field as sort key",
+      "MCP server: mirrored field descriptor update in mcp-server/src/masterDataTables.js exposing only employeeId (number) and positionId (string) as writable, matching resource_cost/position labeling style",
+      "New test file backend/src/masterDataRouter.resourceDeployment.test.js on the shared harness, covering both FK fields and both lookups per REQ-8"
+    ],
+    "out_of_scope": [
+      "Any write UI/form on the frontend (dashboard stays read-only per the task)",
+      "Any change to the generic validateReferences()/lookups framework itself — this feature is explicitly scoped as descriptor-only, framework already proven",
+      "Changing Resources', Positions', or any other sibling table's own schema",
+      "The unvalidated-placeholder approach for positionId — explicitly superseded now that Positions exists; must not be built even as a fallback"
+    ],
+    "open_questions_for_architecture": [
+      "Confirm the FK column name should be position_code (not position_id) per the departmentCode/teamCode column-naming convention, even though the API/JSON key is positionId — codebase-explorer flagged this naming distinction but it is a naming decision, not a requirement, for the Solution Architect/System Engineer stages to confirm",
+      "Confirm sortColumn choice (employee_id vs. another column) once the System Engineer stage finalizes the column list",
+      "Soft-deleted-reference read-path behavior (inherited ambiguity from FEAT-5, applies to both new lookups here) remains a framework-level open item, not newly introduced by this feature"
+    ]
+  },
+  "process_note": "Per codebase-explorer's stage-0.5 findings, the generic FK/lookup framework in backend/src/masterDataSchema.js already supports everything this feature needs without modification, including concurrent multi-field validation and multi-entry lookups (built during FEAT-5's gate specifically ahead of a table needing exactly this). This analysis assigns no new framework requirements — all nine requirements above are descriptor-application and migration work, consistent with the explorer's PASS verdict that later stages can proceed directly to implementation."
+}
