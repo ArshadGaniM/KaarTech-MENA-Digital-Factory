@@ -1,54 +1,54 @@
 # Merge-to-Main Gate Report
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff scope:** FEAT-7 (Resource Deployment — real schema, two concurrent FK/lookup pairs) + project-wide model-ceiling standing policy (CLAUDE.md §2, 41 vendored agent files, `scripts/register_agent.py`)
+**Diff scope:** FEAT-10 (Projects — brand-new master-data table, zero FK relationships)
 **Verdict: ✅ PASS**
 
 ## Feature summary
 
-FEAT-7 gives `resource_deployment` its real shape: `employeeId` (FK →
-`resources.employee_id`) and `positionId` (FK → `positions.code`), each with
-a live-resolved name (`employeeName`, `positionName`). This is the first
-master-data table with **two concurrent `references` fields and two
-concurrent `lookups` entries** — `validateReferences()`'s `Promise.all`
-concurrency (added ahead of this need during FEAT-5) and the generic
-`lookups` framework in `masterDataSchema.js`/`masterDataRouter.js` were
-reused verbatim with no framework changes required.
+FEAT-10 adds "Projects", a brand-new master-data table (not one of the
+original 9): `projectId`, `projectName`, `projectProfitCenterCode`, all
+manually entered by the caller — the first table since FEAT-5 with **zero
+enforced FK relationships** (no `references`/`lookups` on any field, no
+`hasCode` trigger). `projectId` follows the `resources.employeeId`
+precedent (migration 0012): caller-supplied and DB-enforced-unique via
+`projects_project_id_unique`, mapped through the existing
+`isUniqueViolation()`/`duplicateFieldError()` path rather than a new one.
 
-Migration `0016_add_resource_deployment_columns.sql` applied live to
-Supabase: drops the placeholder `name` column, adds `employee_id`/
-`position_code` with two FK constraints and two indexes. Verified on the
-live schema via `mcp__Supabase__list_tables`.
+Migration `0017_create_projects.sql` applied live to Supabase — verified on
+the deployed schema via `mcp__Supabase__list_tables`. Backend descriptor,
+mcp-server mirror, and frontend sidebar/column config were all added
+generically through the existing `MASTER_DATA_TABLES`-driven framework —
+zero changes to `masterDataRouter.js`/`masterDataSchema.js`. Specifically
+verified the framework degrades correctly for a table with no FK/lookup
+fields: `validateReferences()`'s per-field filter naturally produces an
+empty `fieldsToCheck` (not a vacuous-truth bug), and `buildLookupPlan`'s
+`table.lookups ?? []` handles the key being entirely absent from the
+descriptor.
 
-Built directly (not via the Workflow tool's staged pipeline) — the pipeline
-hit three consecutive session/token limits on FEAT-8/9/7, and the owner
-explicitly pivoted to direct builds for feature work going forward. Followed
-the same architectural patterns; `pr-test-analyzer` (below) found no drop in
-test rigor versus pipeline-built precedents.
-
-Separately, this diff also implements a project-wide **model ceiling**
-standing instruction: no agent (pipeline or otherwise) runs above Sonnet by
-default; Opus/higher requires explicit one-time owner approval, specifically
-triggered by repeated/genuine failure (not a single retry). 41 vendored
-agent `.md` files had `model: opus` brought down to `model: sonnet`;
-`scripts/register_agent.py`'s `MODEL_KEYWORDS` updated to match; CLAUDE.md
-§2 rewritten to document the policy and its trigger condition.
+Built directly (established pivot since FEAT-7 — the Workflow pipeline hit
+repeated session/token limits on prior features).
 
 ## Gate agent results
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | PASS (was WARN) | Flagged `mcp-server/src/masterDataTables.test.js` as an uncommitted working-tree change. Verified: it was already committed (`f41f5a0`) and present in `origin/main..HEAD` — stale working-tree snapshot at time of review, not a real gap. |
-| security-auditor | PASS | One non-blocking note: a vendored security-reviewer agent's own model changed opus→sonnet as part of the ceiling policy — no functional security impact. |
-| debugger | PASS | No unhandled errors or runtime failures found. |
-| test-writer | PASS (was WARN, self-fixed) | Found `resource_deployment` had zero dedicated tests in `mcp-server/src/masterDataTables.test.js` despite sibling tables having them. Wrote 6 missing tests (writable-fields-exactly, required/type checks, label wording, zod-schema distinctness). Committed as `f41f5a0`; `npm test` confirms 24/24 mcp-server tests passing. |
-| refactorer | PASS | No complexity/duplication issues. |
-| doc-writer | PASS (was FAIL, fixed) | Two real gaps, both fixed in `c59df0b`: (1) `backend/README.md` was missing a migrations-table row for `0016_add_resource_deployment_columns.sql`; (2) `mcp-server/README.md` line 76 still grouped `resource_deployment` under a stale `name`-only placeholder row (4th consecutive-feature recurrence of this gap category) — split into its own row + prose paragraph. Also caveated a dangling `.claude/agents/registry.json` reference in CLAUDE.md §2 as forward-looking per §14. |
-| silent-failure-hunter | PASS | Specifically verified the two-FK-concurrency masking risk: traced the actual SQL-building code and confirmed it is not possible for the two-FK-failure test to pass with only one `Promise.all` branch executing. No swallowed exceptions or success-masking-errors found. |
-| pr-test-analyzer | PASS | Traced 3 tests against real implementation code (`validateReferences`, `referenceNotFoundError`) — all genuine behavior tests, not restated mocks. One Important, non-blocking gap noted: no direct POST test for "employeeId invalid, positionId valid" (only the reverse combination is tested explicitly); low risk since the validation code path is generic/symmetric. No sign of reduced test rigor from being built outside the pipeline — in some respects (dual-FK/dual-lookup interaction coverage) it exceeds prior single-FK tables' suites. |
-
-## Outstanding non-blocking items (tracked, not gating)
-
-- `pr-test-analyzer`'s suggested mirror-case POST test (employeeId-invalid/positionId-valid) — recommended as a template fix for the next dual-FK table, not required for this merge.
+| code-reviewer | PASS | Confirmed `hasCode`/`references`/`lookups` correctly omitted, `sortColumn: "project_id"` correct and necessary (table has no `name` column), migration's uniqueness constraint matches the `resources.employee_id` precedent exactly. One Optional/cosmetic note (partial index + unique constraint on the same column, an accepted existing pattern) — not blocking. |
+| security-auditor | PASS | No raw SQL interpolation of user input, no secrets, no new attack surface from the missing FK relationships — pure data added to an already-reviewed generic framework. |
+| debugger | PASS | Traced `validateReferences()` and `lookupJoinSql`/`lookupSelectSql` directly against the zero-FK/zero-lookup case — both degrade correctly with no crash and no vacuous-truth bug. |
+| test-writer | PASS (was WARN, self-fixed) | Found a real gap: `projectId` participates in PATCH's SET clause exactly like POST's INSERT (unlike other tables' unique-constrained fields, which are DB-trigger-owned and never client-writable), so PATCH can hit the same 23505 unique-violation as POST — only POST had a test. Added the missing PATCH-side unique-violation test; verified 134/134 backend tests pass. |
+| refactorer | PASS | Confirmed the shared `masterDataRouter.testHelpers.js` harness is reused, not duplicated. No unnecessary complexity introduced for the "no FK, no hasCode" case — pure data on the existing descriptor pattern. |
+| doc-writer | PASS (was WARN, self-fixed) | Found a real gap: `backend/README.md` said "All ten routes share the same shape" but the route list had grown to eleven with `/v1/projects` added. Fixed directly. All other required updates (route list, per-table fields row, migrations row, mcp-server tools sentence/table/prose) were already present and verified byte-accurate against the actual `masterDataTables.js` code. |
+| silent-failure-hunter | PASS | Confirmed the zero-FK case in `validateReferences()` is a correct per-field opt-in degrading to a no-op, not a masked failure — `validateBody()`'s required/type/length checks still run unconditionally regardless. Confirmed the unique-violation field-mapping resolves unambiguously for this table's three column names. |
+| pr-test-analyzer | PASS | Traced 3 tests against real implementation code (`isUniqueViolation`/`duplicateFieldError`, `validateBody`, the `sortColumn` override) — all genuine behavior tests, not restated mocks, on both POST and PATCH paths. No sign of reduced test rigor from being built outside the pipeline. |
 
 No Critical findings. No FAIL gates remain.
+
+## Separately verified this session (no code change)
+
+**FEAT-13** — owner asked to confirm "Marked Deleted" as a standing
+invariant across every table. Verified directly: it is already fully
+implemented generically (`masterDataSchema.js`'s `toResponse`,
+`masterDataRouter.js`'s soft-delete-only DELETE handler, and
+`masterDataApi.js`'s shared `AUDIT_COLUMNS`), so it already covers all 11
+tables including Projects — nothing to build.
