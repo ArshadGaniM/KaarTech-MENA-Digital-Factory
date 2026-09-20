@@ -134,6 +134,9 @@ FEAT-12) can never drift out of sync with the real schema. Each entry:
     { "field": "teamId", "referencesTable": "teams", "referencesColumn": "code" }
   ],
   "lookups": [
+    { "key": "projectName", "sourceTable": "projects", "via": null },
+    { "key": "projectProfitCenterCode", "sourceTable": "projects", "via": null },
+    { "key": "teamName", "sourceTable": "teams", "via": null },
     { "key": "departmentId", "sourceTable": "departments", "via": "teams" },
     { "key": "departmentName", "sourceTable": "departments", "via": "teams" }
   ]

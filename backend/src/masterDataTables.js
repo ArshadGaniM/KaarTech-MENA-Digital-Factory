@@ -111,6 +111,11 @@ export const MASTER_DATA_TABLES = [
     route: "resource-cost",
     tableName: "resource_cost",
     resourceName: "resource_cost",
+    // No `hasCode`/`identityField` — deliberately no single identity field
+    // (a cost record is identified by its FK to Resources, not its own
+    // key). See entityRelationships.js's identityOf(): this intentionally
+    // falls through to identity type "none", same reasoning as
+    // project_assignments below.
     // Dropped the placeholder `name` column (migration 0013) — the list
     // query's ORDER BY needs an explicit override since it no longer has
     // one to fall back on (see masterDataRouter.js's `sortColumn` usage).
@@ -187,6 +192,10 @@ export const MASTER_DATA_TABLES = [
     route: "resource-deployment",
     tableName: "resource_deployment",
     resourceName: "resource_deployment",
+    // No `hasCode`/`identityField` — deliberately no single identity field,
+    // same reasoning as resource_cost above (identified by its FKs, not
+    // its own key). entityRelationships.js's identityOf() falls through
+    // to identity type "none" for this table intentionally.
     // Dropped the placeholder `name` column (migration 0016) — same
     // reasoning as resource_cost (0013): the list query's ORDER BY needs
     // an explicit override since it no longer has one to fall back on.

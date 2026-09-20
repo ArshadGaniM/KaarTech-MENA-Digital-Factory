@@ -8,7 +8,17 @@ import styles from './EntityRelationship.module.css';
 const LABELS_BY_ROUTE = Object.fromEntries(MASTER_DATA_TABLES.map((table) => [table.route, table.label]));
 
 function labelFor(route) {
-  return LABELS_BY_ROUTE[route] ?? route;
+  const label = LABELS_BY_ROUTE[route];
+  if (label === undefined) {
+    // backend/src/masterDataTables.js and this file's MASTER_DATA_TABLES
+    // are independently maintained — a route missing here means the two
+    // have drifted out of sync, not a normal fallback case. Surface it
+    // loudly rather than silently rendering a raw route string with no
+    // trace of why.
+    console.warn(`EntityRelationship: no label mapping for route "${route}" — MASTER_DATA_TABLES may be out of sync with the backend.`);
+    return route;
+  }
+  return label;
 }
 
 function describeIdentity(identity) {
