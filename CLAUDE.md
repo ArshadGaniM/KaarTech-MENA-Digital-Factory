@@ -58,6 +58,18 @@ demonstrably cannot achieve the task, and **only** with the owner's
 explicit, one-time ("allow once") approval for that specific use — never
 pre-approved, never assigned as a default for a role.
 
+**Trigger condition — when to ask:** if the assigned model (Sonnet or
+Haiku) fails at a task repeatedly for the same agent/role — not one
+retry, a genuine pattern (e.g. the same stage errors out or produces
+unusable output across multiple consecutive attempts) — stop retrying
+blindly on the same model and do not silently give up either. Instead,
+explicitly ask the owner for one-time permission to use a higher model
+for that specific job, stating what was tried and why a higher model is
+believed necessary. Only after the owner approves that specific request
+does the higher-model call happen — and only for that one job. The
+approval never carries over to the next failure or the next agent; ask
+again each time.
+
 | Phase | Model tier | When |
 |---|---|---|
 | **Planning** | Deep-reasoning tier (Sonnet-class, capped per the model ceiling above) | Any task with 3+ steps, architectural decisions, ambiguous requirements |
