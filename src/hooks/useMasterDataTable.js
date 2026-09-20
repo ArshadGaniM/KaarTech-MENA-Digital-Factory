@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchMasterDataTable } from '../lib/masterDataApi';
 
 // Every data-fetching hook returns { data, isLoading, error } (frontend.md).
+// `refetch` (FEAT-14) is additive — it lets the Add-record modal refresh
+// the table after a successful create without a full page reload, without
+// changing what every existing caller already relies on.
 export function useMasterDataTable(route) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +30,9 @@ export function useMasterDataTable(route) {
     return () => {
       cancelled = true;
     };
-  }, [route]);
+  }, [route, refreshToken]);
 
-  return { data, isLoading, error };
+  const refetch = useCallback(() => setRefreshToken((token) => token + 1), []);
+
+  return { data, isLoading, error, refetch };
 }

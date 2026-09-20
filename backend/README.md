@@ -120,8 +120,9 @@ not a raw 500 — see `isUniqueViolation`/`duplicateFieldError` in
 `MASTER_DATA_TABLES` (`src/entityRelationships.js`'s `buildEntityRelationships`)
 rather than hand-written — every table's own `hasCode`/`identityField`/
 `fields`/`lookups` descriptor is the only source of truth, so this
-endpoint (and the frontend's "Entity Relationship" page built on it,
-FEAT-12) can never drift out of sync with the real schema. Each entry:
+endpoint (and everything built on it — the frontend's "Entity Relationship"
+page, FEAT-12, and its generic "Add `<Entity>`" pop-up forms, FEAT-14) can
+never drift out of sync with the real schema. Each entry:
 
 ```json
 {
@@ -139,6 +140,12 @@ FEAT-12) can never drift out of sync with the real schema. Each entry:
     { "key": "teamName", "sourceTable": "teams", "via": null },
     { "key": "departmentId", "sourceTable": "departments", "via": "teams" },
     { "key": "departmentName", "sourceTable": "departments", "via": "teams" }
+  ],
+  "fields": [
+    { "key": "projectId", "type": "string", "required": true, "references": { "table": "projects", "route": "projects" } },
+    { "key": "teamId", "type": "string", "required": true, "references": { "table": "teams", "route": "teams" } },
+    { "key": "projectAssignmentStartDate", "type": "date", "required": true },
+    { "key": "projectAssignmentEndDate", "type": "date", "required": true }
   ]
 }
 ```
@@ -151,6 +158,19 @@ an explicit `identityField` in its descriptor, e.g. `resources.employeeId`/
 `references` descriptor; `lookups` lists every projected lookup key, with
 `via` naming the earlier lookup it chains through (`null` for a direct,
 single-hop lookup).
+
+`fields` is exactly `table.fields` (see `src/masterDataTables.js`) restated
+as public API shape — one entry per **writable** field, in declared order.
+An auto-generated `hasCode` column and every `lookups` projection are
+never in `table.fields` to begin with, so they never appear here either —
+this is the complete, and only, list of fields a client should render an
+input for. `maxLength`/`values` are present only when the field actually
+sets them (never `null`). A `references` field additionally resolves its
+target table's own REST `route` (by matching `tableName` against every
+other entry in this same response) — the frontend fetches
+`GET /v1/<route>` to populate that field's pick-list, then submits the
+selected row's own identity value (per that table's `identity.field`) as
+this field's value.
 
 Every record's response includes `id`, the table's own fields, `createdBy`,
 `createdAt`, `updatedBy`, `updatedAt`, and `markedDeleted` (camelCase in

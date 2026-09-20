@@ -18,6 +18,7 @@ export const NAV_ITEMS = [
     hash: `#${table.route}`,
     route: table.route,
     columns: table.columns,
+    singularLabel: table.singularLabel,
     kind: 'table',
   })),
   {

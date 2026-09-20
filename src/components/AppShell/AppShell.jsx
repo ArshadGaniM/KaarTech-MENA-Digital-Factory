@@ -36,7 +36,12 @@ function AppShell({ initialHash = '' }) {
         <TopBar title="Dashboard" />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
           {activeItem.kind === 'table' ? (
-            <MasterDataTable key={activeItem.id} route={activeItem.route} columns={activeItem.columns} />
+            <MasterDataTable
+              key={activeItem.id}
+              route={activeItem.route}
+              columns={activeItem.columns}
+              singularLabel={activeItem.singularLabel}
+            />
           ) : activeItem.kind === 'entity-relationship' ? (
             <EntityRelationship key={activeItem.id} />
           ) : (
