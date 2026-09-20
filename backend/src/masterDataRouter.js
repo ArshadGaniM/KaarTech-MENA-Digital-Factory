@@ -12,6 +12,7 @@ import {
   validateBody,
   validateActor,
   validateReferences,
+  validateCrossFields,
   lookupJoinSql,
   lookupSelectSql,
 } from "./masterDataSchema.js";
@@ -109,6 +110,7 @@ export function createMasterDataRouter(table) {
     try {
       validateBody(table, req.body);
       await validateReferences(table, req.body);
+      validateCrossFields(table, req.body);
       const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
       validateActor(actor);
 
@@ -137,6 +139,7 @@ export function createMasterDataRouter(table) {
       if (existing.rows.length === 0) throw notFound(resourceName, req.params.id);
 
       const current = existing.rows[0];
+      validateCrossFields(table, req.body, { current });
       const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
       validateActor(actor);
 

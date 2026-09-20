@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** wf_5f09754d-fe1 (FEAT-11, Project Assignments — chained/transitive lookup + cross-field date validation). Note: `.claude/workflows/dev-team.js` had a real bug fixed this run (see commit c6a1c74) — it was written as `export default async function run({agent,...})`, invalid for the Workflow tool's script format, and every stage's `agent()` call was missing a `schema` option (so `result.code`/`result.verdict` could never have worked). Fixed to top-level `agent()`/`phase()` calls reading `args`, with a `STAGE_SCHEMA`. Also: invoking by `name: "dev-team"` resolves to a stale/cached version ignoring the on-disk file — pass the full script inline via `script` until that's understood.
+**Active run ID:** none — owner reversed course again immediately after the FEAT-11 pipeline run launched ("Do it directly without the pipeline"); the run (wf_5f09754d-fe1) was stopped mid-flight via TaskStop before any stage completed, and FEAT-11 is being built directly instead, per the FEAT-7/FEAT-10 pattern. `.claude/workflows/dev-team.js` was still fixed and pushed this session (commit c6a1c74 — it had an invalid ES-module export shape and every stage was missing a `schema` option) so it's ready to use correctly next time the pipeline is reinstated; note `name: "dev-team"` resolution still ignores the on-disk file — pass the script inline via `script` until that's understood.
 
 **Feature counter:** 13
 

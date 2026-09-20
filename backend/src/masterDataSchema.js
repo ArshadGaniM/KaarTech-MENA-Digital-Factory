@@ -10,8 +10,24 @@ const MAX_TEXT_LENGTH = 255;
 // table.lookups comes only from the fixed masterDataTables.js descriptor,
 // never from request input, so interpolating it into SQL is safe (same
 // reasoning as tableName/column elsewhere in this codebase).
+//
+// A lookup normally joins directly off the base table (`table.tableName`).
+// Setting `via: "<other lookup's table>"` instead joins off that earlier
+// lookup's own alias — a chained/transitive lookup (e.g. Project
+// Assignments -> Teams -> Departments: the Departments lookup's
+// `localColumn` is a column on `teams`, not on `project_assignments`).
+// The `via` target must be an earlier entry in `table.lookups` (single
+// forward pass, no cycle detection needed since order is author-controlled).
 function buildLookupPlan(table) {
-  return (table.lookups ?? []).map((lookup, index) => ({ ...lookup, alias: `lookup_${index}` }));
+  const withAlias = (table.lookups ?? []).map((lookup, index) => ({ ...lookup, alias: `lookup_${index}` }));
+  return withAlias.map((lookup) => {
+    if (!lookup.via) return { ...lookup, sourceAlias: table.tableName };
+    const source = withAlias.find((l) => l.table === lookup.via);
+    if (!source) {
+      throw new Error(`${table.tableName}: lookup.via '${lookup.via}' has no earlier lookup entry for that table`);
+    }
+    return { ...lookup, sourceAlias: source.alias };
+  });
 }
 
 export function lookupJoinSql(table) {
@@ -19,7 +35,7 @@ export function lookupJoinSql(table) {
     .map(
       (lookup) =>
         `left join ${lookup.table} ${lookup.alias} ` +
-        `on ${lookup.alias}.${lookup.foreignColumn} = ${table.tableName}.${lookup.localColumn} ` +
+        `on ${lookup.alias}.${lookup.foreignColumn} = ${lookup.sourceAlias}.${lookup.localColumn} ` +
         `and ${lookup.alias}.deleted_at is null`
     )
     .join(" ");
@@ -98,6 +114,16 @@ export function validateBody(table, body, { partial = false } = {}) {
       continue;
     }
 
+    if (field.type === "date") {
+      // A plain ISO 8601 date/datetime string, stored in a `date` column —
+      // Date.parse rejects garbage strings but accepts both "2026-01-01"
+      // and a full timestamp, matching what a `date` column itself accepts.
+      if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+        details[field.key] = `${field.key} must be a valid date (ISO 8601 string).`;
+      }
+      continue;
+    }
+
     const maxLength = field.maxLength ?? MAX_TEXT_LENGTH;
     if (typeof value !== "string" || value.trim().length === 0) {
       details[field.key] = field.required
@@ -152,6 +178,42 @@ export async function validateReferences(table, body, { partial = false } = {}) 
   for (const { field, value, found } of results) {
     if (!found) {
       details[field.key] = `${field.key} must reference an existing ${field.references.table} row (no match for '${value}').`;
+    }
+  }
+
+  if (Object.keys(details).length > 0) {
+    throw validationError(details);
+  }
+}
+
+// Enforces any table-level `crossFieldValidations` entry (e.g. Project
+// Assignments' projectAssignmentEndDate must not be earlier than
+// projectAssignmentStartDate) — a rule spanning two fields at once, unlike
+// validateBody's per-field checks. `current` is the existing row (already
+// snake_case DB columns) for a PATCH, so a partial update that only sends
+// one of the two dates is still checked against the other's real,
+// currently-stored value rather than skipped. Must run after validateBody
+// (so a malformed date has already been rejected with a clear per-field
+// message) and, for PATCH, after the existing row has been fetched.
+export function validateCrossFields(table, body, { current = null } = {}) {
+  const safeBody = body && typeof body === "object" ? body : {};
+  const details = {};
+
+  for (const rule of table.crossFieldValidations ?? []) {
+    if (rule.type !== "dateRange") continue;
+
+    const startField = table.fields.find((f) => f.key === rule.startKey);
+    const endField = table.fields.find((f) => f.key === rule.endKey);
+    const startValue = Object.hasOwn(safeBody, rule.startKey) ? safeBody[rule.startKey] : current?.[startField.column];
+    const endValue = Object.hasOwn(safeBody, rule.endKey) ? safeBody[rule.endKey] : current?.[endField.column];
+
+    // Nothing to compare yet (e.g. a POST missing a required date — already
+    // flagged by validateBody's own required check) or neither date is
+    // changing on this PATCH.
+    if (startValue == null || endValue == null) continue;
+
+    if (new Date(endValue) < new Date(startValue)) {
+      details[rule.endKey] = rule.message;
     }
   }
 
