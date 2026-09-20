@@ -1,54 +1,67 @@
 # Merge-to-Main Gate Report
 
 **Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff scope:** FEAT-10 (Projects — brand-new master-data table, zero FK relationships)
+**Diff scope:** FEAT-11 (Project Assignments — chained/transitive lookup + cross-field date validation)
 **Verdict: ✅ PASS**
 
 ## Feature summary
 
-FEAT-10 adds "Projects", a brand-new master-data table (not one of the
-original 9): `projectId`, `projectName`, `projectProfitCenterCode`, all
-manually entered by the caller — the first table since FEAT-5 with **zero
-enforced FK relationships** (no `references`/`lookups` on any field, no
-`hasCode` trigger). `projectId` follows the `resources.employeeId`
-precedent (migration 0012): caller-supplied and DB-enforced-unique via
-`projects_project_id_unique`, mapped through the existing
-`isUniqueViolation()`/`duplicateFieldError()` path rather than a new one.
+FEAT-11 adds "Project Assignments", a brand-new master-data table linking a
+Project to a Team over a date range: `projectId`/`teamId` (both pick-list-only
+FK references — the second table with two concurrent FK fields, after
+`resource_deployment`), `projectAssignmentStartDate`/`projectAssignmentEndDate`
+(both required `date`-typed fields).
 
-Migration `0017_create_projects.sql` applied live to Supabase — verified on
-the deployed schema via `mcp__Supabase__list_tables`. Backend descriptor,
-mcp-server mirror, and frontend sidebar/column config were all added
-generically through the existing `MASTER_DATA_TABLES`-driven framework —
-zero changes to `masterDataRouter.js`/`masterDataSchema.js`. Specifically
-verified the framework degrades correctly for a table with no FK/lookup
-fields: `validateReferences()`'s per-field filter naturally produces an
-empty `fieldsToCheck` (not a vacuous-truth bug), and `buildLookupPlan`'s
-`table.lookups ?? []` handles the key being entirely absent from the
-descriptor.
+This is the first feature to require **two brand-new generic framework
+capabilities**, both added to `backend/src/masterDataSchema.js`:
 
-Built directly (established pivot since FEAT-7 — the Workflow pipeline hit
-repeated session/token limits on prior features).
+1. **Chained/transitive lookups (`lookup.via`)** — `departmentId`/
+   `departmentName` are not a column on `project_assignments` at all; they
+   resolve through the linked Team's own `department_code`. A lookup entry
+   can now set `via: "<earlier lookup's table>"` to join off that lookup's
+   own alias instead of off the base table (`buildLookupPlan`/
+   `lookupJoinSql`).
+2. **Cross-field validation (`table.crossFieldValidations`)** — a
+   `"dateRange"` rule enforces `projectAssignmentEndDate >=
+   projectAssignmentStartDate`, wired into both POST and PATCH
+   (`validateCrossFields`). A PATCH that only sends one of the two dates is
+   still checked against the other's current, stored value. Mirrored as a
+   DB-layer `CHECK` constraint (migration 0018) as defense-in-depth, the
+   same pattern used for every FK's app-layer + DB-layer pair.
+
+A new `"date"` field type was added alongside (`validateBody`, and
+`z.string().date()` in the mcp-server's `fieldSchema`).
+
+Migration `0018_create_project_assignments.sql` applied live to Supabase —
+verified via `mcp__Supabase__list_tables` (both FK constraints and the
+CHECK constraint present on the deployed schema).
+
+Built directly, per the owner's most recent standing instruction (the
+Workflow pipeline was reinstated and then immediately reverted back to
+direct builds within the same session).
 
 ## Gate agent results
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | PASS | Confirmed `hasCode`/`references`/`lookups` correctly omitted, `sortColumn: "project_id"` correct and necessary (table has no `name` column), migration's uniqueness constraint matches the `resources.employee_id` precedent exactly. One Optional/cosmetic note (partial index + unique constraint on the same column, an accepted existing pattern) — not blocking. |
-| security-auditor | PASS | No raw SQL interpolation of user input, no secrets, no new attack surface from the missing FK relationships — pure data added to an already-reviewed generic framework. |
-| debugger | PASS | Traced `validateReferences()` and `lookupJoinSql`/`lookupSelectSql` directly against the zero-FK/zero-lookup case — both degrade correctly with no crash and no vacuous-truth bug. |
-| test-writer | PASS (was WARN, self-fixed) | Found a real gap: `projectId` participates in PATCH's SET clause exactly like POST's INSERT (unlike other tables' unique-constrained fields, which are DB-trigger-owned and never client-writable), so PATCH can hit the same 23505 unique-violation as POST — only POST had a test. Added the missing PATCH-side unique-violation test; verified 134/134 backend tests pass. |
-| refactorer | PASS | Confirmed the shared `masterDataRouter.testHelpers.js` harness is reused, not duplicated. No unnecessary complexity introduced for the "no FK, no hasCode" case — pure data on the existing descriptor pattern. |
-| doc-writer | PASS (was WARN, self-fixed) | Found a real gap: `backend/README.md` said "All ten routes share the same shape" but the route list had grown to eleven with `/v1/projects` added. Fixed directly. All other required updates (route list, per-table fields row, migrations row, mcp-server tools sentence/table/prose) were already present and verified byte-accurate against the actual `masterDataTables.js` code. |
-| silent-failure-hunter | PASS | Confirmed the zero-FK case in `validateReferences()` is a correct per-field opt-in degrading to a no-op, not a masked failure — `validateBody()`'s required/type/length checks still run unconditionally regardless. Confirmed the unique-violation field-mapping resolves unambiguously for this table's three column names. |
-| pr-test-analyzer | PASS | Traced 3 tests against real implementation code (`isUniqueViolation`/`duplicateFieldError`, `validateBody`, the `sortColumn` override) — all genuine behavior tests, not restated mocks, on both POST and PATCH paths. No sign of reduced test rigor from being built outside the pipeline. |
+| code-reviewer | PASS | Confirmed `validateCrossFields`'s PATCH handling and the equal-dates boundary are correct. Flagged an Important, non-blocking robustness note: `buildLookupPlan`'s `via` resolution finds the *first* matching table name in the array, not "the nearest earlier entry" — not exploitable by today's config (no duplicate table names, `via` correctly ordered after its target), but worth hardening before a second chained lookup is added. |
+| security-auditor | PASS | Confirmed every SQL identifier the `via` mechanism interpolates comes only from the fixed `masterDataTables.js` descriptor, never request input. No raw SQL interpolation of user values, no secrets, no injection risk in the date-comparison logic. |
+| debugger | PASS | Traced the `via`-throw path (fires at server startup, not per-request — fail-fast on a config bug, by design) and confirmed `current` is always safely available in `validateCrossFields`'s call sites. Noted one non-triggered latent fragility (missing null-guard if a future `crossFieldValidations` entry typos a field key) — not a defect in this diff. |
+| test-writer | PASS (was WARN, self-fixed) | Found two real gaps: `masterDataSchema.js` had no direct unit tests for `via`/`validateCrossFields` (only exercised indirectly through the router), and the FK-violation-race test only covered the `teams`-side constraint, not `projects`. Added both. 163/163 backend, 33/33 mcp-server tests pass. |
+| refactorer | PASS | Confirmed the `via` mechanism and `validateCrossFields` are minimally scoped to the actual use case (no speculative generalization), and the new test file reuses the shared harness. |
+| doc-writer | PASS (was WARN, self-fixed) | Found two real gaps: `mcp-server/README.md`'s opening paragraph was stale ("30 tools"/"10 tables"); `backend/README.md`'s migration-0018 row omitted the new index names, unlike every prior FK-adding migration row. Both fixed; new "Chained/transitive lookups" and "Cross-field validation" doc sections verified byte-accurate against the code. |
+| silent-failure-hunter | PASS | Confirmed the `via`-throw fails loudly at startup rather than silently misrouting a join, and that `validateCrossFields`'s null-skip path is unreachable with invalid data given validation ordering (`validateBody` always runs first). |
+| pr-test-analyzer | PASS | Traced the JOIN-alias regex test and the PATCH-cross-field test — both are genuine, load-bearing regression guards, not restated mocks. One Optional note: the null-propagation test alone doesn't prove LEFT JOIN semantics (it mocks the row directly) — that proof lives in the separate JOIN-SQL regex test. No sign of reduced rigor for the two brand-new capabilities; if anything this file is the first in the suite to assert on generated JOIN SQL at all. |
 
 No Critical findings. No FAIL gates remain.
 
-## Separately verified this session (no code change)
+## Also this session
 
-**FEAT-13** — owner asked to confirm "Marked Deleted" as a standing
-invariant across every table. Verified directly: it is already fully
-implemented generically (`masterDataSchema.js`'s `toResponse`,
-`masterDataRouter.js`'s soft-delete-only DELETE handler, and
-`masterDataApi.js`'s shared `AUDIT_COLUMNS`), so it already covers all 11
-tables including Projects — nothing to build.
+Set up a scheduled Routine ("KaarTech Digital Factory — Dev Pipeline
+Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) per the owner's
+standing instruction to keep executing queued pipeline features across
+session limits (CLAUDE.md §7.3). **Known limitation, disclosed to the
+owner:** the Routine was created with no MCP connectors attached (this
+session held none it could pass through), so fired sessions run without
+Supabase/GitHub MCP tools until it's recreated from a session or the
+claude.ai Routines UI that holds those connector grants.
