@@ -269,6 +269,18 @@ write code yourself. Just dispatch. Pure questions/explanations are the only exc
 5. New session with no active run → start fresh with only still-queued/in-flight features.
 6. After the run settles, update `tasks/pipeline-queue.md`: move the row to Completed.
 
+**Continuous autonomous execution through the queue (owner's explicit standing
+instruction, 2026-09-20):** once a feature's gate passes and it's pushed, do
+NOT stop and wait for the owner to say "continue" — immediately pick up the
+next `queued`/`in_flight` row in `tasks/pipeline-queue.md` and build it, gate
+it, and push it, the same way, without pausing in between. This applies
+across the whole queue, not just one feature at a time. The only things that
+legitimately stop this loop: the queue genuinely has nothing left in
+`queued`/`in_flight`/`error` state, a feature halts per §7.6 invariant 2 (a
+genuine architecture/security/bug-fix-loop halt, not a routine gate finding —
+those get self-fixed by the gate agents same as always), or the owner gives a
+new instruction that supersedes this one for that turn.
+
 **Concurrency rule:** features run interleaved, but **the same specialist role never
 runs concurrently for two different features** — enforce with a per-role mutex.
 

@@ -113,6 +113,45 @@ defense-in-depth, same reasoning as every FK's app-layer + DB-layer pair.
 not a raw 500 — see `isUniqueViolation`/`duplicateFieldError` in
 `src/errors.js`.
 
+### `/v1/schema/entity-relationships`
+
+`GET /v1/schema/entity-relationships` (no auth, no params) returns
+`{ data: [...] }`, one entry per master-data table, derived directly from
+`MASTER_DATA_TABLES` (`src/entityRelationships.js`'s `buildEntityRelationships`)
+rather than hand-written — every table's own `hasCode`/`identityField`/
+`fields`/`lookups` descriptor is the only source of truth, so this
+endpoint (and the frontend's "Entity Relationship" page built on it,
+FEAT-12) can never drift out of sync with the real schema. Each entry:
+
+```json
+{
+  "route": "project-assignments",
+  "tableName": "project_assignments",
+  "resourceName": "project_assignment",
+  "identity": { "type": "none" },
+  "relationships": [
+    { "field": "projectId", "referencesTable": "projects", "referencesColumn": "project_id" },
+    { "field": "teamId", "referencesTable": "teams", "referencesColumn": "code" }
+  ],
+  "lookups": [
+    { "key": "projectName", "sourceTable": "projects", "via": null },
+    { "key": "projectProfitCenterCode", "sourceTable": "projects", "via": null },
+    { "key": "teamName", "sourceTable": "teams", "via": null },
+    { "key": "departmentId", "sourceTable": "departments", "via": "teams" },
+    { "key": "departmentName", "sourceTable": "departments", "via": "teams" }
+  ]
+}
+```
+
+`identity.type` is one of `"auto-generated"` (a `hasCode` table — `field`
+names the business-code column), `"caller-supplied-unique"` (a table with
+an explicit `identityField` in its descriptor, e.g. `resources.employeeId`/
+`projects.projectId`), or `"none"` (no single identifying field, e.g.
+`project_assignments`). `relationships` lists every field with a
+`references` descriptor; `lookups` lists every projected lookup key, with
+`via` naming the earlier lookup it chains through (`null` for a direct,
+single-hop lookup).
+
 Every record's response includes `id`, the table's own fields, `createdBy`,
 `createdAt`, `updatedBy`, `updatedAt`, and `markedDeleted` (camelCase in
 responses, snake_case in the database) — plus `code` for

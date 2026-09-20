@@ -3,6 +3,7 @@ import cors from "cors";
 import { teamMembersRouter } from "./routes/teamMembers.js";
 import { createMasterDataRouter } from "./masterDataRouter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
+import { buildEntityRelationships } from "./entityRelationships.js";
 import { parseAllowedOrigins } from "./corsOrigins.js";
 
 const app = express();
@@ -15,6 +16,14 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/v1/team-members", teamMembersRouter);
+
+// FEAT-12: read-only, self-updating from MASTER_DATA_TABLES — see
+// entityRelationships.js's header comment. No auth required, same as
+// every other GET route (read access is unauthenticated throughout this
+// API; only writes require the internal API key).
+app.get("/v1/schema/entity-relationships", (req, res) => {
+  res.json({ data: buildEntityRelationships(MASTER_DATA_TABLES) });
+});
 
 for (const table of MASTER_DATA_TABLES) {
   app.use(`/v1/${table.route}`, createMasterDataRouter(table));
