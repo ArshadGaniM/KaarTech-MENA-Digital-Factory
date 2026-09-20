@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** (launching FEAT-7 next)
+**Active run ID:** wf_c07dafb9-12d (FEAT-7, Resource Deployment — two FK/lookup relationships at once, employeeId->Resources and positionId->Positions)
 
 **Feature counter:** 12
 
