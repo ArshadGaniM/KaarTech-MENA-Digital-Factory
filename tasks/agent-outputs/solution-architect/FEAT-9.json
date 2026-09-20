@@ -1,0 +1,153 @@
+{
+  "feature": "FEAT-9",
+  "stage": "solution-architect",
+  "pipeline_stage_number": "3",
+  "verdict": "PASS",
+  "summary": "Solution Design Document for the new Positions master-data table. Unlike FEAT-5 (which had to invent the references/lookups descriptor mechanism), Positions introduces zero new mechanisms — it is a pure third proof-point of the existing generic hasCode + references + lookups framework, mirroring Teams (FEAT-8) column-for-column with teams substituted for departments. No changes to backend/src/masterDataSchema.js or backend/src/masterDataRouter.js. Verified directly (not taken on faith from prior stages): masterDataSchema.js's validateReferences() (lines 123-161) filters `deleted_at is null` in its FK-existence query, and lookupJoinSql (lines 17-26) adds `and ${alias}.deleted_at is null` to its LEFT JOIN — both already give Positions the soft-delete-aware teamCode validation and null-on-soft-deleted-team teamName the requirement asks for, with no code change. backend/src/index.js mounts every table generically via a `for (const table of MASTER_DATA_TABLES) app.use(...)` loop (verified directly, lines 19-21) — so no new route-wiring code is needed either.",
+  "scope_note": "Stage 3 produces the design document that stage 3.1 (Architecture Critic), 3.3 (System Engineer) and 3.5 (Engineer/MVP) build from. No application code, migration file, or table-descriptor entry was created or edited by this stage — the concrete file edits and the live migration application belong to later stages, per solution-architect.md's SDD-only scope. All snippets below are target designs for those stages to implement verbatim, not commits made here.",
+
+  "component_breakdown": {
+    "backend_masterDataTables_js_entry": {
+      "file": "backend/src/masterDataTables.js",
+      "insertion_point": "new array entry appended after the `teams` entry (line 179), before `resource-deployment`",
+      "design": {
+        "route": "positions",
+        "tableName": "positions",
+        "resourceName": "position",
+        "hasCode": true,
+        "lookups": [
+          {
+            "table": "teams",
+            "localColumn": "team_code",
+            "foreignColumn": "code",
+            "projections": [{ "key": "teamName", "column": "name" }]
+          }
+        ],
+        "fields": [
+          { "key": "name", "column": "name", "required": true, "type": "string" },
+          {
+            "key": "teamCode",
+            "column": "team_code",
+            "required": true,
+            "type": "string",
+            "references": { "table": "teams", "column": "code" }
+          }
+        ]
+      },
+      "why_this_is_a_verbatim_mirror": "structurally identical to the teams entry (masterDataTables.js:148-179) with departments -> teams, department_code -> team_code: one lookups entry keyed off the FK column, one references field carrying the FK descriptor. No third descriptor kind is introduced."
+    },
+
+    "backend_masterDataSchema_js": {
+      "file": "backend/src/masterDataSchema.js",
+      "change_required": "none — validateReferences() and the lookupJoinSql/lookupSelectSql/toResponse projection logic are already fully generic over table/field descriptors and require zero table-specific branches, confirmed by direct read of the file in this stage."
+    },
+
+    "backend_masterDataRouter_js": {
+      "file": "backend/src/masterDataRouter.js",
+      "change_required": "none — createMasterDataRouter(table) is parameterized entirely by the descriptor object; Positions is wired in purely by being added to MASTER_DATA_TABLES."
+    },
+
+    "backend_index_js_mount": {
+      "file": "backend/src/index.js",
+      "change_required": "none — the existing `for (const table of MASTER_DATA_TABLES) app.use(`/v1/${table.route}`, createMasterDataRouter(table))` loop (verified at lines 19-21) mounts `/v1/positions` automatically once the array entry above is added."
+    },
+
+    "database_migration": {
+      "file": "backend/migrations/0015_create_positions.sql",
+      "rationale_for_single_migration": "Positions is a brand-new table with zero existing rows, so — per tech-lead's binding direction for this exact case in FEAT-9's tech-lead stage output — base-table creation, the hasCode sequence/trigger, and the team_code FK/index are combined into one migration rather than 0014's two-phase alter-an-existing-table pattern. This mirrors 0011's brand-new-table precedent (base shape) fused with 0014's hasCode/FK addendum (code generation + references FK), since there is no existing-data risk to phase around.",
+      "required_statements": [
+        "create table public.positions (id uuid primary key default gen_random_uuid(), code text, name text not null, team_code text not null, created_by text, created_at timestamptz not null default now(), updated_by text, updated_at timestamptz not null default now(), deleted_at timestamptz) — base shape per backend/README.md's 'Base shape shared by all N tables' section (0011's pattern): uuid4 pk, audit columns, deleted_at for soft delete. `name not null` per requirement (manually entered, required). `code`/`team_code` left nullable-at-DDL-time exactly as 0014 does for `code` (populated by the trigger before the not-null-equivalent business invariant holds) — System Engineer to confirm whether `team_code` should be `not null` at the DDL level immediately (unlike `code`, team_code has no trigger populating it, so it CAN be declared `not null` from creation, unlike code which must stay nullable at the column level so the trigger can fill it in on insert).",
+        "create sequence public.positions_code_seq; create or replace function public.set_position_code() ... new.code := 'POS-' || lpad(nextval('positions_code_seq')::text, 3, '0'); create trigger trg_positions_code before insert on public.positions for each row execute function public.set_position_code(); — exact hasCode pattern from 0007/0009/0014, POS- prefix per requirement (POS-001, POS-002, ...).",
+        "create unique index ix_positions_code on public.positions (code); — same as ix_teams_code/ix_departments_code precedent.",
+        "alter table public.positions add constraint fk_positions_teams foreign key (team_code) references public.teams (code); — defense-in-depth DB-level FK per database.md and the fk_<table>_<ref_table> naming convention, mirroring fk_teams_departments (0014). Relies on teams.code's existing unique index (0014) to be a meaningful FK target — confirmed present.",
+        "create index ix_positions_team_code on public.positions (team_code); — database.md: 'add an index on foreign keys'; doubles as the join-performance index for the teamName lookup's LEFT JOIN, mirroring ix_teams_department_code.",
+        "alter table public.positions enable row level security; — RLS-enabled-no-policies per 0011's base-shape convention for every master-data table (writes go through the backend's service-role connection, not through RLS policies).",
+        "create trigger trg_positions_updated_at before update on public.positions for each row execute function public.set_updated_at(); — reuses the existing shared set_updated_at() trigger function from 0011, not a new one.",
+        "optional CHECK constraints on created_by/updated_by actor length, mirroring 0006's actor-length constraints applied to the other base tables, for consistency (System Engineer's call whether to include in 0015 or treat as already covered by validateActor() at the app layer alone — 0006 applied it to the original 9 tables retroactively, not automatically to every future table, so this is not strictly required, only for-consistency)."
+      ],
+      "must_be_applied_live": "per the task's instruction, 0015 must be applied via mcp__Supabase__apply_migration by the stage that authors it (System Engineer/Engineer), not merely written to backend/migrations/ — this SDD stage does not apply it, since no migration file exists yet at this point in the pipeline."
+    },
+
+    "mcp_server_masterDataTables_js": {
+      "file": "mcp-server/src/masterDataTables.js",
+      "insertion_point": "new entry appended after the `team` slug entry, mirroring its shape",
+      "design": {
+        "slug": "position",
+        "route": "positions",
+        "label": "Position",
+        "hasCode": true,
+        "fields": [
+          { "key": "name", "label": "name", "required": true, "type": "string" },
+          {
+            "key": "teamCode",
+            "label": "the linked Team's business code (from the Teams table's own auto-generated code, e.g. TEAM-001) — must match an existing, non-deleted Team; the backend rejects the request with a validation error if no such Team exists",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      },
+      "explicit_exclusions": "teamName and code are NOT in fields[] — teamName is a live lookup (never writable) and code is auto-generated (never writable), matching the comment convention already present above the team/resource_cost entries in this file (\"...is NOT writable here — it's a live lookup...\").",
+      "no_bespoke_mcp_code_needed": "mcp-server/src/index.js and apiClient.js build each add_/update_/delete_<slug> zod tool schema generically off `fields[]` (confirmed pattern from Teams needing zero index.js/apiClient.js changes) — Positions needs only this descriptor-data addition. System Engineer/Engineer stage should still do a direct read of both files before declaring this final, per codebase-explorer's own flagged caveat, but no table-specific branch exists in either file today for any of the 9 current tables."
+    },
+
+    "frontend_masterDataApi_js": {
+      "file": "src/lib/masterDataApi.js",
+      "insertion_point": "new entry appended after the `teams` entry (after line ~106), before `resource-deployment`",
+      "design": {
+        "route": "positions",
+        "label": "Positions",
+        "columns": [
+          { "key": "code", "label": "Position ID" },
+          { "key": "name", "label": "Position Name" },
+          { "key": "teamCode", "label": "Team Code" },
+          { "key": "teamName", "label": "Team Name" }
+        ]
+      },
+      "column_naming_convention_match": "mirrors Teams' own column labels exactly (code -> 'Team ID', name -> 'Team Name', departmentCode -> 'Department Code', departmentName -> 'Department Name'), substituting Position/Team for Team/Department. `...AUDIT_COLUMNS` spread appended unchanged, as every other table does.",
+      "no_component_code_needed": "this array entry alone produces the new sidebar nav item and column list — the dashboard is read-only, so no form, mutation hook, or new component file is created, consistent with the task's explicit statement and frontend.md's data-driven pattern already proven by all 9 existing tables."
+    },
+
+    "test_file": {
+      "file": "backend/src/masterDataRouter.positions.test.js",
+      "design": "structured identically to masterDataRouter.teams.test.js: import startTestServer/stopTestServer/registerAuthGateTests/registerDeleteTests from masterDataRouter.testHelpers.js; call registerAuthGateTests and registerDeleteTests against the /v1/positions routes to get the shared 401/soft-delete-DELETE coverage with zero duplicated boilerplate; add Positions-specific cases beyond what the shared harness covers: (1) POST with a valid teamCode succeeds and the response includes a POS-NNN code plus a resolved teamName, (2) POST with a teamCode that doesn't exist in teams returns 422 with details.teamCode, (3) POST with a teamCode belonging to a soft-deleted Team returns 422 (proves validateReferences' deleted_at is null filter applies to positions the same as it does to teams.departmentCode), (4) GET after the referenced Team is soft-deleted (post-creation) returns teamName: null rather than the stale name, proving the LEFT JOIN's deleted_at is null predicate. This test-file structure itself belongs to the Test Architect/Test Script Writer stages (5.9/6) — named here only so System Engineer's component plan accounts for it up front, per the requirement's explicit instruction to use the shared harness."
+    },
+
+    "documentation": {
+      "file": "backend/README.md",
+      "changes_needed": "add a Positions row to the routes table (route, table, resourceName), the migrations table (0015, description), and the 'Base shape shared by all N tables' section's table count (N -> N+1) and enumerated list — elevated from 'deferred' to a required acceptance item per tech-lead's direction. Left to a later stage (Engineer/Developer, stage 4) since this stage produces design only, not doc edits."
+    }
+  },
+
+  "data_flow": {
+    "write_path": "MCP client -> mcp-server's add_position/update_position tool (name, teamCode only) -> apiClient.js HTTP call with the internal API key -> backend POST/PATCH /v1/positions -> validateBody (name/teamCode presence+type) -> validateReferences (teamCode must match a non-deleted teams.code row) -> INSERT/UPDATE against positions (code auto-assigned by DB trigger on INSERT only, immutable thereafter — never in the UPDATE column list) -> toResponse projects the row plus the joined teamName -> 201/200 response.",
+    "read_path": "Frontend dashboard -> GET /v1/positions or /v1/positions/:id -> shared masterDataRouter SELECT with lookupJoinSql's LEFT JOIN against teams (on team_code = teams.code, filtered to teams.deleted_at is null) -> toResponse maps the joined teams.name to response.teamName, defaulting to null when the join found no row (missing or soft-deleted Team) -> frontend renders via masterDataApi.js's columns[] config, no bespoke component.",
+    "delete_path": "DELETE /v1/positions/:id -> shared soft-delete handler sets deleted_at -> response's markedDeleted becomes 'Yes' -> a since-deleted Position's own code remains as a historical record (soft delete never touches code); a since-deleted Team referenced by an existing Position causes that Position's teamName to resolve to null on next GET, per the lookup's deleted_at filter, without touching the Position row itself."
+  },
+
+  "api_contract": {
+    "GET /v1/positions and GET /v1/positions/:id": "response `data` includes id, code (POS-NNN), name, teamCode, teamName (nullable), createdBy/createdAt/updatedBy/updatedAt, markedDeleted — the standard master-data envelope per api.md, no new envelope shape.",
+    "POST /v1/positions": "request body: { name: string, teamCode: string }. code is never accepted (auto-generated; if sent, ignored since it's not in fields[]). 422 with details.teamCode if teamCode doesn't reference an existing, non-deleted teams row. 201 on success.",
+    "PATCH /v1/positions/:id": "request body: any of { name, teamCode } (partial-update semantics, unchanged from the shared router). teamCode re-validated the same way as on create. code remains immutable (never writable, matching hasCode's existing enforcement for every other hasCode table).",
+    "DELETE /v1/positions/:id": "soft-delete, 401 without a bearer token (registerAuthGateTests covers this generically), matching every other master-data table.",
+    "no_new_routes_beyond_the_standard_five": "GET list, GET one, POST, PATCH, DELETE — the same five the shared factory already produces for every table; nothing bespoke to Positions."
+  },
+
+  "out_of_scope_for_this_feature": [
+    "Any UI form or write path on the frontend — the dashboard stays read-only; all writes are via the MCP server per the task's explicit statement.",
+    "Any additional Positions-specific columns beyond code/name/teamCode/teamName/audit — the requirement specifies exactly these, no headcount/description/grade fields were requested.",
+    "Changing Teams' or Departments' own schema or behavior — Positions is purely an additive consumer of teams.code via the existing generic references/lookups mechanism."
+  ],
+
+  "constraints_verified_against": [
+    "database.md: FK validated at the service layer (existing validateReferences(), already deleted_at-aware) plus a real DB-level FK constraint as defense-in-depth (fk_positions_teams); index added on the FK column (ix_positions_team_code); index also added on the auto-generated code (ix_positions_code); naming follows fk_<table>_<ref_table> / ix_<table>_<column>; migration is new (0015), never edits an existing one; uuid4 primary key.",
+    "api.md: 422 for validation failures with the existing consistent error envelope; no new routes beyond the standard five; response/request schemas remain the shared master-data GET/POST/PATCH/DELETE shape.",
+    "frontend.md: masterDataApi.js columns[] change only — no component logic, no inline styles, presentation-only config file touched, consistent with the project's data-driven master-data table pattern.",
+    "CLAUDE.md Core Principles (Simplicity First / Minimal Impact): zero new descriptor kinds, zero changes to masterDataSchema.js/masterDataRouter.js/backend index.js/mcp-server index.js/apiClient.js — every change is either a new file (migration, test) or a config-array entry in an existing file, and every one of the other 9 tables' behavior is provably unaffected since Positions is purely additive to arrays they don't share entries with."
+  ],
+
+  "open_items_for_architecture_critic": [
+    "Confirm the single-migration approach (0015, base table + hasCode + FK all at once, per tech-lead's binding direction) is acceptable given Positions starts with zero rows — no phased-alteration risk exists here the way it did for 0014's alter-an-existing-table case.",
+    "Confirm whether `team_code` should be declared `not null` directly in the CREATE TABLE statement (unlike `code`, which must stay nullable so the insert trigger can populate it) — flagged for System Engineer to finalize at migration-authoring time, not a blocking ambiguity for this design.",
+    "Confirm backend/README.md's three-section update (routes table, migrations table, base-shape count) is captured as a required acceptance item for the Developer stage (4), not silently dropped as it nearly was for prior features per tech-lead's note."
+  ]
+}

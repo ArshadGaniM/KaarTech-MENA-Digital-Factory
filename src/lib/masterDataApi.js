@@ -112,6 +112,17 @@ export const MASTER_DATA_TABLES = [
     label: "Resource Deployment",
     columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
   },
+  {
+    route: "positions",
+    label: "Positions",
+    columns: [
+      { key: "code", label: "Position ID" },
+      { key: "name", label: "Position Name" },
+      { key: "teamCode", label: "Team Code" },
+      { key: "teamName", label: "Team Name" },
+      ...AUDIT_COLUMNS,
+    ],
+  },
 ];
 
 export async function fetchMasterDataTable(route) {
