@@ -139,6 +139,22 @@ export const MASTER_DATA_TABLES = [
       ...AUDIT_COLUMNS,
     ],
   },
+  {
+    route: "project-assignments",
+    label: "Project Assignments",
+    columns: [
+      { key: "projectId", label: "Project ID" },
+      { key: "projectName", label: "Project Name" },
+      { key: "projectProfitCenterCode", label: "Profit Center Code" },
+      { key: "teamId", label: "Team Code" },
+      { key: "teamName", label: "Team Name" },
+      { key: "departmentId", label: "Department ID" },
+      { key: "departmentName", label: "Department Name" },
+      { key: "projectAssignmentStartDate", label: "Project Assignment Start Date" },
+      { key: "projectAssignmentEndDate", label: "Project Assignment End Date" },
+      ...AUDIT_COLUMNS,
+    ],
+  },
 ];
 
 export async function fetchMasterDataTable(route) {

@@ -8,6 +8,11 @@
 // Code accumulates forward: the `code` object returned by 'engineer-mvp'
 // onward is passed to, and returned (possibly modified) by, every later
 // code-touching stage — never regenerated from scratch (invariant 1, §7.6).
+//
+// This script processes exactly one feature per invocation (`args.feature`),
+// so stages already run in strict sequence with no cross-feature role
+// contention — no mutex is needed here. Extend with a per-role lock only if
+// this script is changed to process multiple features in one invocation.
 
 export const meta = {
   name: 'dev-team',
@@ -60,77 +65,78 @@ const FORBIDDEN_PATTERNS = [
   /process\.env\.[A-Z_]*SECRET[A-Z_]*\s*=\s*['"][^'"]+['"]/, // hardcoded secret assignment
 ]
 
-function checkDenylist(codeText) {
+function checkDenylist(code) {
+  const text = typeof code === 'string' ? code : JSON.stringify(code)
   for (const pattern of FORBIDDEN_PATTERNS) {
-    if (pattern.test(codeText)) {
+    if (pattern.test(text)) {
       return { blocked: true, pattern: String(pattern) }
     }
   }
   return { blocked: false }
 }
 
-// role mutex: the same specialist role never runs concurrently for two
-// different features (CLAUDE.md §7.2 concurrency rule). When this script
-// is extended to run multiple features per invocation, wrap each stage
-// call in withRole(slug, fn) sharing one mutex map across all features.
-const roleLocks = new Map()
-async function withRole(slug, fn) {
-  const prev = roleLocks.get(slug) || Promise.resolve()
-  let release
-  const next = new Promise((resolve) => { release = resolve })
-  roleLocks.set(slug, prev.then(() => next))
-  await prev
-  try {
-    return await fn()
-  } finally {
-    release()
-  }
+// Every stage returns StructuredOutput matching this shape — `code` (the
+// full accumulated code object, as JSON) and `verdict` are optional since
+// most stages don't touch code or issue a blocking verdict, but `summary`
+// is always required so a halt/report always has something human-readable
+// to show.
+const STAGE_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    verdict: { type: 'string' },
+    code: { type: 'object' },
+  },
+  required: ['summary'],
 }
 
-export default async function run({ agent, feature, code }) {
-  let currentCode = code || null
-  const results = []
+const feature = args.feature
+let currentCode = args.code || null
+const stageResults = []
 
-  for (const stage of STAGES) {
-    const result = await withRole(stage.slug, () =>
-      agent(
-        `Run the ${stage.slug} stage of the dev-team pipeline for ${feature.id}: ${feature.description}. ` +
-          `Read .claude/agents/dev-team/${stage.slug}.md for your role instructions. ` +
-          (currentCode ? `Current code object to improve in-place:\n${currentCode}` : 'No code exists yet.'),
-        { label: `${feature.id}:${stage.slug}`, phase: stage.phase }
-      )
-    )
+for (const stage of STAGES) {
+  phase(stage.phase)
 
-    if (stage.producesCode || currentCode) {
-      currentCode = result.code ?? currentCode
-    }
+  const result = await agent(
+    `Run the ${stage.slug} stage of the dev-team pipeline for ${feature.id}: ${feature.description}. ` +
+      `Read .claude/agents/dev-team/${stage.slug}.md for your role instructions. ` +
+      (currentCode
+        ? `Current code object to improve in-place (JSON):\n${JSON.stringify(currentCode)}`
+        : 'No code exists yet.') +
+      ' Return your summary; if your role produces or modifies code, include the full updated code object under `code`; ' +
+      'if your role issues a pass/block verdict (e.g. architecture-critic), include it under `verdict` as either "OK" or "BLOCKED".',
+    { label: `${feature.id}:${stage.slug}`, phase: stage.phase, schema: STAGE_SCHEMA }
+  )
 
-    if (currentCode) {
-      const denylistCheck = checkDenylist(currentCode)
-      if (denylistCheck.blocked) {
-        return {
-          featureId: feature.id,
-          status: 'halted',
-          reason: `Forbidden pattern denylist hit after stage ${stage.slug}: ${denylistCheck.pattern}`,
-        }
-      }
-    }
+  if (stage.producesCode || currentCode) {
+    currentCode = result.code ?? currentCode
+  }
 
-    if (stage.blocking && result.verdict === 'BLOCKED') {
+  if (currentCode) {
+    const denylistCheck = checkDenylist(currentCode)
+    if (denylistCheck.blocked) {
       return {
         featureId: feature.id,
         status: 'halted',
-        reason: `${stage.slug} blocking finding: ${result.summary}`,
+        reason: `Forbidden pattern denylist hit after stage ${stage.slug}: ${denylistCheck.pattern}`,
       }
     }
-
-    results.push({ stage: stage.slug, result })
   }
 
-  return {
-    featureId: feature.id,
-    status: 'completed',
-    code: currentCode,
-    stageResults: results,
+  if (stage.blocking && result.verdict === 'BLOCKED') {
+    return {
+      featureId: feature.id,
+      status: 'halted',
+      reason: `${stage.slug} blocking finding: ${result.summary}`,
+    }
   }
+
+  stageResults.push({ stage: stage.slug, result })
+}
+
+return {
+  featureId: feature.id,
+  status: 'completed',
+  code: currentCode,
+  stageResults,
 }

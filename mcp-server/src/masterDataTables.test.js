@@ -241,3 +241,62 @@ test("fieldSchema maps project's fields to zod strings that reject a non-string 
   assert.equal(projectId.safeParse("PRJ-1001").success, true);
   assert.equal(projectId.safeParse(1001).success, false);
 });
+
+// FEAT-11: project_assignment's mirrored tool-field descriptor. The first
+// table with a "date" field type in this mirror.
+
+function projectAssignmentTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "project_assignment");
+  assert.ok(table, "project_assignment entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("project_assignment's writable fields are exactly projectId/teamId/projectAssignmentStartDate/projectAssignmentEndDate", () => {
+  const fieldKeys = projectAssignmentTable().fields.map((f) => f.key).sort();
+  assert.deepEqual(fieldKeys, [
+    "projectAssignmentEndDate",
+    "projectAssignmentStartDate",
+    "projectId",
+    "teamId",
+  ]);
+});
+
+test("project_assignment never exposes projectName/projectProfitCenterCode/teamName/departmentId/departmentName as writable MCP fields (live lookups only)", () => {
+  const fieldKeys = projectAssignmentTable().fields.map((f) => f.key);
+  for (const readOnlyKey of [
+    "projectName",
+    "projectProfitCenterCode",
+    "teamName",
+    "departmentId",
+    "departmentName",
+  ]) {
+    assert.ok(!fieldKeys.includes(readOnlyKey));
+  }
+});
+
+test("project_assignment's projectId and teamId labels both document pick-list-only (no manual entry)", () => {
+  const table = projectAssignmentTable();
+  const projectId = table.fields.find((f) => f.key === "projectId");
+  const teamId = table.fields.find((f) => f.key === "teamId");
+  assert.match(projectId.label, /pick-list/i);
+  assert.match(teamId.label, /pick-list/i);
+});
+
+test("project_assignment's two date fields are type 'date', both required", () => {
+  const table = projectAssignmentTable();
+  const startDate = table.fields.find((f) => f.key === "projectAssignmentStartDate");
+  const endDate = table.fields.find((f) => f.key === "projectAssignmentEndDate");
+  assert.equal(startDate.type, "date");
+  assert.equal(startDate.required, true);
+  assert.equal(endDate.type, "date");
+  assert.equal(endDate.required, true);
+});
+
+test("fieldSchema maps a 'date' field to a zod string that accepts an ISO date and rejects garbage", () => {
+  const startDate = fieldSchema(
+    projectAssignmentTable().fields.find((f) => f.key === "projectAssignmentStartDate")
+  );
+  assert.equal(startDate.safeParse("2026-01-01").success, true);
+  assert.equal(startDate.safeParse("not-a-date").success, false);
+  assert.equal(startDate.safeParse(20260101).success, false);
+});

@@ -295,4 +295,103 @@ export const MASTER_DATA_TABLES = [
       },
     ],
   },
+  {
+    route: "project-assignments",
+    tableName: "project_assignments",
+    resourceName: "project_assignment",
+    // No `name`/`hasCode` — the closest thing to an identifier here is the
+    // combination of projectId/teamId/date range, none of which is a
+    // single sortable business key either, so this falls back to the same
+    // "sort by the first required FK field" convention resource_deployment
+    // established.
+    sortColumn: "project_id",
+    // FEAT-11: the first table needing a CHAINED/transitive lookup — the
+    // department fields aren't a direct column on this table at all, they
+    // come from the *linked Team's own* department_code, so `via: "teams"`
+    // joins the `departments` lookup off the `teams` lookup's own alias
+    // (see masterDataSchema.js's buildLookupPlan) instead of off
+    // project_assignments directly. `via` targets must be declared earlier
+    // in this array — teams' own entry comes first, department's second.
+    lookups: [
+      {
+        table: "projects",
+        localColumn: "project_id",
+        foreignColumn: "project_id",
+        projections: [
+          { key: "projectName", column: "project_name" },
+          { key: "projectProfitCenterCode", column: "project_profit_center_code" },
+        ],
+      },
+      {
+        table: "teams",
+        localColumn: "team_code",
+        foreignColumn: "code",
+        projections: [{ key: "teamName", column: "name" }],
+      },
+      {
+        table: "departments",
+        via: "teams",
+        // department_code is a column on `teams` (not on
+        // project_assignments) — this is the transitive hop.
+        localColumn: "department_code",
+        foreignColumn: "code",
+        projections: [
+          { key: "departmentId", column: "code" },
+          { key: "departmentName", column: "name" },
+        ],
+      },
+    ],
+    fields: [
+      {
+        key: "projectId",
+        column: "project_id",
+        required: true,
+        type: "string",
+        // Pick-list only per the owner's spec (no manual entry) — enforced
+        // the same way as every other FK field: validateReferences() 422s
+        // if no matching, non-deleted Projects row exists. There is no
+        // separate app-layer mechanism for "reject a syntactically valid
+        // but not-in-the-pick-list value" beyond this FK check, since a
+        // value failing FK validation IS exactly "not in the pick list".
+        references: { table: "projects", column: "project_id" },
+      },
+      {
+        key: "teamId",
+        column: "team_code",
+        required: true,
+        type: "string",
+        // Pick-list only, same reasoning as projectId above. References
+        // teams' own auto-generated `code` column, not `id`.
+        references: { table: "teams", column: "code" },
+      },
+      {
+        key: "projectAssignmentStartDate",
+        column: "project_assignment_start_date",
+        required: true,
+        // Deliberately NOT "Start Date" — the owner specified this exact
+        // label/field name, distinguishing it from a generic date field.
+        type: "date",
+      },
+      {
+        key: "projectAssignmentEndDate",
+        column: "project_assignment_end_date",
+        required: true,
+        type: "date",
+      },
+    ],
+    // FEAT-11: the first table needing cross-field validation — a rule
+    // that can only be checked once both dates are known, unlike every
+    // per-field check validateBody already does. See
+    // masterDataSchema.js's validateCrossFields for how a PATCH that only
+    // sends one of the two dates is still checked against the other's
+    // real, currently-stored value.
+    crossFieldValidations: [
+      {
+        type: "dateRange",
+        startKey: "projectAssignmentStartDate",
+        endKey: "projectAssignmentEndDate",
+        message: "projectAssignmentEndDate must not be earlier than projectAssignmentStartDate.",
+      },
+    ],
+  },
 ];

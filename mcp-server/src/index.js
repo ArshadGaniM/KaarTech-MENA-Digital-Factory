@@ -24,6 +24,7 @@ export function fieldSchema(field) {
   let base;
   if (field.type === "enum") base = z.enum(field.values);
   else if (field.type === "number") base = z.number().finite();
+  else if (field.type === "date") base = z.string().date();
   else base = z.string().min(1).max(field.maxLength ?? 255);
   return base.describe(`The ${field.label}.`);
 }

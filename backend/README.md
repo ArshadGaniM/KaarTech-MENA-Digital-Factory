@@ -28,9 +28,9 @@ npm run dev
 | PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
 | DELETE | `/v1/team-members/:id` | — | Hard delete |
 
-### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`
+### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`, `/v1/project-assignments`
 
-All eleven routes share the same shape (`src/masterDataRouter.js`), but each
+All twelve routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
 authoritative per-table field list (key, required, type).
 
@@ -57,12 +57,15 @@ Per-table fields, as of this writing:
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** validated against `practices`; can be set/changed later via PATCH) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
 | `projects` | `projectId` (required, **caller-supplied and unique — not auto-generated**, same pattern as `resources.employeeId`), `projectName` (required), `projectProfitCenterCode` (required, plain string — no FK/lookup, no reference table named) — the first table with zero enforced FK relationships since FEAT-5 |
+| `project-assignments` | `projectId` (required, string — pick-list only, must reference an existing `projects.project_id`, enforced), `projectName`/`projectProfitCenterCode` (**read-only**, live-looked-up from the referenced project), `teamId` (required, string — pick-list only, must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `departmentId`/`departmentName` (**read-only**, live-looked-up **transitively** through the referenced team's own `departmentCode` — Project Assignments → Teams → Departments, not a direct column/single-hop join on this table), `projectAssignmentStartDate`/`projectAssignmentEndDate` (both required, `date` type — `projectAssignmentEndDate` must not be earlier than `projectAssignmentStartDate`, enforced) — the first table with a chained lookup and cross-field validation |
 
 **Field types beyond `string`/`enum`:** a field's `type` can also be
-`"number"` (a finite JS number — no length/enum checks apply), and any
-`"string"` field can set `maxLength` to override the default 255-char cap
-(`resources.skill` uses `maxLength: 20000`, since real skill lists run
-past 12,000 characters).
+`"number"` (a finite JS number — no length/enum checks apply), `"date"`
+(a string that must parse via `Date.parse` — any ISO 8601 date or
+datetime string, e.g. `project-assignments.projectAssignmentStartDate`),
+and any `"string"` field can set `maxLength` to override the default
+255-char cap (`resources.skill` uses `maxLength: 20000`, since real skill
+lists run past 12,000 characters).
 
 **FK validation (`field.references`):** a field can carry a
 `references: { table, column }` descriptor to enforce that its value
@@ -83,6 +86,27 @@ These fields are never accepted on POST/PATCH; a soft-deleted or missing
 referenced row resolves them to `null`, not stale data (the join's
 `ON` clause filters `deleted_at is null`, not a `WHERE`, so the base row
 itself is still returned).
+
+**Chained/transitive lookups (`lookup.via`):** a lookup entry can set
+`via: "<other lookup's table>"` to join off that earlier lookup's own
+result instead of off the base table — e.g.
+`project-assignments.departmentId`/`departmentName` aren't a column on
+`project_assignments` at all; they come from the *linked Team's own*
+`departmentCode`, so the `departments` lookup joins off the `teams`
+lookup's alias (`via: "teams"`) rather than off `project_assignments`
+directly. The `via` target must be an earlier entry in the same
+`lookups` array. See `buildLookupPlan` in `src/masterDataSchema.js`.
+
+**Cross-field validation (`table.crossFieldValidations`):** a table can
+carry a `crossFieldValidations` array for rules spanning two fields at
+once — currently one rule type, `{ type: "dateRange", startKey, endKey,
+message }`, enforcing `endKey >= startKey` (e.g.
+`project-assignments.projectAssignmentEndDate` must not be earlier than
+`projectAssignmentStartDate`). Runs on both POST and PATCH; a PATCH that
+only sends one of the two fields is still checked against the *other's
+current, stored* value, not skipped. See `validateCrossFields` in
+`src/masterDataSchema.js`. A DB-layer `CHECK` constraint mirrors this as
+defense-in-depth, same reasoning as every FK's app-layer + DB-layer pair.
 
 **Duplicate unique values** (e.g. two `resources` with the same
 `employeeId`) return a 422 `validation_error` naming the offending field,
@@ -149,6 +173,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0015_create_positions.sql` | New table `positions`, created directly with its full real shape in one migration (unlike `resource_cost`/`teams`, which started as name-only placeholders): base shape (`id`/`name`/timestamps/`deleted_at`/`created_by`/`updated_by`), `code` (auto-generated via trigger, immutable — `POS-001`, ...), `team_code text not null` (with `fk_positions_teams` foreign key to `teams.code` and `ix_positions_team_code` index). |
 | `0016_add_resource_deployment_columns.sql` | `resource_deployment`-specific: drops the placeholder `name` column, adds `employee_id integer not null` (with `fk_resource_deployment_resources` foreign key to `resources.employee_id` and `ix_resource_deployment_employee_id` index) and `position_code text not null` (with `fk_resource_deployment_positions` foreign key to `positions.code` and `ix_resource_deployment_position_code` index) — the first table with two foreign-key constraints and two indexes added in a single migration. |
 | `0017_create_projects.sql` | New table `projects`, created directly with its full real shape in one migration (same reasoning as `positions`, 0015 — the table starts empty). No `name` column and no `hasCode` trigger — all three business columns (`project_id`, `project_name`, `project_profit_center_code`) are manually entered, none auto-generated. `project_id` is caller-supplied and DB-enforced-unique (`projects_project_id_unique`), same mechanism as `resources.employee_id` (0012), not the `code`-sequence-and-trigger pattern every other table uses. No foreign keys — the first table since FEAT-5 with zero FK relationships. |
+| `0018_create_project_assignments.sql` | New table `project_assignments`, created directly with its full real shape in one migration (table starts empty). No `name`/`hasCode` — `project_id` (FK to `projects.project_id`, `fk_project_assignments_projects`, `ix_project_assignments_project_id` index) and `team_code` (FK to `teams.code`, `fk_project_assignments_teams`, `ix_project_assignments_team_code` index) are both pick-list-only references, the second table (after `resource_deployment`/0016) with two FK constraints at once. `project_assignment_start_date`/`project_assignment_end_date` are plain `date` columns with a DB-layer `CHECK (project_assignment_end_date >= project_assignment_start_date)` mirroring the app-layer cross-field validation as defense-in-depth. No `department_code` column — department fields are resolved entirely through the chained lookup via `teams.department_code`, so there's nothing to store for them here. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

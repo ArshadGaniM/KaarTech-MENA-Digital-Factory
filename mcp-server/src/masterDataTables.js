@@ -217,4 +217,49 @@ export const MASTER_DATA_TABLES = [
       },
     ],
   },
+  {
+    slug: "project_assignment",
+    route: "project-assignments",
+    label: "Project Assignment",
+    // projectName/projectProfitCenterCode/teamName/departmentId/
+    // departmentName are NOT writable here — they're live lookups (the
+    // department pair transitively, through the linked Team's own
+    // department), returned by the backend's GET responses but never
+    // accepted on add_/update_.
+    fields: [
+      {
+        key: "projectId",
+        label:
+          "the linked Project's own business ID (pick-list only — select an existing Project, do not " +
+          "type a new one) — must match an existing, non-deleted Project; the backend rejects the " +
+          "request with a validation error if no such Project exists",
+        required: true,
+        type: "string",
+      },
+      {
+        key: "teamId",
+        label:
+          "the linked Team's business code (pick-list only — select an existing Team, do not type a " +
+          "new one; from the Teams table's own auto-generated code, e.g. TEAM-001) — must match an " +
+          "existing, non-deleted Team; the backend rejects the request with a validation error if no " +
+          "such Team exists",
+        required: true,
+        type: "string",
+      },
+      {
+        key: "projectAssignmentStartDate",
+        label: "Project Assignment Start Date (ISO 8601 date, e.g. 2026-01-01)",
+        required: true,
+        type: "date",
+      },
+      {
+        key: "projectAssignmentEndDate",
+        label:
+          "Project Assignment End Date (ISO 8601 date) — must not be earlier than " +
+          "projectAssignmentStartDate; the backend rejects the request with a validation error if it is",
+        required: true,
+        type: "date",
+      },
+    ],
+  },
 ];

@@ -1,10 +1,11 @@
 # KaarTech MENA Digital Factory — Master Data MCP Server
 
-An MCP server (stdio transport) exposing 30 tools — `add_`/`update_`/`delete_` for
-each of the 10 master data tables (`practice`, `delivery_center`, `competency`,
+An MCP server (stdio transport) exposing 36 tools — `add_`/`update_`/`delete_` for
+each of the 12 master data tables (`practice`, `delivery_center`, `competency`,
 `module`, `resource`, `department`, `resource_cost`, `team`,
-`resource_deployment`, `position`). Each tool is a thin client over the backend's
-REST API (see `backend/README.md` for the routes it calls).
+`resource_deployment`, `position`, `project`, `project_assignment`). Each tool
+is a thin client over the backend's REST API (see `backend/README.md` for the
+routes it calls).
 
 "delete" is a soft delete: it sets `deleted_at` on the row rather than
 removing it. Records added/modified/deleted here are visible in the
@@ -63,7 +64,7 @@ e.g. in `claude_desktop_config.json` (Claude Desktop) or a project's
 
 For each of `practice`, `delivery_center`, `competency`, `module`,
 `resource`, `department`, `resource_cost`, `team`, `resource_deployment`,
-`position`, `project`, there's an `add_<table>`, `update_<table>`, and `delete_<table>` tool.
+`position`, `project`, `project_assignment`, there's an `add_<table>`, `update_<table>`, and `delete_<table>` tool.
 Each table's own fields differ — see
 `src/masterDataTables.js` for the authoritative list — but every
 `add_`/`update_` tool additionally accepts an optional `updatedBy: string`
@@ -83,6 +84,7 @@ user/auth system exists yet). On create this sets both `createdBy` and
 | `delivery_center` | `name`, `locationType` (`onshore` \| `offshore`), `city`, `country` | `name`, `locationType`, `city`, `country` |
 | `resource` | `employeeId`, `name`, `employmentStatus`, `employmentType`, `subDivision`, `position`, `locationType` (`Onsite` \| `Offshore`), `designation`, `geBatch`, `kaarExperience`, `totalExperience` | all of the above, plus `orgChart`, `region`, `onsiteLocation`, `offshoreLocation`, `skill`, `sapExperience` |
 | `project` | `projectId` (caller-supplied, must be unique), `projectName`, `projectProfitCenterCode` (plain string, no FK validation) | `projectId`, `projectName`, `projectProfitCenterCode` |
+| `project_assignment` | `projectId` (pick-list only — must reference an existing `project`'s own `projectId`, enforced), `teamId` (pick-list only — must reference an existing `team`'s own auto-generated code, enforced), `projectAssignmentStartDate`, `projectAssignmentEndDate` (both ISO 8601 dates — end must not be earlier than start, enforced) | `projectId`, `teamId`, `projectAssignmentStartDate`, `projectAssignmentEndDate` |
 
 `add_<table>` creates a record — `created_at`/`updated_at` are set by the
 database, and `delivery_center`/`department`/`practice`/`module`
@@ -156,6 +158,29 @@ duplicate `projectId` fails with a 422 naming the field). None of the
 three fields is validated against another table, and none is a live
 lookup — `project` is the first table since FEAT-5 with zero FK
 relationships.
+
+**`project_assignment`'s `projectId` and `teamId`** are pick-list-only
+references — the field descriptions say so explicitly, since (unlike
+`project`'s `projectId`) there is no free-entry variant of this field:
+`add_project_assignment`/`update_project_assignment` reject a `projectId`
+that doesn't match an existing (non-deleted) `project` and/or a `teamId`
+that doesn't match an existing (non-deleted) `team`, each named in the
+422 independently — same concurrent-both-fail-together mechanism as
+`resource_deployment`. `project_assignment` also exposes `projectName`/
+`projectProfitCenterCode` (from the matched `project`) and `teamName`
+(from the matched `team`) in every read, resolved live the same way as
+every other table's lookups. **`departmentId`/`departmentName` are a
+CHAINED lookup** — the first of its kind: they come from the *matched
+Team's own* department link, not from any column on
+`project_assignment` itself, so they resolve (or go `null`) based on
+that team's current department, one hop further than every other
+table's lookups. **`projectAssignmentStartDate`/`projectAssignmentEndDate`**
+are the first `date`-typed fields in this server, and the first
+**cross-field validation**: `projectAssignmentEndDate` earlier than
+`projectAssignmentStartDate` is rejected with a 422 naming
+`projectAssignmentEndDate`, checked against whichever of the two dates
+isn't being changed on a given `update_project_assignment` call too (not
+just on `add_project_assignment`).
 
 `update_<table>` (`{ id, ...fields }`) changes only the fields you pass;
 `updated_at` is bumped automatically by a database trigger.
