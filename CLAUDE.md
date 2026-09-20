@@ -51,8 +51,11 @@ this project, not just the dev-team pipeline):** no agent, of any kind,
 runs on a model above Sonnet by default. Where an agent already has Haiku
 assigned, it stays on Haiku. Where an agent is assigned Sonnet, it stays on
 Sonnet. Any agent that was assigned Opus (or anything above Sonnet) has
-been brought down to Sonnet — see `.claude/agents/registry.json` and
-`scripts/register_agent.py`'s `MODEL_KEYWORDS` mapping. Opus (or any
+been brought down to Sonnet — see `scripts/register_agent.py`'s
+`MODEL_KEYWORDS` mapping (the concrete tier-to-model resolution) and,
+once agent auto-registration runs per §14 (forward-looking — no backend
+exists yet to register against), `.claude/agents/registry.json` as the
+resulting inventory. Opus (or any
 higher-than-Sonnet model) may be used **only** when Sonnet/Haiku
 demonstrably cannot achieve the task, and **only** with the owner's
 explicit, one-time ("allow once") approval for that specific use — never
