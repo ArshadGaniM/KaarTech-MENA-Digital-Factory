@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** (launching FEAT-9 now)
+**Active run ID:** FEAT-9 in flight — through stage 4.8 (Code Simplifier), verified clean; next: 5.9 Test Architect onward through terminal hardening (8.5-8.9) and final Architect sign-off (9).
 
 **Feature counter:** 12
 
