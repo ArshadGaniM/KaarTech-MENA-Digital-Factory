@@ -4,7 +4,7 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** none (FEAT-7 built directly, not via Workflow — pipeline abandoned for feature builds after three consecutive session-limit failures on FEAT-8/9/7)
+**Active run ID:** launching for FEAT-11 (owner reinstated the Workflow pipeline for all future development — the direct-build pivot used for FEAT-7/10 is over; §7.3's resume-from-cache-on-hard-error protocol applies again going forward)
 
 **Feature counter:** 13
 
