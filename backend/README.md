@@ -46,8 +46,9 @@ Per-table fields, as of this writing:
 
 | Table | Fields |
 |---|---|
-| `competencies`, `resource-deployment` | `name` (required) |
+| `competencies` | `name` (required) |
 | `resource-cost` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
+| `resource-deployment` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName` (**read-only**, live-looked-up from the referenced resource), `positionId` (required, string — must reference an existing `positions.code`, enforced), `positionName` (**read-only**, live-looked-up from the referenced position) — the first table with two independent FK/lookup pairs at once |
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
