@@ -5,6 +5,7 @@ import {
   validateBody,
   validateActor,
   validateReferences,
+  validateCrossFields,
   lookupJoinSql,
   lookupSelectSql,
 } from "./masterDataSchema.js";
@@ -58,6 +59,46 @@ const RESOURCE_COST_TABLE = {
     },
     { key: "offshoreCost", column: "offshore_cost", required: false, type: "number" },
     { key: "onsiteCost", column: "onsite_cost", required: false, type: "number" },
+  ],
+};
+
+// Mirrors project_assignments' real descriptor (FEAT-11): the first table
+// with a CHAINED lookup (`departments` joins off the `teams` lookup's own
+// alias via `via: "teams"`, not off project_assignments directly) and a
+// table-level `crossFieldValidations` entry.
+const PROJECT_ASSIGNMENT_TABLE = {
+  tableName: "project_assignments",
+  sortColumn: "project_id",
+  lookups: [
+    {
+      table: "teams",
+      localColumn: "team_code",
+      foreignColumn: "code",
+      projections: [{ key: "teamName", column: "name" }],
+    },
+    {
+      table: "departments",
+      via: "teams",
+      localColumn: "department_code",
+      foreignColumn: "code",
+      projections: [
+        { key: "departmentId", column: "code" },
+        { key: "departmentName", column: "name" },
+      ],
+    },
+  ],
+  fields: [
+    { key: "teamId", column: "team_code", required: true, type: "string", references: { table: "teams", column: "code" } },
+    { key: "projectAssignmentStartDate", column: "project_assignment_start_date", required: true, type: "date" },
+    { key: "projectAssignmentEndDate", column: "project_assignment_end_date", required: true, type: "date" },
+  ],
+  crossFieldValidations: [
+    {
+      type: "dateRange",
+      startKey: "projectAssignmentStartDate",
+      endKey: "projectAssignmentEndDate",
+      message: "projectAssignmentEndDate must not be earlier than projectAssignmentStartDate.",
+    },
   ],
 };
 
@@ -330,6 +371,80 @@ test("lookupSelectSql projects each lookup column under its aliased column name"
   ]);
 });
 
+// --- lookupJoinSql's `via` chained lookup (FEAT-11) ---
+
+test("lookupJoinSql joins a `via` lookup off its source lookup's own alias, not off the base table", () => {
+  const sql = lookupJoinSql(PROJECT_ASSIGNMENT_TABLE);
+  assert.match(
+    sql,
+    /left join teams lookup_0 on lookup_0\.code = project_assignments\.team_code and lookup_0\.deleted_at is null/
+  );
+  // The chained hop: department_code is a column on `teams` (lookup_0), so
+  // the departments join must reference lookup_0, never project_assignments.
+  assert.match(
+    sql,
+    /left join departments lookup_1 on lookup_1\.code = lookup_0\.department_code and lookup_1\.deleted_at is null/
+  );
+});
+
+test("lookupJoinSql throws when a lookup's `via` names a table with no earlier lookup entry", () => {
+  const BROKEN_TABLE = {
+    tableName: "project_assignments",
+    lookups: [
+      {
+        table: "departments",
+        via: "teams",
+        localColumn: "department_code",
+        foreignColumn: "code",
+        projections: [{ key: "departmentName", column: "name" }],
+      },
+    ],
+  };
+  assert.throws(() => lookupJoinSql(BROKEN_TABLE), /via 'teams' has no earlier lookup entry/);
+});
+
+test("toResponse resolves a `via` chained lookup's projections from its own aliased columns", () => {
+  const row = {
+    id: "1",
+    team_code: "TEAM-001",
+    project_assignment_start_date: "2026-01-01",
+    project_assignment_end_date: "2026-06-30",
+    lookup_0_name: "Platform Team",
+    lookup_1_code: "DEPT-001",
+    lookup_1_name: "Engineering",
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-01T00:00:00Z",
+    deleted_at: null,
+  };
+  const response = toResponse(PROJECT_ASSIGNMENT_TABLE, row);
+  assert.equal(response.teamName, "Platform Team");
+  assert.equal(response.departmentId, "DEPT-001");
+  assert.equal(response.departmentName, "Engineering");
+});
+
+test("toResponse nulls a `via` chained lookup's fields when the downstream join matched nothing, independently of the source lookup resolving fine", () => {
+  const row = {
+    id: "1",
+    team_code: "TEAM-001",
+    project_assignment_start_date: "2026-01-01",
+    project_assignment_end_date: "2026-06-30",
+    lookup_0_name: "Platform Team",
+    lookup_1_code: null,
+    lookup_1_name: null,
+    created_by: "Arshad Gani",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_by: "Arshad Gani",
+    updated_at: "2026-01-01T00:00:00Z",
+    deleted_at: null,
+  };
+  const response = toResponse(PROJECT_ASSIGNMENT_TABLE, row);
+  assert.equal(response.teamName, "Platform Team");
+  assert.equal(response.departmentId, null);
+  assert.equal(response.departmentName, null);
+});
+
 // --- toResponse's lookup-projection branch (FEAT-5) ---
 
 test("toResponse resolves lookup projections into camelCase fields when the row was joined", () => {
@@ -467,5 +582,82 @@ test("validateReferences re-validates a required reference field on update when 
   t.mock.method(pool, "query", async () => ({ rows: [] }));
   await assert.rejects(() =>
     validateReferences(RESOURCE_COST_TABLE, { employeeId: 999999 }, { partial: true })
+  );
+});
+
+// --- validateCrossFields (FEAT-11: project_assignments' dateRange rule) ---
+
+test("validateCrossFields does not throw for a table with no crossFieldValidations descriptor", () => {
+  assert.doesNotThrow(() =>
+    validateCrossFields(SIMPLE_TABLE, { projectAssignmentStartDate: "2026-06-30", projectAssignmentEndDate: "2026-01-01" })
+  );
+});
+
+test("validateCrossFields rejects an end date earlier than the start date on create", () => {
+  assert.throws(
+    () =>
+      validateCrossFields(PROJECT_ASSIGNMENT_TABLE, {
+        projectAssignmentStartDate: "2026-06-30",
+        projectAssignmentEndDate: "2026-01-01",
+      }),
+    (err) => {
+      assert.equal(err.status, 422);
+      assert.equal(err.code, "validation_error");
+      assert.match(err.details.projectAssignmentEndDate, /must not be earlier than/);
+      return true;
+    }
+  );
+});
+
+test("validateCrossFields accepts an end date equal to the start date (not-earlier-than allows equal)", () => {
+  assert.doesNotThrow(() =>
+    validateCrossFields(PROJECT_ASSIGNMENT_TABLE, {
+      projectAssignmentStartDate: "2026-01-01",
+      projectAssignmentEndDate: "2026-01-01",
+    })
+  );
+});
+
+test("validateCrossFields accepts an end date after the start date", () => {
+  assert.doesNotThrow(() =>
+    validateCrossFields(PROJECT_ASSIGNMENT_TABLE, {
+      projectAssignmentStartDate: "2026-01-01",
+      projectAssignmentEndDate: "2026-06-30",
+    })
+  );
+});
+
+test("validateCrossFields skips the rule when neither date is present in the body and no `current` row is given (nothing to compare)", () => {
+  assert.doesNotThrow(() => validateCrossFields(PROJECT_ASSIGNMENT_TABLE, {}));
+});
+
+test("validateCrossFields checks a PATCH's new end date against the CURRENT stored start date when start isn't resent", () => {
+  const current = { project_assignment_start_date: "2026-06-30", project_assignment_end_date: "2026-06-30" };
+  assert.throws(
+    () =>
+      validateCrossFields(PROJECT_ASSIGNMENT_TABLE, { projectAssignmentEndDate: "2026-01-01" }, { current }),
+    (err) => {
+      assert.ok(err.details.projectAssignmentEndDate);
+      return true;
+    }
+  );
+});
+
+test("validateCrossFields checks a PATCH's new start date against the CURRENT stored end date when end isn't resent, and accepts a valid extension", () => {
+  const current = { project_assignment_start_date: "2026-01-01", project_assignment_end_date: "2026-06-30" };
+  assert.doesNotThrow(() =>
+    validateCrossFields(PROJECT_ASSIGNMENT_TABLE, { projectAssignmentStartDate: "2026-02-01" }, { current })
+  );
+});
+
+test("validateCrossFields rejects a PATCH moving the start date past the CURRENT stored end date", () => {
+  const current = { project_assignment_start_date: "2026-01-01", project_assignment_end_date: "2026-06-30" };
+  assert.throws(
+    () =>
+      validateCrossFields(PROJECT_ASSIGNMENT_TABLE, { projectAssignmentStartDate: "2026-07-01" }, { current }),
+    (err) => {
+      assert.ok(err.details.projectAssignmentEndDate);
+      return true;
+    }
   );
 });

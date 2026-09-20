@@ -333,6 +333,31 @@ test("POST /v1/project-assignments maps a foreign_key_violation (23503) from the
   assert.equal(body.error.details.projectId, undefined);
 });
 
+test("POST /v1/project-assignments maps a foreign_key_violation (23503) naming projectId when the OTHER constraint fires, proving the mapping isn't hardcoded to teamId", async (t) => {
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
+    if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
+    if (sql.startsWith("insert into project_assignments")) {
+      const err = new Error("insert or update on table violates foreign key constraint");
+      err.code = "23503";
+      err.constraint = "fk_project_assignments_projects";
+      throw err;
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify(VALID_BODY),
+  });
+
+  assert.equal(res.status, 422);
+  const body = await res.json();
+  assert.ok(body.error.details.projectId);
+  assert.equal(body.error.details.teamId, undefined);
+});
+
 registerAuthGateTests({
   getBaseUrl: () => baseUrl,
   route: "project-assignments",

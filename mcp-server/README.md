@@ -1,10 +1,11 @@
 # KaarTech MENA Digital Factory — Master Data MCP Server
 
-An MCP server (stdio transport) exposing 30 tools — `add_`/`update_`/`delete_` for
-each of the 10 master data tables (`practice`, `delivery_center`, `competency`,
+An MCP server (stdio transport) exposing 36 tools — `add_`/`update_`/`delete_` for
+each of the 12 master data tables (`practice`, `delivery_center`, `competency`,
 `module`, `resource`, `department`, `resource_cost`, `team`,
-`resource_deployment`, `position`). Each tool is a thin client over the backend's
-REST API (see `backend/README.md` for the routes it calls).
+`resource_deployment`, `position`, `project`, `project_assignment`). Each tool
+is a thin client over the backend's REST API (see `backend/README.md` for the
+routes it calls).
 
 "delete" is a soft delete: it sets `deleted_at` on the row rather than
 removing it. Records added/modified/deleted here are visible in the
