@@ -106,3 +106,50 @@ test("fieldSchema maps team's string-type fields to zod strings that reject a no
   assert.equal(schema.safeParse("DEPT-001").success, true);
   assert.equal(schema.safeParse(12345).success, false);
 });
+
+// FEAT-9: position's mirrored tool-field descriptor. Third table on the
+// enforced-FK/lookup shape (teamCode -> teams.code), same assertions as
+// resourceCostTable()/teamTable() above rather than inventing a new pattern.
+
+function positionTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "position");
+  assert.ok(table, "position entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("position's writable fields are exactly name/teamCode", () => {
+  const fieldKeys = positionTable().fields.map((f) => f.key).sort();
+  assert.deepEqual(fieldKeys, ["name", "teamCode"]);
+});
+
+test("position never exposes code or teamName as a writable MCP field (auto-generated / live lookup only)", () => {
+  const fieldKeys = positionTable().fields.map((f) => f.key);
+  assert.ok(!fieldKeys.includes("code"));
+  assert.ok(!fieldKeys.includes("teamName"));
+});
+
+test("position's hasCode flag is set so add_position/update_position's tool description reflects the auto-generated code", () => {
+  assert.equal(positionTable().hasCode, true);
+});
+
+test("position's name and teamCode are both required strings", () => {
+  const table = positionTable();
+  const name = table.fields.find((f) => f.key === "name");
+  const teamCode = table.fields.find((f) => f.key === "teamCode");
+  assert.equal(name.type, "string");
+  assert.equal(name.required, true);
+  assert.equal(teamCode.type, "string");
+  assert.equal(teamCode.required, true);
+});
+
+test("position's teamCode label documents that the FK IS validated (matches team's departmentCode label style)", () => {
+  const teamCode = positionTable().fields.find((f) => f.key === "teamCode");
+  assert.match(teamCode.label, /validated|rejects/i);
+});
+
+test("fieldSchema maps position's string-type fields to zod strings that reject a non-string value", () => {
+  const teamCode = positionTable().fields.find((f) => f.key === "teamCode");
+  const schema = fieldSchema(teamCode);
+  assert.equal(schema.safeParse("TEAM-001").success, true);
+  assert.equal(schema.safeParse(12345).success, false);
+});
