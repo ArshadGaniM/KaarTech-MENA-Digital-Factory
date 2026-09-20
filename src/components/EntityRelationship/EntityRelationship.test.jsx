@@ -84,6 +84,27 @@ describe('EntityRelationship', () => {
     expect(chainedItem).toHaveTextContent('departmentName from Departments (via Teams)');
   });
 
+  it('falls back to the raw route string when a route has no label mapping', () => {
+    useEntityRelationships.mockReturnValue({
+      data: [
+        {
+          route: 'some-future-table',
+          tableName: 'some_future_table',
+          resourceName: 'some_future_table',
+          identity: { type: 'none' },
+          relationships: [],
+          lookups: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<EntityRelationship />);
+
+    expect(screen.getByRole('heading', { name: 'some-future-table' })).toBeInTheDocument();
+  });
+
   it('shows a no-relationships message for a table with no references or lookups', () => {
     useEntityRelationships.mockReturnValue({
       data: [
