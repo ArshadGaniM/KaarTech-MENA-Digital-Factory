@@ -69,9 +69,10 @@ describe('MasterDataTable', () => {
     expect(screen.getByRole('button', { name: 'Add Practice' })).toBeInTheDocument();
   });
 
-  it('opens the Add-record modal when the button is clicked, and closes it on Cancel', async () => {
+  it('opens the Add-record modal when the button is clicked, and Cancel closes it without submitting or refetching', async () => {
     const user = userEvent.setup();
-    useMasterDataTable.mockReturnValue({ data: [], isLoading: false, error: null, refetch: vi.fn() });
+    const refetch = vi.fn();
+    useMasterDataTable.mockReturnValue({ data: [], isLoading: false, error: null, refetch });
     useEntityRelationships.mockReturnValue({
       data: [{ route: 'practices', fields: [{ key: 'name', type: 'string', required: true }] }],
       isLoading: false,
@@ -85,5 +86,6 @@ describe('MasterDataTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(refetch).not.toHaveBeenCalled();
   });
 });

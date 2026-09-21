@@ -1,44 +1,63 @@
-# Merge-to-Main Gate Report
+# Merge-to-Main Gate Report — FEAT-14
 
-**Branch:** `claude/trusting-curie-hlx1r6` → `main`
-**Diff scope:** FEAT-12 (Entity Relationship sidebar page — self-updating from `MASTER_DATA_TABLES`)
-**Verdict: ✅ PASS**
+**Feature:** Generic "Add \<Entity\>" pop-up form for every master-data table, driven by a
+self-updating `fields` array on `GET /v1/schema/entity-relationships`.
 
-## Feature summary
+**Diff reviewed:** `git diff origin/main..HEAD` (branch `claude/trusting-curie-hlx1r6`)
 
-FEAT-12 adds an "Entity Relationship" sidebar section explaining how every
-master-data table connects to the others — each table's identity field
-(auto-generated code / caller-supplied unique field / none), its enforced
-FK relationships, and its live lookups (including chained ones).
+**Overall verdict: ⚠️ WARN** — zero FAIL gates, zero Critical findings, security PASS
+clean. Merge allowed per CLAUDE.md §9.5.
 
-Built self-updating by construction, per the original requirement: a new
-`backend/src/entityRelationships.js` derives everything from
-`MASTER_DATA_TABLES` (the same descriptors the real backend runs on) rather
-than hand-written prose — a new `GET /v1/schema/entity-relationships`
-route exposes it, and the frontend fetches and renders it. A new optional
-`identityField` metadata property was added to `resources`/`projects` in
-the descriptor (documented as pure metadata, consumed only by this new
-endpoint). `src/lib/navigation.js` now appends this as the last
-`NAV_ITEMS` entry (so it never shifts any table's index), and
-`AppShell.jsx` branches on a new `kind` field instead of a route-truthiness
-ternary.
+---
 
-Verified end-to-end in a real browser (backend + frontend dev servers,
-headless Chromium) — renders correctly including the chained
-Teams→Departments lookup and the "no single identity field" case for
-Project Assignments.
+## Agent-by-agent results
 
-## Gate agent results
-
-| Agent | Verdict | Notes |
+| Agent | Verdict | Summary |
 |---|---|---|
-| code-reviewer | PASS | Confirmed no crash risk against real data, correct route placement/auth convention, behavior-preserving `kind`-based branch. Two Optional/cosmetic notes (a test title/data mismatch, the documented `hasCode`-wins-over-`identityField` precedence) — neither blocking. |
-| security-auditor | PASS | Endpoint only restates already-public schema metadata, correctly unauthenticated matching every other GET route, zero user input so no injection surface. |
-| debugger | PASS | Traced every current real table's descriptor against `entityRelationships.js`'s assumptions (`table.fields`, `lookup.projections`) — no throw risk today; flagged two latent (non-triggered) fragilities for future tables, addressed below. |
-| test-writer | PASS (was WARN, self-fixed) | Found two real gaps: no test for `labelFor()`'s raw-route-string fallback, and no HTTP-layer test for the new route (only the pure function was tested). Added both — a new `entityRelationships.route.test.js` and a frontend fallback test. 178/178 backend, 42/42 frontend tests pass. |
-| refactorer | PASS | Confirmed `entityRelationships.js` is minimally scoped (three small pure functions), the frontend's `LABELS_BY_ROUTE` reuse is the correct level (not duplicating `NAV_ITEMS`), and the `AppShell.jsx` branch is the minimal shape for three render cases. |
-| doc-writer | PASS (was WARN, self-fixed) | Found a real gap: the new endpoint's example JSON response in `backend/README.md` only showed 2 of the actual 5 `lookups` entries for `project-assignments`. Fixed to match `buildEntityRelationships`'s real output exactly. |
-| silent-failure-hunter | PASS (was WARN, fixed) | Found two real, non-blocking gaps: (1) `resource-cost`/`resource-deployment` fell through to identity type `"none"` with no comment explaining it was deliberate, unlike `project-assignments`; (2) `labelFor()`'s fallback silently degrades to a raw route string with no signal that the backend/frontend `MASTER_DATA_TABLES` may have drifted out of sync. Both fixed — added explanatory comments to the two tables, and a `console.warn` on the fallback path. |
-| pr-test-analyzer | PASS | Traced the real-data chained-lookup test, the frontend chained-vs-direct rendering test — both genuine regression guards. One Optional note: the `hasCode`+`identityField` precedence test exercises real code but a currently-unreachable input combination (disclosed by its own test name, not misleading). |
+| code-reviewer | PASS | No Critical/blocking findings. One Important (non-blocking) latent edge case noted: an unresolvable FK reference (`references.route === null`) would render an unsubmittable empty `<select>` with no visible error — cannot occur with the current 12 real tables, follow-up only. |
+| security-auditor | PASS | No new/undisclosed findings. XSS, injection, field-tampering, data-over-exposure, and backend-auth-strength all checked clean. The only security-relevant item (`VITE_INTERNAL_API_KEY` browser exposure) is the already-disclosed, accepted tradeoff (CLAUDE.md §20) and out of scope for this review. |
+| debugger | PASS | All 12 real tables' `fields`/`references` resolve cleanly through `fieldsOf()`. Pick-list `useEffect` cancellation is correctly guarded for all three setters. No unhandled runtime cases found. |
+| test-writer | PASS (after fixes) | Found and fixed 2 real coverage gaps: added a dedicated `useMasterDataTable.test.js` (refetch behavior had zero coverage), added a real-table `fieldsOf()` regression test with no `references` field, added a date-input rendering test, and strengthened the Cancel-button test to assert `refetch` isn't called. 55 frontend / 184 backend tests, all green after additions. |
+| refactorer | PASS | `AddRecordModal.jsx` is appropriately generic (no per-table branching). `optionLabel()`'s two-field fallback heuristic is proportionate to current scope. `fieldsOf()`/`relationshipsOf()` overlap is justified — different callers, different shapes. `MasterDataTable.jsx` restructuring is clean. |
+| doc-writer | WARN (fixed) | `fields` array docs in `backend/README.md` confirmed accurate against real code (18/18 tests pass). Found and fixed one real gap: added a cross-reference in `backend/README.md` pointing to the new live `GET /v1/schema/entity-relationships` `fields` endpoint alongside the existing per-table source-file pointer, avoiding a diverging "authoritative source" ambiguity. |
+| silent-failure-hunter | WARN | Non-blocking: the pick-list `Promise.all` rejects entirely if any one referenced table's fetch fails, blanking out even successfully-fetched fields' options behind one generic error banner. Recommended follow-up: `Promise.allSettled` with per-field error state. All other checks (submit-catch fallback, null-payload handling, post-create refetch failure) passed clean. |
+| pr-test-analyzer | WARN | All 3 traced tests (soft-delete filter, number conversion, 422 field errors) confirmed genuine behavior tests, not restated mocks. Non-blocking gap: no test exercises the generic (non-422) submission-failure banner path — recommended as a follow-up given this is the app's first write-capable UI. |
 
-No Critical findings. No FAIL gates remain.
+---
+
+## Security exception check (CLAUDE.md §9.5)
+
+Security-auditor returned **PASS** with no findings (the disclosed `VITE_INTERNAL_API_KEY`
+tradeoff was explicitly out of scope for this review, per its own brief, and does not
+constitute a "finding" for the auto-upgrade rule). No WARN-level security item exists to
+trigger the FAIL auto-upgrade.
+
+## Action-item checklist (non-blocking, logged for future follow-up)
+
+- [ ] `AddRecordModal.jsx`: switch pick-list fetch from `Promise.all` to `Promise.allSettled`
+      with per-field error state, so one failed reference-table fetch doesn't blank out
+      other successfully-fetched fields' options.
+- [ ] `AddRecordModal.jsx`: add a test for the generic (non-422) submission-failure banner
+      path (network error / 500).
+- [ ] `AddRecordModal.jsx` / `entityRelationships.js`: if a future table ever has an FK
+      whose target table doesn't resolve to a route, surface a visible "configuration
+      error" instead of rendering an empty, unsubmittable `<select>`. Not reachable with
+      the current 12 tables.
+
+## Fixes applied during this gate run
+
+- `backend/README.md` — added cross-reference from the per-table field-list docs to the
+  new live `fields` endpoint (doc-writer).
+- `src/hooks/useMasterDataTable.test.js` — new file, 3 tests covering initial load, error
+  surfacing, and `refetch()` (test-writer).
+- `src/components/AddRecordModal/AddRecordModal.test.jsx` — added date/number input
+  rendering test (test-writer).
+- `src/components/MasterDataTable/MasterDataTable.test.jsx` — strengthened Cancel test to
+  assert `refetch` is not called (test-writer).
+- `backend/src/entityRelationships.test.js` — added a real-table `fieldsOf()` regression
+  test for a table with no `references` field (test-writer).
+
+## Test results after fixes
+
+- Frontend (vitest): 55/55 passing (15 test files)
+- Backend (node --test): 184/184 passing

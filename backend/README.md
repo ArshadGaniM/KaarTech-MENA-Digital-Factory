@@ -32,7 +32,9 @@ npm run dev
 
 All twelve routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
-authoritative per-table field list (key, required, type).
+authoritative per-table field list (key, required, type), or fetch
+`GET /v1/schema/entity-relationships`' own `fields` array (below) for the
+same data at runtime rather than reading source.
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|

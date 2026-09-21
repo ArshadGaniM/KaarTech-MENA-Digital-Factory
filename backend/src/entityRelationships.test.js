@@ -254,6 +254,13 @@ test("a references field pointing at a table not present in the full list resolv
   assert.deepEqual(entry.fields[0].references, { table: "practices", route: null });
 });
 
+test("the real practices entry's fields have no `references` key at all (no FK fields on that table)", () => {
+  const entries = buildEntityRelationships(MASTER_DATA_TABLES);
+  const practices = entries.find((e) => e.route === "practices");
+  assert.deepEqual(practices.fields, [{ key: "name", type: "string", required: true }]);
+  assert.ok(!("references" in practices.fields[0]));
+});
+
 test("the real project-assignments entry's fields resolve both FK routes correctly, matching real routes not table names", () => {
   const entries = buildEntityRelationships(MASTER_DATA_TABLES);
   const projectAssignments = entries.find((e) => e.route === "project-assignments");

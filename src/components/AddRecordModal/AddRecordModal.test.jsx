@@ -65,6 +65,36 @@ describe('AddRecordModal', () => {
     expect(screen.getByLabelText('Profit Center Code *')).toBeInTheDocument();
   });
 
+  it('renders a date field as a date input and a number field as a number input', () => {
+    useEntityRelationships.mockReturnValue({
+      data: [
+        {
+          route: 'project-assignments',
+          identity: { type: 'none' },
+          fields: [
+            { key: 'projectAssignmentStartDate', type: 'date', required: true },
+            { key: 'employeeId', type: 'number', required: false },
+          ],
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <AddRecordModal
+        route="project-assignments"
+        singularLabel="Project Assignment"
+        labelByKey={{ ...LABELS, employeeId: 'Employee ID' }}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Project Assignment Start Date *')).toHaveAttribute('type', 'date');
+    expect(screen.getByLabelText('Employee ID')).toHaveAttribute('type', 'number');
+  });
+
   it('renders an enum field as a select with the field-defined values, not a free-text input', () => {
     useEntityRelationships.mockReturnValue({
       data: [
