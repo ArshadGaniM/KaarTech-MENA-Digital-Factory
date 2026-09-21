@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
+import AddRecordModal from '../AddRecordModal';
 import styles from './MasterDataTable.module.css';
 
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
@@ -15,51 +17,71 @@ function formatCell(column, value) {
   return value;
 }
 
-function MasterDataTable({ route, columns }) {
-  const { data, isLoading, error } = useMasterDataTable(route);
+function MasterDataTable({ route, columns, singularLabel }) {
+  const { data, isLoading, error, refetch } = useMasterDataTable(route);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
 
-  if (isLoading) {
-    return (
-      <p className={styles.status} role="status" aria-live="polite">
-        Loading…
-      </p>
-    );
-  }
-  if (error) {
-    return (
-      <p className={styles.statusError} role="alert">
-        Could not load this table: {error.message}
-      </p>
-    );
+  function handleCreated() {
+    setIsAddOpen(false);
+    refetch();
   }
 
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column.key}>{column.label}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.length === 0 ? (
-          <tr>
-            <td className={styles.status} colSpan={columns.length}>
-              No records yet. Add one via the MCP tools.
-            </td>
-          </tr>
-        ) : (
-          data.map((row) => (
-            <tr key={row.id}>
+    <div className={styles.wrapper}>
+      <div className={styles.toolbar}>
+        <button type="button" className={styles.addButton} onClick={() => setIsAddOpen(true)}>
+          Add {singularLabel}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p className={styles.status} role="status" aria-live="polite">
+          Loading…
+        </p>
+      ) : error ? (
+        <p className={styles.statusError} role="alert">
+          Could not load this table: {error.message}
+        </p>
+      ) : (
+        <table className={styles.table}>
+          <thead>
+            <tr>
               {columns.map((column) => (
-                <td key={column.key}>{formatCell(column, row[column.key])}</td>
+                <th key={column.key}>{column.label}</th>
               ))}
             </tr>
-          ))
-        )}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr>
+                <td className={styles.status} colSpan={columns.length}>
+                  No records yet. Add one above.
+                </td>
+              </tr>
+            ) : (
+              data.map((row) => (
+                <tr key={row.id}>
+                  {columns.map((column) => (
+                    <td key={column.key}>{formatCell(column, row[column.key])}</td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {isAddOpen && (
+        <AddRecordModal
+          route={route}
+          singularLabel={singularLabel}
+          labelByKey={labelByKey}
+          onClose={() => setIsAddOpen(false)}
+          onCreated={handleCreated}
+        />
+      )}
+    </div>
   );
 }
 
@@ -71,6 +93,7 @@ MasterDataTable.propTypes = {
       label: PropTypes.string.isRequired,
     })
   ).isRequired,
+  singularLabel: PropTypes.string.isRequired,
 };
 
 export default MasterDataTable;

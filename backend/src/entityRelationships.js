@@ -53,6 +53,31 @@ function lookupsOf(table) {
   return lookups;
 }
 
+// FEAT-14: the writable field list an "Add <Entity>" form needs to render
+// itself generically — one entry per `table.fields` item (auto-generated
+// `code` and read-only `lookups` projections are never in `table.fields`
+// to begin with, so they're excluded automatically, not by a separate
+// filter here). For a `references` field, `route` resolves the target
+// table's own REST route (looked up by tableName in the full `tables`
+// array) so the frontend knows which endpoint to fetch pick-list options
+// from, without hand-maintaining a tableName->route map of its own.
+function fieldsOf(table, tables) {
+  return table.fields.map((field) => {
+    const entry = {
+      key: field.key,
+      type: field.type ?? "string",
+      required: !!field.required,
+    };
+    if (field.maxLength) entry.maxLength = field.maxLength;
+    if (field.values) entry.values = field.values;
+    if (field.references) {
+      const target = tables.find((t) => t.tableName === field.references.table);
+      entry.references = { table: field.references.table, route: target?.route ?? null };
+    }
+    return entry;
+  });
+}
+
 export function buildEntityRelationships(tables) {
   return tables.map((table) => ({
     route: table.route,
@@ -61,5 +86,6 @@ export function buildEntityRelationships(tables) {
     identity: identityOf(table),
     relationships: relationshipsOf(table),
     lookups: lookupsOf(table),
+    fields: fieldsOf(table, tables),
   }));
 }

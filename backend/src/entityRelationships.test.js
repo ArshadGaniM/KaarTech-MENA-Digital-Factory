@@ -164,3 +164,108 @@ test("the real resource-deployment entry has two relationships (employeeId, posi
     ["employeeId", "positionId"]
   );
 });
+
+// FEAT-14: `fields` — the writable field list an "Add <Entity>" form
+// builds itself from.
+
+test("fields lists exactly table.fields' keys, in order — auto-generated code and lookup projections never appear (they're not in table.fields to begin with)", () => {
+  const [entry] = buildEntityRelationships([
+    {
+      route: "practices",
+      tableName: "practices",
+      resourceName: "practice",
+      hasCode: true,
+      fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    },
+  ]);
+  assert.deepEqual(entry.fields, [{ key: "name", type: "string", required: true }]);
+});
+
+test("a required field with maxLength/values surfaces them; a plain field omits both keys entirely rather than sending them as null/undefined", () => {
+  const [entry] = buildEntityRelationships([
+    {
+      route: "delivery-centers",
+      tableName: "delivery_centers",
+      resourceName: "delivery_center",
+      hasCode: true,
+      fields: [
+        { key: "name", column: "name", required: true, type: "string" },
+        {
+          key: "locationType",
+          column: "location_type",
+          required: true,
+          type: "enum",
+          values: ["onshore", "offshore"],
+        },
+      ],
+    },
+  ]);
+  assert.deepEqual(entry.fields[0], { key: "name", type: "string", required: true });
+  assert.deepEqual(entry.fields[1], {
+    key: "locationType",
+    type: "enum",
+    required: true,
+    values: ["onshore", "offshore"],
+  });
+  assert.ok(!("maxLength" in entry.fields[0]));
+  assert.ok(!("values" in entry.fields[0]));
+});
+
+test("a references field resolves the target table's REST route by tableName, for the Add form's pick-list fetch", () => {
+  const entries = buildEntityRelationships([
+    { route: "teams", tableName: "teams", resourceName: "team", hasCode: true, fields: [] },
+    {
+      route: "positions",
+      tableName: "positions",
+      resourceName: "position",
+      hasCode: true,
+      fields: [
+        {
+          key: "teamCode",
+          column: "team_code",
+          required: true,
+          type: "string",
+          references: { table: "teams", column: "code" },
+        },
+      ],
+    },
+  ]);
+  const positions = entries.find((e) => e.route === "positions");
+  assert.deepEqual(positions.fields[0].references, { table: "teams", route: "teams" });
+});
+
+test("a references field pointing at a table not present in the full list resolves route to null rather than crashing", () => {
+  const [entry] = buildEntityRelationships([
+    {
+      route: "modules",
+      tableName: "modules",
+      resourceName: "module",
+      fields: [
+        {
+          key: "practiceId",
+          column: "practice_id",
+          required: false,
+          type: "string",
+          references: { table: "practices", column: "id" },
+        },
+      ],
+    },
+  ]);
+  assert.deepEqual(entry.fields[0].references, { table: "practices", route: null });
+});
+
+test("the real practices entry's fields have no `references` key at all (no FK fields on that table)", () => {
+  const entries = buildEntityRelationships(MASTER_DATA_TABLES);
+  const practices = entries.find((e) => e.route === "practices");
+  assert.deepEqual(practices.fields, [{ key: "name", type: "string", required: true }]);
+  assert.ok(!("references" in practices.fields[0]));
+});
+
+test("the real project-assignments entry's fields resolve both FK routes correctly, matching real routes not table names", () => {
+  const entries = buildEntityRelationships(MASTER_DATA_TABLES);
+  const projectAssignments = entries.find((e) => e.route === "project-assignments");
+  const projectIdField = projectAssignments.fields.find((f) => f.key === "projectId");
+  const teamIdField = projectAssignments.fields.find((f) => f.key === "teamId");
+  assert.deepEqual(projectIdField.references, { table: "projects", route: "projects" });
+  assert.deepEqual(teamIdField.references, { table: "teams", route: "teams" });
+});

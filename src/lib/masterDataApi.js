@@ -13,10 +13,15 @@ const AUDIT_COLUMNS = [
   { key: "markedDeleted", label: "Marked Deleted" },
 ];
 
+// FEAT-14: singularLabel drives the "Add <Entity>" button text (e.g. "Add
+// Practice", not "Add Practices") — kept explicit per table rather than a
+// strip-the-trailing-s heuristic, since "Competencies"/"Resource Cost"
+// don't follow that pattern.
 export const MASTER_DATA_TABLES = [
   {
     route: "practices",
     label: "Practices",
+    singularLabel: "Practice",
     columns: [
       { key: "code", label: "Practice ID" },
       { key: "name", label: "Practice Name" },
@@ -26,6 +31,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "delivery-centers",
     label: "Delivery Centers",
+    singularLabel: "Delivery Center",
     columns: [
       { key: "code", label: "Code" },
       { key: "name", label: "Name" },
@@ -38,11 +44,13 @@ export const MASTER_DATA_TABLES = [
   {
     route: "competencies",
     label: "Competencies",
+    singularLabel: "Competency",
     columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
   },
   {
     route: "modules",
     label: "Modules",
+    singularLabel: "Module",
     columns: [
       { key: "code", label: "Module ID" },
       { key: "moduleCode", label: "Module Code" },
@@ -54,6 +62,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "resources",
     label: "Resources",
+    singularLabel: "Resource",
     columns: [
       { key: "employeeId", label: "Employee ID" },
       { key: "name", label: "Employee Name" },
@@ -78,6 +87,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "departments",
     label: "Departments",
+    singularLabel: "Department",
     columns: [
       { key: "code", label: "Department Code" },
       { key: "name", label: "Department Name" },
@@ -87,6 +97,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "resource-cost",
     label: "Resource Cost",
+    singularLabel: "Resource Cost",
     columns: [
       { key: "employeeId", label: "Employee ID" },
       { key: "employeeName", label: "Employee Name" },
@@ -99,6 +110,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "teams",
     label: "Teams",
+    singularLabel: "Team",
     columns: [
       { key: "code", label: "Team ID" },
       { key: "name", label: "Team Name" },
@@ -110,6 +122,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "resource-deployment",
     label: "Resource Deployment",
+    singularLabel: "Resource Deployment",
     columns: [
       { key: "employeeId", label: "Employee ID" },
       { key: "employeeName", label: "Employee Name" },
@@ -121,6 +134,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "positions",
     label: "Positions",
+    singularLabel: "Position",
     columns: [
       { key: "code", label: "Position ID" },
       { key: "name", label: "Position Name" },
@@ -132,6 +146,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "projects",
     label: "Projects",
+    singularLabel: "Project",
     columns: [
       { key: "projectId", label: "Project ID" },
       { key: "projectName", label: "Project Name" },
@@ -142,6 +157,7 @@ export const MASTER_DATA_TABLES = [
   {
     route: "project-assignments",
     label: "Project Assignments",
+    singularLabel: "Project Assignment",
     columns: [
       { key: "projectId", label: "Project ID" },
       { key: "projectName", label: "Project Name" },
@@ -167,4 +183,30 @@ export async function fetchMasterDataTable(route) {
     throw new Error(`${route} returned a malformed response.`);
   }
   return payload.data;
+}
+
+// FEAT-14: creates a record via the generic "Add <Entity>" form. Every
+// write route requires the internal API key (see backend/README.md) —
+// this app has no user-login system yet, so there is no way to keep this
+// key out of the browser bundle once the browser itself needs to write;
+// this is an accepted limitation of the current no-auth stage (CLAUDE.md
+// §20), not an oversight. On a 422, the thrown error carries `details`
+// (the same field->message map the backend returns) so the form can show
+// per-field errors instead of one generic message.
+export async function createRecord(route, body) {
+  const res = await fetch(`${BACKEND_URL}/v1/${route}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-api-key': import.meta.env.VITE_INTERNAL_API_KEY || '',
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) {
+    const error = new Error(payload?.error?.message || `Failed to create ${route} record`);
+    error.details = payload?.error?.details ?? {};
+    throw error;
+  }
+  return payload?.data;
 }

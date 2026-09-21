@@ -4,15 +4,15 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** none — direct-build is the current standing mode. Queue is empty as of FEAT-12's completion — no queued/in_flight/error features remain (CLAUDE.md §7.2's "continuous autonomous execution" standing instruction has nothing left to pick up until the owner adds more). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants. `.claude/workflows/dev-team.js` was fixed this session (commit c6a1c74 — invalid ES-module export shape, missing `schema` options) so it's ready to use correctly if the pipeline is reinstated again; `name: "dev-team"` resolution still ignores the on-disk file — pass the script inline via `script` until that's understood.
+**Active run ID:** none — direct-build is the current standing mode. Also this session: found and fixed a real production gap — the Render backend's `autoDeploy` had silently stopped firing after PR #13 (2026-09-16), so every feature merged since (FEAT-5 through FEAT-12) never reached production despite the Vercel frontend being current. Triggered a manual deploy (`dep-dao4080ae00c73amau5g`) to the latest `main` commit; confirmed live via curl (`/v1/schema/entity-relationships` responding) and a full headless-browser walkthrough of the real site (marketing page, Dashboard, all 12 tables, Entity Relationship — no errors, empty tables correctly showing "No records yet"). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants.
 
-**Feature counter:** 13
+**Feature counter:** 14
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
-| *(empty)* | | | |
+| FEAT-14 | in_flight | Add an "Add [Entity]" button to the top of every master-data table's page (Add Resource, Add Project, Add Project Assignment, etc.), opening a pop-up form generically built from that table's real field descriptor (self-updating, same principle as FEAT-12's Entity Relationship page — not 12 hand-built forms): auto-generated fields (hasCode) excluded entirely, FK fields rendered as a pick-list dropdown populated from the referenced table's live records, plain manual fields rendered as a normal input matching their type, read-only derived/lookup fields excluded. An "Add" button in the pop-up submits, creates the record, closes the pop-up, and refreshes the table. Known accepted tradeoff (flagged to owner, proceeding per standing instruction): the write-auth key must become reachable from the browser bundle for this to work at all, which means it's no longer a real secret — accepted given this app has no login/auth system yet (same category as other "no auth system yet" items already logged in CLAUDE.md §20). | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 
