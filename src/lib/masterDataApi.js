@@ -99,6 +99,10 @@ export const MASTER_DATA_TABLES = [
     label: "Resource Cost",
     singularLabel: "Resource Cost",
     columns: [
+      // FEAT-15: this table has no business code (identity: "none") — the
+      // internal row id is the only thing a "Delete by Code or ID" popup
+      // can match against, so it has to be visible somewhere.
+      { key: "id", label: "Record ID" },
       { key: "employeeId", label: "Employee ID" },
       { key: "employeeName", label: "Employee Name" },
       { key: "employeeDesignation", label: "Employee Designation" },
@@ -124,6 +128,8 @@ export const MASTER_DATA_TABLES = [
     label: "Resource Deployment",
     singularLabel: "Resource Deployment",
     columns: [
+      // FEAT-15: see resource-cost's `id` column above — same reasoning.
+      { key: "id", label: "Record ID" },
       { key: "employeeId", label: "Employee ID" },
       { key: "employeeName", label: "Employee Name" },
       { key: "positionId", label: "Position ID" },
@@ -159,6 +165,8 @@ export const MASTER_DATA_TABLES = [
     label: "Project Assignments",
     singularLabel: "Project Assignment",
     columns: [
+      // FEAT-15: see resource-cost's `id` column above — same reasoning.
+      { key: "id", label: "Record ID" },
       { key: "projectId", label: "Project ID" },
       { key: "projectName", label: "Project Name" },
       { key: "projectProfitCenterCode", label: "Profit Center Code" },
@@ -209,4 +217,20 @@ export async function createRecord(route, body) {
     throw error;
   }
   return payload?.data;
+}
+
+// FEAT-15: marks a record deleted via the backend's existing DELETE
+// route (already a soft delete — sets `deleted_at`, never removes the
+// row; see backend/src/masterDataRouter.js). Same auth as createRecord.
+export async function deleteRecord(route, id) {
+  const res = await fetch(`${BACKEND_URL}/v1/${route}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'x-internal-api-key': import.meta.env.VITE_INTERNAL_API_KEY || '',
+    },
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    throw new Error(payload?.error?.message || `Failed to delete ${route} record`);
+  }
 }
