@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
+import { deleteRecord } from '../../lib/masterDataApi';
 import AddRecordModal from '../AddRecordModal';
+import DeleteRecordModal from '../DeleteRecordModal';
 import styles from './MasterDataTable.module.css';
 
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
@@ -20,11 +22,45 @@ function formatCell(column, value) {
 function MasterDataTable({ route, columns, singularLabel }) {
   const { data, isLoading, error, refetch } = useMasterDataTable(route);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [rowDeleteError, setRowDeleteError] = useState(null);
+  // A Set, not a single id — two different rows can be deleting
+  // concurrently (user clicks Delete on row A, then row B before A's
+  // request resolves), and a scalar would let one request's `finally`
+  // clear the other's in-flight indicator (gate finding, code-reviewer).
+  const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
   const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
 
   function handleCreated() {
     setIsAddOpen(false);
     refetch();
+  }
+
+  function handleDeleted() {
+    setIsDeleteOpen(false);
+    refetch();
+  }
+
+  // FEAT-15: per-row delete — the row already carries its own internal
+  // id, so this skips the code/id lookup the toolbar's Delete popup does.
+  // window.confirm is a deliberately minimal confirmation step (Simplicity
+  // First, CLAUDE.md §1) rather than a second modal for the same action.
+  async function handleRowDelete(row) {
+    if (!window.confirm(`Mark this ${singularLabel.toLowerCase()} record as deleted?`)) return;
+    setRowDeleteError(null);
+    setDeletingRowIds((prev) => new Set(prev).add(row.id));
+    try {
+      await deleteRecord(route, row.id);
+      refetch();
+    } catch (err) {
+      setRowDeleteError(err.message);
+    } finally {
+      setDeletingRowIds((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
+    }
   }
 
   return (
@@ -33,7 +69,16 @@ function MasterDataTable({ route, columns, singularLabel }) {
         <button type="button" className={styles.addButton} onClick={() => setIsAddOpen(true)}>
           Add {singularLabel}
         </button>
+        <button type="button" className={styles.deleteToolbarButton} onClick={() => setIsDeleteOpen(true)}>
+          Delete {singularLabel}
+        </button>
       </div>
+
+      {rowDeleteError && (
+        <p className={styles.statusError} role="alert">
+          {rowDeleteError}
+        </p>
+      )}
 
       {isLoading ? (
         <p className={styles.status} role="status" aria-live="polite">
@@ -50,12 +95,13 @@ function MasterDataTable({ route, columns, singularLabel }) {
               {columns.map((column) => (
                 <th key={column.key}>{column.label}</th>
               ))}
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td className={styles.status} colSpan={columns.length}>
+                <td className={styles.status} colSpan={columns.length + 1}>
                   No records yet. Add one above.
                 </td>
               </tr>
@@ -65,6 +111,20 @@ function MasterDataTable({ route, columns, singularLabel }) {
                   {columns.map((column) => (
                     <td key={column.key}>{formatCell(column, row[column.key])}</td>
                   ))}
+                  <td>
+                    {row.markedDeleted === 'Yes' ? (
+                      <span className={styles.status}>Deleted</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.rowDeleteButton}
+                        onClick={() => handleRowDelete(row)}
+                        disabled={deletingRowIds.has(row.id)}
+                      >
+                        {deletingRowIds.has(row.id) ? 'Deleting…' : 'Delete'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
@@ -79,6 +139,16 @@ function MasterDataTable({ route, columns, singularLabel }) {
           labelByKey={labelByKey}
           onClose={() => setIsAddOpen(false)}
           onCreated={handleCreated}
+        />
+      )}
+
+      {isDeleteOpen && (
+        <DeleteRecordModal
+          route={route}
+          singularLabel={singularLabel}
+          data={data ?? []}
+          onClose={() => setIsDeleteOpen(false)}
+          onDeleted={handleDeleted}
         />
       )}
     </div>

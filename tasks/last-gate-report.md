@@ -1,7 +1,10 @@
-# Merge-to-Main Gate Report — FEAT-14
+# Merge-to-Main Gate Report — FEAT-15
 
-**Feature:** Generic "Add \<Entity\>" pop-up form for every master-data table, driven by a
-self-updating `fields` array on `GET /v1/schema/entity-relationships`.
+**Feature:** Two soft-delete paths added to every master-data table page — a toolbar
+"Delete `<Entity>`" popup (type a Code/ID, looks it up among active rows, deletes on a
+match) and a per-row "Delete" action (confirmed via `window.confirm`, deletes the exact
+row by its known id). Both reuse the existing backend DELETE route (already a soft
+delete, unchanged by this diff).
 
 **Diff reviewed:** `git diff origin/main..HEAD` (branch `claude/trusting-curie-hlx1r6`)
 
@@ -14,50 +17,54 @@ clean. Merge allowed per CLAUDE.md §9.5.
 
 | Agent | Verdict | Summary |
 |---|---|---|
-| code-reviewer | PASS | No Critical/blocking findings. One Important (non-blocking) latent edge case noted: an unresolvable FK reference (`references.route === null`) would render an unsubmittable empty `<select>` with no visible error — cannot occur with the current 12 real tables, follow-up only. |
-| security-auditor | PASS | No new/undisclosed findings. XSS, injection, field-tampering, data-over-exposure, and backend-auth-strength all checked clean. The only security-relevant item (`VITE_INTERNAL_API_KEY` browser exposure) is the already-disclosed, accepted tradeoff (CLAUDE.md §20) and out of scope for this review. |
-| debugger | PASS | All 12 real tables' `fields`/`references` resolve cleanly through `fieldsOf()`. Pick-list `useEffect` cancellation is correctly guarded for all three setters. No unhandled runtime cases found. |
-| test-writer | PASS (after fixes) | Found and fixed 2 real coverage gaps: added a dedicated `useMasterDataTable.test.js` (refetch behavior had zero coverage), added a real-table `fieldsOf()` regression test with no `references` field, added a date-input rendering test, and strengthened the Cancel-button test to assert `refetch` isn't called. 55 frontend / 184 backend tests, all green after additions. |
-| refactorer | PASS | `AddRecordModal.jsx` is appropriately generic (no per-table branching). `optionLabel()`'s two-field fallback heuristic is proportionate to current scope. `fieldsOf()`/`relationshipsOf()` overlap is justified — different callers, different shapes. `MasterDataTable.jsx` restructuring is clean. |
-| doc-writer | WARN (fixed) | `fields` array docs in `backend/README.md` confirmed accurate against real code (18/18 tests pass). Found and fixed one real gap: added a cross-reference in `backend/README.md` pointing to the new live `GET /v1/schema/entity-relationships` `fields` endpoint alongside the existing per-table source-file pointer, avoiding a diverging "authoritative source" ambiguity. |
-| silent-failure-hunter | WARN | Non-blocking: the pick-list `Promise.all` rejects entirely if any one referenced table's fetch fails, blanking out even successfully-fetched fields' options behind one generic error banner. Recommended follow-up: `Promise.allSettled` with per-field error state. All other checks (submit-catch fallback, null-payload handling, post-create refetch failure) passed clean. |
-| pr-test-analyzer | WARN | All 3 traced tests (soft-delete filter, number conversion, 422 field errors) confirmed genuine behavior tests, not restated mocks. Non-blocking gap: no test exercises the generic (non-422) submission-failure banner path — recommended as a follow-up given this is the app's first write-capable UI. |
+| code-reviewer | WARN → fixed | Found a real concurrency bug: `deletingRowId` was a single scalar, so deleting two different rows in quick succession let one request's `finally` clear the other's in-flight/disabled state. Fixed by switching to a `Set` of in-flight row ids; added a regression test that traces false under the old scalar implementation. |
+| security-auditor | PASS | No new findings. Same API-key mechanism as FEAT-14's `createRecord` (already-disclosed tradeoff). No XSS, no authorization-model change (client-side code lookup grants no more privilege than the pre-existing per-row delete), no injection vector. Backend DELETE route confirmed unchanged and still gated by `requireInternalApiKey`. |
+| debugger | PASS → fixed | Traced `identityOf()` across all 12 real tables — confirmed no table falls through to `undefined` for the Delete popup's identity-key lookup. Found one real gap: `competencies` also has identity `"none"` but had no visible `id` column, so the popup had nothing to match against for it. Fixed with the same "Record ID" column already added for the other 3 identity-less tables. |
+| test-writer | PASS | Fixed gap: no test proved the new "Record ID" columns actually appear (or are correctly absent) — added direct column-definition tests. Full suite green after. |
+| refactorer | PASS | `MasterDataTable.jsx`'s growth is proportionate (thin orchestration, not new business logic). Two non-blocking WARN-level notes (Add/Delete modal loading-shell overlap, repeated id-column literal) both judged premature to extract per §1 Simplicity First — no action required. |
+| doc-writer | WARN → fixed | `backend/README.md`'s DELETE route docs confirmed accurate and unchanged (correct — no backend changes in this diff). Found and fixed two real gaps: CLAUDE.md §20's `VITE_INTERNAL_API_KEY` row only named the Add forms (FEAT-14), not the new Delete popup which also sends it; `backend/README.md`'s list of `GET /v1/schema/entity-relationships` consumers only named FEAT-12/FEAT-14, omitting the new Delete popup (also a consumer, via `identity`). |
+| silent-failure-hunter | PASS | Error surfacing (toolbar and per-row paths), post-delete refetch failure handling, `submitting`/`deletingRowIds` reset in `finally`, and the non-JSON-error-body fallback all checked clean. No swallowed exceptions. |
+| pr-test-analyzer | PASS | Traced 5 tests (case-insensitive/trim matching, soft-delete exclusion, declined-confirmation guard, the new concurrent-delete regression test, and the new `deleteRecord` unit tests) — all confirmed genuine behavior tests that fail under the corresponding broken implementation. Negative-path coverage judged adequate for a delete-capable feature. Two Optional (non-blocking) gaps noted: no raw-network-failure test, no explicit disabled-button-is-a-no-op test. |
 
 ---
 
 ## Security exception check (CLAUDE.md §9.5)
 
-Security-auditor returned **PASS** with no findings (the disclosed `VITE_INTERNAL_API_KEY`
-tradeoff was explicitly out of scope for this review, per its own brief, and does not
-constitute a "finding" for the auto-upgrade rule). No WARN-level security item exists to
+Security-auditor returned **PASS** with no findings. No WARN-level security item exists to
 trigger the FAIL auto-upgrade.
-
-## Action-item checklist (non-blocking, logged for future follow-up)
-
-- [ ] `AddRecordModal.jsx`: switch pick-list fetch from `Promise.all` to `Promise.allSettled`
-      with per-field error state, so one failed reference-table fetch doesn't blank out
-      other successfully-fetched fields' options.
-- [ ] `AddRecordModal.jsx`: add a test for the generic (non-422) submission-failure banner
-      path (network error / 500).
-- [ ] `AddRecordModal.jsx` / `entityRelationships.js`: if a future table ever has an FK
-      whose target table doesn't resolve to a route, surface a visible "configuration
-      error" instead of rendering an empty, unsubmittable `<select>`. Not reachable with
-      the current 12 tables.
 
 ## Fixes applied during this gate run
 
-- `backend/README.md` — added cross-reference from the per-table field-list docs to the
-  new live `fields` endpoint (doc-writer).
-- `src/hooks/useMasterDataTable.test.js` — new file, 3 tests covering initial load, error
-  surfacing, and `refetch()` (test-writer).
-- `src/components/AddRecordModal/AddRecordModal.test.jsx` — added date/number input
-  rendering test (test-writer).
-- `src/components/MasterDataTable/MasterDataTable.test.jsx` — strengthened Cancel test to
-  assert `refetch` is not called (test-writer).
-- `backend/src/entityRelationships.test.js` — added a real-table `fieldsOf()` regression
-  test for a table with no `references` field (test-writer).
+- `src/components/MasterDataTable/MasterDataTable.jsx` — `deletingRowId` scalar replaced
+  with a `Set<string>` (`deletingRowIds`) so concurrent per-row deletes track independently.
+- `src/components/MasterDataTable/MasterDataTable.test.jsx` — added a regression test
+  proving two concurrent row deletes don't clobber each other's in-flight/disabled state.
+- `src/lib/masterDataApi.js` — added a "Record ID" column to `competencies` (identity
+  type `"none"`, same gap already fixed for the other 3 identity-less tables).
+- `src/lib/masterDataApi.test.js` — added column-definition coverage (including
+  `competencies`) and direct unit tests for `deleteRecord()` (request shape, success,
+  JSON-error, non-JSON-error fallback).
+- `CLAUDE.md` §20 — `VITE_INTERNAL_API_KEY` row now names both FEAT-14 and FEAT-15 as
+  consumers.
+- `backend/README.md` — `GET /v1/schema/entity-relationships` consumer list now
+  includes the FEAT-15 Delete popup.
+
+## Non-blocking follow-ups logged (Optional, from pr-test-analyzer)
+
+- [ ] No test for a raw network failure in `deleteRecord()` (`fetch()` itself rejecting).
+- [ ] No explicit test that an already-disabled in-flight row Delete button is a no-op.
 
 ## Test results after fixes
 
-- Frontend (vitest): 55/55 passing (15 test files)
-- Backend (node --test): 184/184 passing
+- Frontend (vitest): 81/81 passing (17 test files)
+- Backend (node --test): unchanged by this diff — 184/184 passing (verified separately)
+- Build: clean (`npm run build`)
+- Lint: clean (pre-existing warnings only, unrelated to this diff)
+
+## Post-gate note
+
+`origin/main` moved (FEAT-14's own squash-merge landed as a new commit not present in
+this branch's history — the expected squash-divergence pattern, CLAUDE.md §9.3 Step 0)
+after this report was first written. Repaired with `git merge origin/main --strategy=ours`
+and re-pushed bundled with this note, so the auto-PR workflow's freshness check (this
+push must touch `tasks/last-gate-report.md` AND at least one other file) passes.

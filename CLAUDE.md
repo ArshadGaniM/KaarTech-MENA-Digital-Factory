@@ -817,7 +817,7 @@ it one directory up.
 | OAuth client ID/secret pairs | Per integration | One per external service integrated |
 | Encryption keys | Per integration | Document rotation impact explicitly |
 | `BACKEND_URL` / `FRONTEND_URL` | Per integration | Public URLs used to build redirect URIs |
-| `VITE_INTERNAL_API_KEY` | Required for the frontend's "Add `<Entity>`" forms (FEAT-14) | Must exactly match the backend's `INTERNAL_API_KEY`. **Not a real secret once set** — Vite inlines `VITE_` vars into the built JS bundle, so anyone visiting the site can read it. Accepted only because this app has no user-login system yet (see §0) — revisit the moment real auth exists, at which point writes should go through an authenticated session instead of a shared static key. |
+| `VITE_INTERNAL_API_KEY` | Required for the frontend's "Add `<Entity>`" forms (FEAT-14) and "Delete `<Entity>`" popup (FEAT-15) | Must exactly match the backend's `INTERNAL_API_KEY`. **Not a real secret once set** — Vite inlines `VITE_` vars into the built JS bundle, so anyone visiting the site can read it. Accepted only because this app has no user-login system yet (see §0) — revisit the moment real auth exists, at which point writes should go through an authenticated session instead of a shared static key. |
 
 Never hard-code secrets. Add new vars to `.env.example` alongside the actual `.env`.
 
