@@ -60,3 +60,11 @@ trigger the FAIL auto-upgrade.
 - Backend (node --test): unchanged by this diff — 184/184 passing (verified separately)
 - Build: clean (`npm run build`)
 - Lint: clean (pre-existing warnings only, unrelated to this diff)
+
+## Post-gate note
+
+`origin/main` moved (FEAT-14's own squash-merge landed as a new commit not present in
+this branch's history — the expected squash-divergence pattern, CLAUDE.md §9.3 Step 0)
+after this report was first written. Repaired with `git merge origin/main --strategy=ours`
+and re-pushed bundled with this note, so the auto-PR workflow's freshness check (this
+push must touch `tasks/last-gate-report.md` AND at least one other file) passes.
