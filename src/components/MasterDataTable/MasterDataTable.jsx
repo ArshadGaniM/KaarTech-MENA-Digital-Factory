@@ -24,7 +24,11 @@ function MasterDataTable({ route, columns, singularLabel }) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [rowDeleteError, setRowDeleteError] = useState(null);
-  const [deletingRowId, setDeletingRowId] = useState(null);
+  // A Set, not a single id — two different rows can be deleting
+  // concurrently (user clicks Delete on row A, then row B before A's
+  // request resolves), and a scalar would let one request's `finally`
+  // clear the other's in-flight indicator (gate finding, code-reviewer).
+  const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
   const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
 
   function handleCreated() {
@@ -44,14 +48,18 @@ function MasterDataTable({ route, columns, singularLabel }) {
   async function handleRowDelete(row) {
     if (!window.confirm(`Mark this ${singularLabel.toLowerCase()} record as deleted?`)) return;
     setRowDeleteError(null);
-    setDeletingRowId(row.id);
+    setDeletingRowIds((prev) => new Set(prev).add(row.id));
     try {
       await deleteRecord(route, row.id);
       refetch();
     } catch (err) {
       setRowDeleteError(err.message);
     } finally {
-      setDeletingRowId(null);
+      setDeletingRowIds((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
     }
   }
 
@@ -111,9 +119,9 @@ function MasterDataTable({ route, columns, singularLabel }) {
                         type="button"
                         className={styles.rowDeleteButton}
                         onClick={() => handleRowDelete(row)}
-                        disabled={deletingRowId === row.id}
+                        disabled={deletingRowIds.has(row.id)}
                       >
-                        {deletingRowId === row.id ? 'Deleting…' : 'Delete'}
+                        {deletingRowIds.has(row.id) ? 'Deleting…' : 'Delete'}
                       </button>
                     )}
                   </td>

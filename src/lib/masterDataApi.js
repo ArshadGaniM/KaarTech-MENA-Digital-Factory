@@ -45,7 +45,11 @@ export const MASTER_DATA_TABLES = [
     route: "competencies",
     label: "Competencies",
     singularLabel: "Competency",
-    columns: [{ key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    // FEAT-15: competencies has neither hasCode nor identityField either
+    // (identity: "none", same as resource-cost/resource-deployment/
+    // project-assignments) — gate finding, debugger: without this column
+    // the Delete popup has nothing visible to match against for this table.
+    columns: [{ key: "id", label: "Record ID" }, { key: "name", label: "Name" }, ...AUDIT_COLUMNS],
   },
   {
     route: "modules",

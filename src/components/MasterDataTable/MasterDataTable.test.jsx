@@ -113,6 +113,44 @@ describe('MasterDataTable', () => {
     expect(screen.getByRole('dialog', { name: 'Delete Practice' })).toBeInTheDocument();
   });
 
+  it('tracks two concurrent row deletes independently, without one finishing clearing the other\'s in-flight state', async () => {
+    const user = userEvent.setup();
+    let resolveRowA;
+    const rowAPromise = new Promise((resolve) => {
+      resolveRowA = resolve;
+    });
+    useMasterDataTable.mockReturnValue({
+      data: [
+        { id: 'row-a', code: 'PR-A', name: 'Row A', markedDeleted: 'No' },
+        { id: 'row-b', code: 'PR-B', name: 'Row B', markedDeleted: 'No' },
+      ],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    deleteRecord.mockImplementation((_route, id) => (id === 'row-a' ? rowAPromise : Promise.resolve()));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    const [deleteA, deleteB] = screen.getAllByRole('button', { name: /^(Delete|Deleting…)$/ });
+    await user.click(deleteA);
+    // Row A's delete is still in flight (rowAPromise unresolved) — its
+    // button should show the in-flight state while row B's is untouched.
+    expect(deleteA).toHaveTextContent('Deleting…');
+    expect(deleteB).toHaveTextContent('Delete');
+
+    await user.click(deleteB);
+    await waitFor(() => expect(deleteRecord).toHaveBeenCalledWith('practices', 'row-b'));
+    // Row B resolved and cleared its own in-flight state — row A, still
+    // pending, must not have been cleared by row B's `finally`.
+    expect(deleteA).toHaveTextContent('Deleting…');
+    expect(deleteB).toHaveTextContent('Delete');
+
+    resolveRowA();
+    await waitFor(() => expect(deleteA).toHaveTextContent('Delete'));
+  });
+
   it('renders a per-row Delete action, and soft-deletes that exact row after confirmation', async () => {
     const user = userEvent.setup();
     const refetch = vi.fn();
