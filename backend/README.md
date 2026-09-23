@@ -123,8 +123,10 @@ not a raw 500 — see `isUniqueViolation`/`duplicateFieldError` in
 rather than hand-written — every table's own `hasCode`/`identityField`/
 `fields`/`lookups` descriptor is the only source of truth, so this
 endpoint (and everything built on it — the frontend's "Entity Relationship"
-page, FEAT-12, and its generic "Add `<Entity>`" pop-up forms, FEAT-14) can
-never drift out of sync with the real schema. Each entry:
+page, FEAT-12, its generic "Add `<Entity>`" pop-up forms, FEAT-14, and its
+"Delete `<Entity>`" pop-up, FEAT-15, which reads each table's `identity`
+to decide whether to prompt for a code, a caller-supplied unique field, or
+the row id) can never drift out of sync with the real schema. Each entry:
 
 ```json
 {
