@@ -44,3 +44,27 @@ export function referenceNotFoundError(err, fields) {
   const key = field?.key ?? "value";
   return validationError({ [key]: `${key} does not reference an existing row.` });
 }
+
+// Postgres invalid_text_representation (22P02) — a value that can't be
+// cast to its column's real Postgres type (e.g. a column typed `uuid`
+// fed a plain string) surfaces as a raw 500 by default, same class of
+// gap as unique/FK violations above. modules.practiceId is the concrete
+// case this exists for: the app layer treats it as an unvalidated free
+// string (deliberately, no FK check — see masterDataTables.js), but its
+// Postgres column is `uuid`, so any non-UUID input reached the DB
+// uncaught until this existed. The offending literal is the only thing
+// Postgres's error message reliably contains, so matching it back to
+// the submitted field (rather than the DB column/constraint, which this
+// error class doesn't expose) is the only generically correct way to
+// name which field failed.
+export function isInvalidTextRepresentation(err) {
+  return err?.code === "22P02";
+}
+
+export function invalidValueError(err, fields, body) {
+  const match = /: "(.*)"$/.exec(err.message ?? "");
+  const literal = match?.[1];
+  const field = literal != null && body ? fields.find((f) => String(body[f.key]) === literal) : undefined;
+  const key = field?.key ?? "value";
+  return validationError({ [key]: `${key} is not in a valid format for this field.` });
+}
