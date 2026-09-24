@@ -56,7 +56,7 @@ Per-table fields, as of this writing:
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
 | `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
-| `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** validated against `practices`; can be set/changed later via PATCH) — plus an auto-generated `code` (`MOD-001`, ...) |
+| `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** FK-validated against `practices` at the app layer; can be set/changed later via PATCH. The DB column is still typed `uuid`, so a non-UUID value is rejected with a 422 `validation_error`, not a raw 500 — see below) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
 | `projects` | `projectId` (required, **caller-supplied and unique — not auto-generated**, same pattern as `resources.employeeId`), `projectName` (required), `projectProfitCenterCode` (required, plain string — no FK/lookup, no reference table named) — the first table with zero enforced FK relationships since FEAT-5 |
 | `project-assignments` | `projectId` (required, string — pick-list only, must reference an existing `projects.project_id`, enforced), `projectName`/`projectProfitCenterCode` (**read-only**, live-looked-up from the referenced project), `teamId` (required, string — pick-list only, must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `departmentId`/`departmentName` (**read-only**, live-looked-up **transitively** through the referenced team's own `departmentCode` — Project Assignments → Teams → Departments, not a direct column/single-hop join on this table), `projectAssignmentStartDate`/`projectAssignmentEndDate` (both required, `date` type — `projectAssignmentEndDate` must not be earlier than `projectAssignmentStartDate`, enforced) — the first table with a chained lookup and cross-field validation |
@@ -114,6 +114,12 @@ defense-in-depth, same reasoning as every FK's app-layer + DB-layer pair.
 `employeeId`) return a 422 `validation_error` naming the offending field,
 not a raw 500 — see `isUniqueViolation`/`duplicateFieldError` in
 `src/errors.js`.
+
+**Values that don't fit their DB column type** — e.g. `modules.practiceId`
+isn't FK-validated at the app layer, but its column is Postgres `uuid`, so
+a non-UUID string still can't be written — also return a 422
+`validation_error` naming the field, not a raw 500. See
+`isInvalidTextRepresentation`/`invalidValueError` in `src/errors.js`.
 
 ### `/v1/schema/entity-relationships`
 

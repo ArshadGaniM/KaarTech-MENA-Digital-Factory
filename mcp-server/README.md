@@ -94,9 +94,11 @@ be told. `module`'s `moduleCode` is a separate, human-assigned code —
 distinct from the auto-generated one.
 
 **`module`'s `practiceId`** links to a `practice`'s `id` (not its `code`).
-It's optional on `add_module` and unvalidated — a module can be created
-without a Practice, or with one that doesn't exist yet, and mapped later
-via `update_module`.
+It's optional on `add_module` and not FK-validated — a module can be
+created without a Practice, or with one that doesn't exist yet, and mapped
+later via `update_module`. The underlying DB column is still typed `uuid`,
+so a value that isn't a valid UUID is rejected with a 422 naming the
+field, not a raw 500.
 
 **`resource`'s `employeeId`** is unlike every other table's identifier —
 it's a required number **you supply**, not auto-generated, and must be
