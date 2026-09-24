@@ -9,7 +9,12 @@ import {
   lookupJoinSql,
   lookupSelectSql,
 } from "./masterDataSchema.js";
-import { isUniqueViolation, duplicateFieldError } from "./errors.js";
+import {
+  isUniqueViolation,
+  duplicateFieldError,
+  isInvalidTextRepresentation,
+  invalidValueError,
+} from "./errors.js";
 import { pool } from "./db.js";
 
 const SIMPLE_TABLE = {
@@ -344,6 +349,28 @@ test("isUniqueViolation matches Postgres error code 23505 only", () => {
   assert.equal(isUniqueViolation({ code: "23505" }), true);
   assert.equal(isUniqueViolation({ code: "23502" }), false);
   assert.equal(isUniqueViolation({}), false);
+});
+
+test("isInvalidTextRepresentation matches Postgres error code 22P02 only", () => {
+  assert.equal(isInvalidTextRepresentation({ code: "22P02" }), true);
+  assert.equal(isInvalidTextRepresentation({ code: "23505" }), false);
+  assert.equal(isInvalidTextRepresentation({}), false);
+});
+
+test("invalidValueError names the submitted field whose value matches the offending literal", () => {
+  const err = invalidValueError(
+    { message: 'invalid input syntax for type uuid: "not-a-uuid"' },
+    [{ key: "practiceId", column: "practice_id" }],
+    { practiceId: "not-a-uuid" }
+  );
+  assert.equal(err.status, 422);
+  assert.ok(err.details.practiceId);
+});
+
+test("invalidValueError falls back to a generic 'value' key when the literal can't be matched to a field", () => {
+  const err = invalidValueError({ message: "some other pg error with no quoted literal" }, [], {});
+  assert.equal(err.status, 422);
+  assert.ok(err.details.value);
 });
 
 // --- lookupJoinSql / lookupSelectSql (FEAT-5: resource_cost's live lookup) ---

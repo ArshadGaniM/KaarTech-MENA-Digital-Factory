@@ -6,6 +6,8 @@ import {
   duplicateFieldError,
   isForeignKeyViolation,
   referenceNotFoundError,
+  isInvalidTextRepresentation,
+  invalidValueError,
 } from "./errors.js";
 import {
   toResponse,
@@ -46,9 +48,10 @@ const DEFAULT_ACTOR = "Arshad Gani";
 // runs, so this only matters for the narrow race where the referenced row
 // is removed between that check and the write — still needs the same 422
 // treatment as a unique-violation rather than a leaked 500.
-function mapWriteError(err, fields) {
+function mapWriteError(err, fields, body) {
   if (isUniqueViolation(err)) return duplicateFieldError(err, fields);
   if (isForeignKeyViolation(err)) return referenceNotFoundError(err, fields);
+  if (isInvalidTextRepresentation(err)) return invalidValueError(err, fields, body);
   return err;
 }
 
@@ -124,7 +127,7 @@ export function createMasterDataRouter(table) {
       );
       res.status(201).json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(mapWriteError(err, fields));
+      next(mapWriteError(err, fields, req.body));
     }
   });
 
@@ -163,7 +166,7 @@ export function createMasterDataRouter(table) {
       if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(mapWriteError(err, fields));
+      next(mapWriteError(err, fields, req.body));
     }
   });
 
