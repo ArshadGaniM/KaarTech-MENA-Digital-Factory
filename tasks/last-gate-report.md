@@ -1,10 +1,11 @@
-# Merge-to-Main Gate Report — FEAT-15
+# Merge-to-Main Gate Report — FEAT-16
 
-**Feature:** Two soft-delete paths added to every master-data table page — a toolbar
-"Delete `<Entity>`" popup (type a Code/ID, looks it up among active rows, deletes on a
-match) and a per-row "Delete" action (confirmed via `window.confirm`, deletes the exact
-row by its known id). Both reuse the existing backend DELETE route (already a soft
-delete, unchanged by this diff).
+**Feature:** Bug fix — `modules.practiceId` (deliberately unvalidated at the app layer,
+per `masterDataTables.js`, but Postgres-typed `uuid`) crashed as an unhandled 500 on any
+non-UUID input. Found via a live UI walkthrough while testing FEAT-14/15's Add/Delete
+flows on all 12 tables. Fixed by mapping the underlying Postgres
+`invalid_text_representation` error (22P02) to the same clean 422 shape every other
+write failure already gets.
 
 **Diff reviewed:** `git diff origin/main..HEAD` (branch `claude/trusting-curie-hlx1r6`)
 
@@ -17,14 +18,14 @@ clean. Merge allowed per CLAUDE.md §9.5.
 
 | Agent | Verdict | Summary |
 |---|---|---|
-| code-reviewer | WARN → fixed | Found a real concurrency bug: `deletingRowId` was a single scalar, so deleting two different rows in quick succession let one request's `finally` clear the other's in-flight/disabled state. Fixed by switching to a `Set` of in-flight row ids; added a regression test that traces false under the old scalar implementation. |
-| security-auditor | PASS | No new findings. Same API-key mechanism as FEAT-14's `createRecord` (already-disclosed tradeoff). No XSS, no authorization-model change (client-side code lookup grants no more privilege than the pre-existing per-row delete), no injection vector. Backend DELETE route confirmed unchanged and still gated by `requireInternalApiKey`. |
-| debugger | PASS → fixed | Traced `identityOf()` across all 12 real tables — confirmed no table falls through to `undefined` for the Delete popup's identity-key lookup. Found one real gap: `competencies` also has identity `"none"` but had no visible `id` column, so the popup had nothing to match against for it. Fixed with the same "Record ID" column already added for the other 3 identity-less tables. |
-| test-writer | PASS | Fixed gap: no test proved the new "Record ID" columns actually appear (or are correctly absent) — added direct column-definition tests. Full suite green after. |
-| refactorer | PASS | `MasterDataTable.jsx`'s growth is proportionate (thin orchestration, not new business logic). Two non-blocking WARN-level notes (Add/Delete modal loading-shell overlap, repeated id-column literal) both judged premature to extract per §1 Simplicity First — no action required. |
-| doc-writer | WARN → fixed | `backend/README.md`'s DELETE route docs confirmed accurate and unchanged (correct — no backend changes in this diff). Found and fixed two real gaps: CLAUDE.md §20's `VITE_INTERNAL_API_KEY` row only named the Add forms (FEAT-14), not the new Delete popup which also sends it; `backend/README.md`'s list of `GET /v1/schema/entity-relationships` consumers only named FEAT-12/FEAT-14, omitting the new Delete popup (also a consumer, via `identity`). |
-| silent-failure-hunter | PASS | Error surfacing (toolbar and per-row paths), post-delete refetch failure handling, `submitting`/`deletingRowIds` reset in `finally`, and the non-JSON-error-body fallback all checked clean. No swallowed exceptions. |
-| pr-test-analyzer | PASS | Traced 5 tests (case-insensitive/trim matching, soft-delete exclusion, declined-confirmation guard, the new concurrent-delete regression test, and the new `deleteRecord` unit tests) — all confirmed genuine behavior tests that fail under the corresponding broken implementation. Negative-path coverage judged adequate for a delete-capable feature. Two Optional (non-blocking) gaps noted: no raw-network-failure test, no explicit disabled-button-is-a-no-op test. |
+| code-reviewer | PASS | Confirmed the fix is correct and, being keyed off the generic Postgres error code (22P02) rather than the specific `practiceId` field, already covers every other type-mismatch-prone field in the schema (e.g. a fractional value against an `integer` column) without further changes. Field-matching false-positive risk (two fields sharing a submitted value) judged acceptable — cosmetic only, affects which field name appears in an error message, not any access-control decision. |
+| security-auditor | PASS | No new findings. `invalidValueError()` never leaks raw Postgres error text into the response — only an app-defined field key and a static message. Regex extraction is linear-time (no ReDoS). Fix only changes the error *response shape* for values that already passed `validateBody`/`validateReferences`; nothing newly accepted or rejected. |
+| debugger | PASS | Traced the full path end-to-end and confirmed the fix actually resolves the original crash into a clean 422. Confirmed both POST and PATCH routes are covered. Flagged one non-blocking enhancement: teaching `validateBody` a `type: "uuid"` format check for `practiceId` specifically, to reject earlier and avoid the DB round-trip — not required for this fix, which already fully closes the crash/500 exposure via the established error-mapping pattern. |
+| test-writer | PASS | Confirmed full coverage: `isInvalidTextRepresentation`/`invalidValueError` unit tests (both match and fallback cases), and a genuine HTTP-level integration test in the new `masterDataRouter.modules.test.js` (modules had zero test coverage before this diff). Full suites green: 192/192 backend, 33/33 mcp-server. |
+| refactorer | PASS | New error-mapping pair follows the exact same convention as the two existing pairs (unique/FK violations). Literal-matching approach judged the only generically correct method given this Postgres error class exposes no column/constraint name. `mapWriteError`'s signature growth (`+body`) is proportionate — threaded through exactly the two call sites that already had it in scope. |
+| doc-writer | WARN → fixed | Found and fixed two doc gaps: `backend/README.md`'s error-shape documentation only described the unique-violation 422 path, not the new invalid-text-representation one; `mcp-server/README.md` described `module.practiceId` as "unvalidated" without noting the DB still enforces its `uuid` column type. Both fixed with accurate, precise language. |
+| silent-failure-hunter | PASS | Confirmed the fallback ("value" key when the literal can't be matched) is still a clear, actionable 422 — not a masked or ambiguous failure. Confirmed unknown Postgres error codes still fall through to a real 500 via the unchanged final `return err;` — no new silent swallowing introduced. |
+| pr-test-analyzer | PASS | Confirmed modules had genuinely zero test coverage before this diff. The two fix-specific tests are real, end-to-end behavior tests that would fail under the pre-fix code. One test ("optional field still succeeds") is legitimate baseline coverage but doesn't specifically exercise anything this diff changed — noted as Optional, not blocking. Logged (non-blocking) that `moduleCode`/`name` required-field validation and unique/FK-violation handling still have no modules-specific tests — pre-existing gaps, unrelated to this fix. |
 
 ---
 
@@ -35,36 +36,23 @@ trigger the FAIL auto-upgrade.
 
 ## Fixes applied during this gate run
 
-- `src/components/MasterDataTable/MasterDataTable.jsx` — `deletingRowId` scalar replaced
-  with a `Set<string>` (`deletingRowIds`) so concurrent per-row deletes track independently.
-- `src/components/MasterDataTable/MasterDataTable.test.jsx` — added a regression test
-  proving two concurrent row deletes don't clobber each other's in-flight/disabled state.
-- `src/lib/masterDataApi.js` — added a "Record ID" column to `competencies` (identity
-  type `"none"`, same gap already fixed for the other 3 identity-less tables).
-- `src/lib/masterDataApi.test.js` — added column-definition coverage (including
-  `competencies`) and direct unit tests for `deleteRecord()` (request shape, success,
-  JSON-error, non-JSON-error fallback).
-- `CLAUDE.md` §20 — `VITE_INTERNAL_API_KEY` row now names both FEAT-14 and FEAT-15 as
-  consumers.
-- `backend/README.md` — `GET /v1/schema/entity-relationships` consumer list now
-  includes the FEAT-15 Delete popup.
+- `backend/README.md` — added documentation of the new invalid-text-representation 422
+  path, and noted `modules.practiceId`'s DB column is still `uuid`-typed.
+- `mcp-server/README.md` — reworded `module.practiceId`'s description from
+  "unvalidated" to "not FK-validated," with a note that the DB still enforces its
+  `uuid` format.
 
-## Non-blocking follow-ups logged (Optional, from pr-test-analyzer)
+## Non-blocking follow-ups logged
 
-- [ ] No test for a raw network failure in `deleteRecord()` (`fetch()` itself rejecting).
-- [ ] No explicit test that an already-disabled in-flight row Delete button is a no-op.
+- [ ] (debugger) Consider a `type: "uuid"` format check in `validateBody` for
+      `practiceId` specifically, to reject a malformed value before the DB round-trip
+      rather than relying on the error-mapping backstop.
+- [ ] (pr-test-analyzer) `modules` still has no direct tests for required-field
+      validation (`moduleCode`/`name`) or unique/FK-violation mapping — pre-existing
+      gaps, unrelated to this fix.
 
 ## Test results after fixes
 
-- Frontend (vitest): 81/81 passing (17 test files)
-- Backend (node --test): unchanged by this diff — 184/184 passing (verified separately)
-- Build: clean (`npm run build`)
-- Lint: clean (pre-existing warnings only, unrelated to this diff)
-
-## Post-gate note
-
-`origin/main` moved (FEAT-14's own squash-merge landed as a new commit not present in
-this branch's history — the expected squash-divergence pattern, CLAUDE.md §9.3 Step 0)
-after this report was first written. Repaired with `git merge origin/main --strategy=ours`
-and re-pushed bundled with this note, so the auto-PR workflow's freshness check (this
-push must touch `tasks/last-gate-report.md` AND at least one other file) passes.
+- Backend (node --test): 192/192 passing (was 184 before FEAT-15/this fix)
+- mcp-server (node --test): 33/33 passing
+- Frontend: unaffected by this diff (backend-only fix)

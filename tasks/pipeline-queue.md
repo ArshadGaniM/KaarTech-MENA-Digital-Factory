@@ -4,15 +4,15 @@
 > current session's active run ID. Read this FIRST every time before deciding
 > whether to resume or start fresh (CLAUDE.md §7.7).
 
-**Active run ID:** none — direct-build is the current standing mode, with the "continuous autonomous execution through the queue" standing instruction (§7.2) in effect: once a feature's gate passes and pushes, immediately pick up the next queued/in_flight feature without waiting to be told. Queue is now empty as of FEAT-15's completion — no further work queued. Also this session: found and fixed a real production gap — the Render backend's `autoDeploy` had silently stopped firing after PR #13 (2026-09-16), so every feature merged since (FEAT-5 through FEAT-12) never reached production despite the Vercel frontend being current. Triggered a manual deploy (`dep-dao4080ae00c73amau5g`) to the latest `main` commit; confirmed live via curl (`/v1/schema/entity-relationships` responding) and a full headless-browser walkthrough of the real site (marketing page, Dashboard, all 12 tables, Entity Relationship — no errors, empty tables correctly showing "No records yet"). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants.
+**Active run ID:** none — direct-build is the current standing mode, with the "continuous autonomous execution through the queue" standing instruction (§7.2) in effect: once a feature's gate passes and pushes, immediately pick up the next queued/in_flight feature without waiting to be told. Queue is now empty as of FEAT-16's completion — no further work queued. Also this session: found and fixed a real production gap — the Render backend's `autoDeploy` had silently stopped firing after PR #13 (2026-09-16), so every feature merged since (FEAT-5 through FEAT-12) never reached production despite the Vercel frontend being current. Triggered a manual deploy (`dep-dao4080ae00c73amau5g`) to the latest `main` commit; confirmed live via curl (`/v1/schema/entity-relationships` responding) and a full headless-browser walkthrough of the real site (marketing page, Dashboard, all 12 tables, Entity Relationship — no errors, empty tables correctly showing "No records yet"). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants.
 
-**Feature counter:** 15
+**Feature counter:** 16
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
-| *(empty)* | | | |
+| FEAT-16 | in_flight | Bug fix: `modules.practiceId` crashed as a raw unhandled 500 on non-UUID input (Postgres `uuid` column, but the app layer deliberately treats it as an unvalidated free-text field). Found via a live UI walkthrough testing FEAT-14/15's Add/Delete flows across all 12 tables. Gate passed (WARN, zero FAIL/Critical, security PASS clean). | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 
