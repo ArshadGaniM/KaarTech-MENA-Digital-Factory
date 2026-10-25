@@ -185,8 +185,13 @@ export const MASTER_DATA_TABLES = [
   },
 ];
 
-export async function fetchMasterDataTable(route) {
-  const res = await fetch(`${BACKEND_URL}/v1/${route}?limit=100`);
+// Paginated (CLAUDE.md §10: offset-based, `total` in the response) — this
+// is what the visible table view fetches a page at a time. Returns
+// { rows, total } rather than a bare array so a caller can compute page
+// count without a second request.
+export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const res = await fetch(`${BACKEND_URL}/v1/${route}?${params}`);
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
     throw new Error(payload?.error?.message || `Failed to load ${route}`);
@@ -194,7 +199,28 @@ export async function fetchMasterDataTable(route) {
   if (payload === null) {
     throw new Error(`${route} returned a malformed response.`);
   }
-  return payload.data;
+  return { rows: payload.data, total: payload.total };
+}
+
+// Pages through the backend's own max page size until every row has been
+// collected. For callers that need the *complete* active dataset rather
+// than one visible page — an FK pick-list (every valid option must be
+// selectable, not just the first page's worth) and the "Delete by Code or
+// ID" search (a record outside the table's current page must still be
+// findable). The backend caps `limit` at 100 regardless of what's
+// requested, so this is the only way either of those stays correct once a
+// table holds more than 100 rows.
+export async function fetchAllMasterDataTableRows(route) {
+  const PAGE_SIZE = 100;
+  let offset = 0;
+  const all = [];
+  for (;;) {
+    const { rows, total } = await fetchMasterDataTable(route, { limit: PAGE_SIZE, offset });
+    all.push(...rows);
+    offset += PAGE_SIZE;
+    if (rows.length === 0 || offset >= total) break;
+  }
+  return all;
 }
 
 // FEAT-14: creates a record via the generic "Add <Entity>" form. Every

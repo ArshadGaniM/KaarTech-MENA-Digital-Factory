@@ -47,15 +47,25 @@ describe('AppShell', () => {
     expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
   });
 
-  it('shows a static "Dashboard" heading regardless of the active section', async () => {
+  // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
+  // matter which section was active — fixed to track the active section's
+  // own label.
+  it('shows a heading matching the active section, updating when the section changes', async () => {
     const user = userEvent.setup();
     render(<AppShell initialHash={firstTable.hash} />);
 
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: firstTable.label })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: secondTable.label }));
 
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: secondTable.label })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: firstTable.label })).not.toBeInTheDocument();
+  });
+
+  it('shows "Dashboard" as the heading when the Dashboard section is active', () => {
+    render(<AppShell initialHash={dashboard.hash} />);
+
+    expect(screen.getByRole('heading', { name: dashboard.label })).toBeInTheDocument();
   });
 
   it('switches sidebar selection and table content when a different section is clicked', async () => {

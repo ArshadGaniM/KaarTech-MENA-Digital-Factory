@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { MASTER_DATA_TABLES, deleteRecord } from './masterDataApi';
+import {
+  MASTER_DATA_TABLES,
+  deleteRecord,
+  fetchMasterDataTable,
+  fetchAllMasterDataTableRows,
+} from './masterDataApi';
 
 function columnsFor(route) {
   return MASTER_DATA_TABLES.find((table) => table.route === route).columns;
@@ -73,5 +78,81 @@ describe('deleteRecord', () => {
     });
 
     await expect(deleteRecord('practices', 'row-1')).rejects.toThrow('Failed to delete practices record');
+  });
+});
+
+describe('fetchMasterDataTable', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('defaults to limit=20, offset=0 and returns { rows, total } (CLAUDE.md §10)', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ id: '1' }], total: 45 }) });
+
+    const result = await fetchMasterDataTable('resources');
+
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=0$/));
+    expect(result).toEqual({ rows: [{ id: '1' }], total: 45 });
+  });
+
+  it('sends the given limit/offset (FEAT-18 pagination)', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 45 }) });
+
+    await fetchMasterDataTable('resources', { limit: 20, offset: 40 });
+
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=40$/));
+  });
+
+  it('throws the backend error message on a non-2xx response', async () => {
+    fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: { message: 'Nope.' } }) });
+
+    await expect(fetchMasterDataTable('resources')).rejects.toThrow('Nope.');
+  });
+});
+
+describe('fetchAllMasterDataTableRows', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // FEAT-18: an FK pick-list and the "Delete by Code or ID" search both
+  // need every active row, not just one visible page — a table with more
+  // rows than the backend's 100-row page cap (e.g. resources, 2,756 rows)
+  // must page through transparently rather than silently returning only
+  // the first page.
+  it('pages through until every row is collected, across more than one backend page', async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: Array.from({ length: 100 }, (_, i) => ({ id: String(i) })), total: 150 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: Array.from({ length: 50 }, (_, i) => ({ id: String(100 + i) })), total: 150 }),
+      });
+
+    const rows = await fetchAllMasterDataTableRows('resources');
+
+    expect(rows).toHaveLength(150);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenNthCalledWith(1, expect.stringMatching(/\/v1\/resources\?limit=100&offset=0$/));
+    expect(fetch).toHaveBeenNthCalledWith(2, expect.stringMatching(/\/v1\/resources\?limit=100&offset=100$/));
+  });
+
+  it('stops after one page when the table has fewer rows than the page size', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ id: '1' }], total: 1 }) });
+
+    const rows = await fetchAllMasterDataTableRows('practices');
+
+    expect(rows).toEqual([{ id: '1' }]);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

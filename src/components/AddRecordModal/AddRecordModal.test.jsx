@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddRecordModal from './AddRecordModal';
 import { useEntityRelationships } from '../../hooks/useEntityRelationships';
-import { createRecord, fetchMasterDataTable } from '../../lib/masterDataApi';
+import { createRecord, fetchAllMasterDataTableRows } from '../../lib/masterDataApi';
 
 vi.mock('../../hooks/useEntityRelationships');
 vi.mock('../../lib/masterDataApi');
@@ -137,7 +137,7 @@ describe('AddRecordModal', () => {
       isLoading: false,
       error: null,
     });
-    fetchMasterDataTable.mockResolvedValue([
+    fetchAllMasterDataTableRows.mockResolvedValue([
       { id: '1', projectId: 'PRJ-1001', projectName: 'Digital Factory Rollout', markedDeleted: 'No' },
       { id: '2', projectId: 'PRJ-2002', projectName: 'Old Project', markedDeleted: 'Yes' },
     ]);
@@ -152,7 +152,7 @@ describe('AddRecordModal', () => {
       />
     );
 
-    await waitFor(() => expect(fetchMasterDataTable).toHaveBeenCalledWith('projects'));
+    await waitFor(() => expect(fetchAllMasterDataTableRows).toHaveBeenCalledWith('projects'));
     expect(await screen.findByRole('option', { name: 'PRJ-1001 — Digital Factory Rollout' })).toBeInTheDocument();
     // Soft-deleted rows are excluded from the pick-list — you shouldn't be
     // able to assign a project that's been marked deleted.

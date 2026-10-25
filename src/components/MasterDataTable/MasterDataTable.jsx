@@ -9,6 +9,10 @@ import styles from './MasterDataTable.module.css';
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
+const DEFAULT_COLUMN_WIDTH = 180;
+const ACTIONS_COLUMN_WIDTH = 120;
+const MIN_COLUMN_WIDTH = 72;
+
 function capitalize(value) {
   return typeof value === 'string' ? value.replace(/\b\w/g, (letter) => letter.toUpperCase()) : value;
 }
@@ -19,8 +23,40 @@ function formatCell(column, value) {
   return value;
 }
 
+// Drag-to-resize for every table's columns (FEAT-18). A plain
+// `<colgroup>`/`table-layout: fixed` pair, not a table library — each
+// column's width lives in state keyed by its column key, and a column's
+// `<th>` carries a thin drag handle on its trailing edge. `MasterDataTable`
+// remounts per table (AppShell renders it with `key={activeItem.id}`), so
+// switching sections naturally resets widths back to the default — no
+// explicit reset effect needed.
+function useColumnWidths(columns) {
+  const [widths, setWidths] = useState(() =>
+    Object.fromEntries(columns.map((column) => [column.key, DEFAULT_COLUMN_WIDTH]))
+  );
+
+  function startResize(event, key) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = widths[key] ?? DEFAULT_COLUMN_WIDTH;
+
+    function onMove(moveEvent) {
+      const next = Math.max(MIN_COLUMN_WIDTH, startWidth + (moveEvent.clientX - startX));
+      setWidths((prev) => ({ ...prev, [key]: next }));
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  return { widths, startResize };
+}
+
 function MasterDataTable({ route, columns, singularLabel }) {
-  const { data, isLoading, error, refetch } = useMasterDataTable(route);
+  const { data, total, page, totalPages, setPage, isLoading, error, refetch } = useMasterDataTable(route);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [rowDeleteError, setRowDeleteError] = useState(null);
@@ -30,6 +66,7 @@ function MasterDataTable({ route, columns, singularLabel }) {
   // clear the other's in-flight indicator (gate finding, code-reviewer).
   const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
   const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
+  const { widths, startResize } = useColumnWidths(columns);
 
   function handleCreated() {
     setIsAddOpen(false);
@@ -89,47 +126,79 @@ function MasterDataTable({ route, columns, singularLabel }) {
           Could not load this table: {error.message}
         </p>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
+            <colgroup>
               {columns.map((column) => (
-                <th key={column.key}>{column.label}</th>
+                <col key={column.key} style={{ width: widths[column.key] }} />
               ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.length === 0 ? (
+              <col style={{ width: ACTIONS_COLUMN_WIDTH }} />
+            </colgroup>
+            <thead>
               <tr>
-                <td className={styles.status} colSpan={columns.length + 1}>
-                  No records yet. Add one above.
-                </td>
+                {columns.map((column) => (
+                  <th key={column.key} title={column.label}>
+                    <span className={styles.headerLabel}>{column.label}</span>
+                    <span
+                      className={styles.resizeHandle}
+                      onMouseDown={(e) => startResize(e, column.key)}
+                      role="presentation"
+                      aria-hidden="true"
+                    />
+                  </th>
+                ))}
+                <th>Actions</th>
               </tr>
-            ) : (
-              data.map((row) => (
-                <tr key={row.id}>
-                  {columns.map((column) => (
-                    <td key={column.key}>{formatCell(column, row[column.key])}</td>
-                  ))}
-                  <td>
-                    {row.markedDeleted === 'Yes' ? (
-                      <span className={styles.status}>Deleted</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.rowDeleteButton}
-                        onClick={() => handleRowDelete(row)}
-                        disabled={deletingRowIds.has(row.id)}
-                      >
-                        {deletingRowIds.has(row.id) ? 'Deleting…' : 'Delete'}
-                      </button>
-                    )}
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr>
+                  <td className={styles.status} colSpan={columns.length + 1}>
+                    No records yet. Add one above.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                data.map((row) => (
+                  <tr key={row.id}>
+                    {columns.map((column) => (
+                      <td key={column.key} title={String(row[column.key] ?? '')}>
+                        {formatCell(column, row[column.key])}
+                      </td>
+                    ))}
+                    <td>
+                      {row.markedDeleted === 'Yes' ? (
+                        <span className={styles.status}>Deleted</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.rowDeleteButton}
+                          onClick={() => handleRowDelete(row)}
+                          disabled={deletingRowIds.has(row.id)}
+                        >
+                          {deletingRowIds.has(row.id) ? 'Deleting…' : 'Delete'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <div className={styles.pagination}>
+          <button type="button" onClick={() => setPage(page - 1)} disabled={page <= 1}>
+            Previous
+          </button>
+          <span className={styles.pageInfo}>
+            Page {page} of {totalPages} ({total} total)
+          </span>
+          <button type="button" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
+            Next
+          </button>
+        </div>
       )}
 
       {isAddOpen && (
@@ -146,7 +215,6 @@ function MasterDataTable({ route, columns, singularLabel }) {
         <DeleteRecordModal
           route={route}
           singularLabel={singularLabel}
-          data={data ?? []}
           onClose={() => setIsDeleteOpen(false)}
           onDeleted={handleDeleted}
         />
