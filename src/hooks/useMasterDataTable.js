@@ -7,9 +7,7 @@ export const PAGE_SIZE = 20;
 // `refetch` (FEAT-14) is additive — it lets the Add-record modal refresh
 // the table after a successful create without a full page reload, without
 // changing what every existing caller already relies on. `page`/`setPage`/
-// `totalPages` (FEAT-18) add offset-based pagination (CLAUDE.md §10) —
-// a route switch or a refetch both reset back to page 1, since neither
-// guarantees the current page still has anything on it.
+// `totalPages` (FEAT-18) add offset-based pagination (CLAUDE.md §10).
 export function useMasterDataTable(route) {
   const [data, setData] = useState(null);
   const [total, setTotal] = useState(0);
@@ -18,9 +16,23 @@ export function useMasterDataTable(route) {
   const [error, setError] = useState(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
-  useEffect(() => {
+  // A route switch or a refetch both reset back to page 1, since neither
+  // guarantees the current page still has anything on it. This resets
+  // `page` during render (React's documented "adjusting state when a
+  // prop changes" pattern — not inside a separate effect, gate finding,
+  // code-reviewer): a *second* effect keyed on [route, refreshToken]
+  // would fire in the same commit as the fetch effect below, both still
+  // seeing the pre-reset `page`, so the fetch effect ran once at the old
+  // (correct-looking but stale) offset before the reset's re-render
+  // triggered a second, correct fetch — a wasted request on every
+  // route switch and every refetch while on page 2+. Resetting here
+  // instead means the fetch effect never observes the stale page at all.
+  const [resetKey, setResetKey] = useState(() => `${route}:${refreshToken}`);
+  const currentResetKey = `${route}:${refreshToken}`;
+  if (resetKey !== currentResetKey) {
+    setResetKey(currentResetKey);
     setPage(1);
-  }, [route, refreshToken]);
+  }
 
   useEffect(() => {
     let cancelled = false;

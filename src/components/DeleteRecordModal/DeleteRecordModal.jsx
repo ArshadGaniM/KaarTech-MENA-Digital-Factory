@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { deleteRecord, fetchAllMasterDataTableRows } from '../../lib/masterDataApi';
 import { useEntityRelationships } from '../../hooks/useEntityRelationships';
+import { useAsyncResource } from '../../hooks/useAsyncResource';
 import styles from './DeleteRecordModal.module.css';
 
 // FEAT-15: the label for the "Code or ID" field varies by table — a
@@ -33,28 +34,11 @@ function DeleteRecordModal({ route, singularLabel, onClose, onDeleted }) {
   // user wants to delete by code/ID could be on any page, so this fetches
   // every row for `route` independently rather than trusting whatever
   // page happened to be on screen when the modal opened.
-  const [data, setData] = useState(null);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [dataError, setDataError] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setDataLoading(true);
-    setDataError(null);
-    fetchAllMasterDataTableRows(route)
-      .then((rows) => {
-        if (!cancelled) setData(rows);
-      })
-      .catch((err) => {
-        if (!cancelled) setDataError(err);
-      })
-      .finally(() => {
-        if (!cancelled) setDataLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [route]);
+  const {
+    data,
+    isLoading: dataLoading,
+    error: dataError,
+  } = useAsyncResource(() => fetchAllMasterDataTableRows(route), [route]);
 
   const [value, setValue] = useState('');
   const [submitting, setSubmitting] = useState(false);

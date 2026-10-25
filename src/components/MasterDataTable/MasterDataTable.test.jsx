@@ -296,4 +296,24 @@ describe('MasterDataTable column resize', () => {
     const codeCol = container.querySelectorAll('col')[0];
     expect(parseInt(codeCol.style.width, 10)).toBeGreaterThanOrEqual(72);
   });
+
+  // Gate finding (code-reviewer/debugger/security-auditor): AppShell
+  // remounts MasterDataTable on every section switch (key={activeItem.id}).
+  // Starting a drag and switching tables before releasing the mouse must
+  // not leave `document`-level listeners bound to the unmounted instance.
+  it('removes the document-level drag listeners on unmount, even mid-drag', () => {
+    mockTable({ data: [{ id: '1', code: 'PR-1', name: 'A' }] });
+
+    const { container, unmount } = render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+    const handle = container.querySelectorAll('[class*="resizeHandle"]')[0];
+    fireEvent.mouseDown(handle, { clientX: 100 }); // drag started, never released
+
+    unmount();
+
+    expect(removeSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
+    removeSpy.mockRestore();
+  });
 });

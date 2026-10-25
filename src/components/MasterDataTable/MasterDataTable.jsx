@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
+import { useColumnWidths } from '../../hooks/useColumnWidths';
 import { deleteRecord } from '../../lib/masterDataApi';
 import AddRecordModal from '../AddRecordModal';
 import DeleteRecordModal from '../DeleteRecordModal';
@@ -9,9 +10,7 @@ import styles from './MasterDataTable.module.css';
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
-const DEFAULT_COLUMN_WIDTH = 180;
 const ACTIONS_COLUMN_WIDTH = 120;
-const MIN_COLUMN_WIDTH = 72;
 
 function capitalize(value) {
   return typeof value === 'string' ? value.replace(/\b\w/g, (letter) => letter.toUpperCase()) : value;
@@ -21,38 +20,6 @@ function formatCell(column, value) {
   if (DATE_COLUMN_KEYS.has(column.key)) return new Date(value).toLocaleString();
   if (ENUM_COLUMN_KEYS.has(column.key)) return capitalize(value);
   return value;
-}
-
-// Drag-to-resize for every table's columns (FEAT-18). A plain
-// `<colgroup>`/`table-layout: fixed` pair, not a table library — each
-// column's width lives in state keyed by its column key, and a column's
-// `<th>` carries a thin drag handle on its trailing edge. `MasterDataTable`
-// remounts per table (AppShell renders it with `key={activeItem.id}`), so
-// switching sections naturally resets widths back to the default — no
-// explicit reset effect needed.
-function useColumnWidths(columns) {
-  const [widths, setWidths] = useState(() =>
-    Object.fromEntries(columns.map((column) => [column.key, DEFAULT_COLUMN_WIDTH]))
-  );
-
-  function startResize(event, key) {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = widths[key] ?? DEFAULT_COLUMN_WIDTH;
-
-    function onMove(moveEvent) {
-      const next = Math.max(MIN_COLUMN_WIDTH, startWidth + (moveEvent.clientX - startX));
-      setWidths((prev) => ({ ...prev, [key]: next }));
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }
-
-  return { widths, startResize };
 }
 
 function MasterDataTable({ route, columns, singularLabel }) {
@@ -117,7 +84,7 @@ function MasterDataTable({ route, columns, singularLabel }) {
         </p>
       )}
 
-      {isLoading ? (
+      {isLoading && data === null ? (
         <p className={styles.status} role="status" aria-live="polite">
           Loading…
         </p>
@@ -187,15 +154,15 @@ function MasterDataTable({ route, columns, singularLabel }) {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!error && data !== null && (
         <div className={styles.pagination}>
-          <button type="button" onClick={() => setPage(page - 1)} disabled={page <= 1}>
+          <button type="button" onClick={() => setPage(page - 1)} disabled={page <= 1 || isLoading}>
             Previous
           </button>
           <span className={styles.pageInfo}>
-            Page {page} of {totalPages} ({total} total)
+            Page {page} of {totalPages} ({total} total){isLoading ? ' — updating…' : ''}
           </span>
-          <button type="button" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
+          <button type="button" onClick={() => setPage(page + 1)} disabled={page >= totalPages || isLoading}>
             Next
           </button>
         </div>
