@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { MASTER_DATA_TABLES, deleteRecord } from './masterDataApi';
+import {
+  MASTER_DATA_TABLES,
+  deleteRecord,
+  fetchMasterDataTable,
+  fetchAllMasterDataTableRows,
+} from './masterDataApi';
 
 function columnsFor(route) {
   return MASTER_DATA_TABLES.find((table) => table.route === route).columns;
@@ -73,5 +78,144 @@ describe('deleteRecord', () => {
     });
 
     await expect(deleteRecord('practices', 'row-1')).rejects.toThrow('Failed to delete practices record');
+  });
+});
+
+describe('fetchMasterDataTable', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('defaults to limit=20, offset=0 and returns { rows, total } (CLAUDE.md §10)', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ id: '1' }], total: 45 }) });
+
+    const result = await fetchMasterDataTable('resources');
+
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=0$/));
+    expect(result).toEqual({ rows: [{ id: '1' }], total: 45 });
+  });
+
+  it('sends the given limit/offset (FEAT-18 pagination)', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 45 }) });
+
+    await fetchMasterDataTable('resources', { limit: 20, offset: 40 });
+
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=40$/));
+  });
+
+  it('throws the backend error message on a non-2xx response', async () => {
+    fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: { message: 'Nope.' } }) });
+
+    await expect(fetchMasterDataTable('resources')).rejects.toThrow('Nope.');
+  });
+
+  // Gate finding (code-reviewer): an undefined/NaN/negative total would
+  // otherwise propagate into totalPages as NaN, and into
+  // fetchAllMasterDataTableRows's loop-termination check where it could
+  // never be satisfied — reject it once, here, for every caller.
+  it.each([
+    ['missing', undefined],
+    ['non-numeric', 'not-a-number'],
+    ['negative', -1],
+  ])('rejects a %s total instead of returning it', async (_label, badTotal) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: badTotal }) });
+
+    await expect(fetchMasterDataTable('resources')).rejects.toThrow(/invalid total/);
+  });
+
+  it('includes the route and offset in the error when the response body fails to parse as JSON', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.reject(new Error('Unexpected token')),
+    });
+
+    await expect(fetchMasterDataTable('resources', { limit: 100, offset: 1400 })).rejects.toThrow(
+      /resources.*offset 1400.*limit 100.*Unexpected token/
+    );
+  });
+});
+
+describe('fetchAllMasterDataTableRows', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // FEAT-18: an FK pick-list and the "Delete by Code or ID" search both
+  // need every active row, not just one visible page — a table with more
+  // rows than the backend's 100-row page cap (e.g. resources, 2,756 rows)
+  // must page through transparently rather than silently returning only
+  // the first page.
+  it('pages through until every row is collected, across more than one backend page', async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: Array.from({ length: 100 }, (_, i) => ({ id: String(i) })), total: 150 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: Array.from({ length: 50 }, (_, i) => ({ id: String(100 + i) })), total: 150 }),
+      });
+
+    const rows = await fetchAllMasterDataTableRows('resources');
+
+    expect(rows).toHaveLength(150);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenNthCalledWith(1, expect.stringMatching(/\/v1\/resources\?limit=100&offset=0$/));
+    expect(fetch).toHaveBeenNthCalledWith(2, expect.stringMatching(/\/v1\/resources\?limit=100&offset=100$/));
+  });
+
+  it('stops after one page when the table has fewer rows than the page size', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ id: '1' }], total: 1 }) });
+
+    const rows = await fetchAllMasterDataTableRows('practices');
+
+    expect(rows).toEqual([{ id: '1' }]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  // Performance (gate finding, code-reviewer): once `total` is known from
+  // the first page, every remaining page's offset is already known too —
+  // this fetches them all at once instead of one at a time, so a 2,756-row
+  // table (resources, ~28 pages) is ~2 round-trips, not ~28.
+  it('fetches the first page alone, then every remaining page in parallel', async () => {
+    const page = (n, offset) => ({
+      ok: true,
+      json: () => Promise.resolve({ data: Array.from({ length: n }, (_, i) => ({ id: String(offset + i) })), total: 250 }),
+    });
+    fetch
+      .mockResolvedValueOnce(page(100, 0))
+      .mockResolvedValueOnce(page(100, 100))
+      .mockResolvedValueOnce(page(50, 200));
+
+    const rows = await fetchAllMasterDataTableRows('resources');
+
+    expect(rows).toHaveLength(250);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenNthCalledWith(1, expect.stringMatching(/offset=0$/));
+    // Calls 2 and 3 are issued together (Promise.all), not awaited
+    // sequentially — both offsets must appear, order between them isn't
+    // guaranteed by the implementation.
+    const laterCalls = fetch.mock.calls.slice(1).map(([url]) => url);
+    expect(laterCalls.some((url) => /offset=100$/.test(url))).toBe(true);
+    expect(laterCalls.some((url) => /offset=200$/.test(url))).toBe(true);
+  });
+
+  it('throws rather than looping forever if a page keeps returning rows at an offset that never reaches total', async () => {
+    // Every call looks like "there's more" — offset never catches up to
+    // total(1_000_000), simulating a backend that's stuck/misreporting.
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: Array.from({ length: 100 }, (_, i) => ({ id: String(i) })), total: 1_000_000 }),
+    });
+
+    await expect(fetchAllMasterDataTableRows('resources')).rejects.toThrow(/more pages than expected/);
   });
 });

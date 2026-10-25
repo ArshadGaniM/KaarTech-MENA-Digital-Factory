@@ -9,10 +9,9 @@ import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './AppShell.module.css';
 
 // A hash that doesn't match any NAV_ITEMS entry (stale bookmark, typo'd
-// link, a renamed table route) silently falls back to the first item —
-// with the TopBar title now static ("Dashboard" for every section), that
-// fallback would otherwise be undetectable. Warn so it shows up in the
-// console instead of just quietly rendering the wrong table.
+// link, a renamed table route) silently falls back to the first item.
+// Warn so it shows up in the console instead of just quietly rendering
+// the wrong table.
 function resolveViewId(id) {
   const match = NAV_ITEMS.find((item) => item.id === id || item.hash === id);
   if (!match) {
@@ -33,7 +32,7 @@ function AppShell({ initialHash = '' }) {
       </a>
       <Sidebar items={NAV_ITEMS} activeId={activeViewId} onSelect={setActiveViewId} />
       <div className={styles.workspace}>
-        <TopBar title="Dashboard" />
+        <TopBar title={activeItem.label} />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
           {activeItem.kind === 'table' ? (
             <MasterDataTable

@@ -185,16 +185,85 @@ export const MASTER_DATA_TABLES = [
   },
 ];
 
-export async function fetchMasterDataTable(route) {
-  const res = await fetch(`${BACKEND_URL}/v1/${route}?limit=100`);
-  const payload = await res.json().catch(() => null);
+// Paginated (CLAUDE.md §10: offset-based, `total` in the response) — this
+// is what the visible table view fetches a page at a time. Returns
+// { rows, total } rather than a bare array so a caller can compute page
+// count without a second request.
+export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const url = `${BACKEND_URL}/v1/${route}?${params}`;
+  const res = await fetch(url);
+  let parseError = null;
+  const payload = await res.json().catch((err) => {
+    parseError = err;
+    return null;
+  });
   if (!res.ok) {
     throw new Error(payload?.error?.message || `Failed to load ${route}`);
   }
   if (payload === null) {
-    throw new Error(`${route} returned a malformed response.`);
+    // Include the request (route/offset) and the underlying parse
+    // failure's own message — a generic "malformed response" with
+    // neither is effectively undebuggable once this is called in a loop
+    // (fetchAllMasterDataTableRows, up to MAX_PAGES times per call): a
+    // failure on page 14 of 28 looked identical to one on page 1 (gate
+    // finding, silent-failure-hunter).
+    throw new Error(
+      `${route} returned a malformed response at offset ${offset} (limit ${limit})` +
+        (parseError ? `: ${parseError.message}` : ".")
+    );
   }
-  return payload.data;
+  // A non-finite/negative `total` would otherwise propagate into
+  // totalPages (Math.ceil/Math.max with NaN stays NaN, not the intended
+  // fallback) and into fetchAllMasterDataTableRows's loop-termination
+  // check, where it could never satisfy `offset >= total` (gate finding,
+  // code-reviewer) — reject here, once, for every caller.
+  const total = Number.isFinite(payload.total) && payload.total >= 0 ? payload.total : null;
+  if (total === null) {
+    throw new Error(`${route} returned a malformed response: invalid total "${payload.total}".`);
+  }
+  return { rows: payload.data, total };
+}
+
+// Pages through the backend's own max page size until every row has been
+// collected. For callers that need the *complete* active dataset rather
+// than one visible page — an FK pick-list (every valid option must be
+// selectable, not just the first page's worth) and the "Delete by Code or
+// ID" search (a record outside the table's current page must still be
+// findable). The backend caps `limit` at 100 regardless of what's
+// requested, so this is the only way either of those stays correct once a
+// table holds more than 100 rows.
+//
+// MAX_PAGES is a hard backstop (gate finding, security-auditor): a
+// malformed or inconsistent `total` from the backend (non-numeric,
+// negative, or one that never catches up to `offset`) would otherwise
+// loop forever, fetching pages and hanging the tab — this caps it at
+// 100,000 rows, far past any real table, and fails loudly instead.
+const MAX_PAGES = 1000;
+
+// The first page is fetched alone (total is unknown until then); every
+// remaining page is fetched in parallel rather than one-at-a-time, since
+// once `total` is known the full set of offsets is known too. Reduces a
+// 2,756-row table (resources, ~28 pages) from ~28 sequential round-trips
+// to 2 — one, then the rest at once (gate finding, code-reviewer: an
+// FK pick-list or the Delete search re-does this full fetch on every
+// open, so making each one 28x slower than necessary was real, visible
+// latency, not a hypothetical).
+export async function fetchAllMasterDataTableRows(route) {
+  const PAGE_SIZE = 100;
+  const { rows: firstRows, total } = await fetchMasterDataTable(route, { limit: PAGE_SIZE, offset: 0 });
+  if (firstRows.length === 0 || PAGE_SIZE >= total) return firstRows;
+
+  const remainingPages = Math.ceil(total / PAGE_SIZE) - 1;
+  if (remainingPages >= MAX_PAGES) {
+    throw new Error(`${route} has more pages than expected — aborting after ${MAX_PAGES * PAGE_SIZE} rows.`);
+  }
+
+  const restOffsets = Array.from({ length: remainingPages }, (_, i) => (i + 1) * PAGE_SIZE);
+  const restPages = await Promise.all(
+    restOffsets.map((offset) => fetchMasterDataTable(route, { limit: PAGE_SIZE, offset }))
+  );
+  return [firstRows, ...restPages.map((page) => page.rows)].flat();
 }
 
 // FEAT-14: creates a record via the generic "Add <Entity>" form. Every

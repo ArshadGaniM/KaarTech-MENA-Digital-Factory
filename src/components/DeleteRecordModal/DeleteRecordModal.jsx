@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { deleteRecord } from '../../lib/masterDataApi';
+import { deleteRecord, fetchAllMasterDataTableRows } from '../../lib/masterDataApi';
 import { useEntityRelationships } from '../../hooks/useEntityRelationships';
+import { useAsyncResource } from '../../hooks/useAsyncResource';
 import styles from './DeleteRecordModal.module.css';
 
 // FEAT-15: the label for the "Code or ID" field varies by table — a
@@ -22,22 +23,35 @@ function findActiveMatch(rows, identityKey, value) {
   );
 }
 
-function DeleteRecordModal({ route, singularLabel, data, onClose, onDeleted }) {
+function DeleteRecordModal({ route, singularLabel, onClose, onDeleted }) {
   const { data: entities, isLoading: entitiesLoading, error: entitiesError } = useEntityRelationships();
   const tableEntity = entities?.find((entity) => entity.route === route);
   const identity = tableEntity?.identity;
   const identityKey = identity?.type === 'none' ? 'id' : identity?.field;
   const label = identityLabel(identity);
 
+  // The visible table only ever holds one page (FEAT-18) — a record the
+  // user wants to delete by code/ID could be on any page, so this fetches
+  // every row for `route` independently rather than trusting whatever
+  // page happened to be on screen when the modal opened.
+  const {
+    data,
+    isLoading: dataLoading,
+    error: dataError,
+  } = useAsyncResource(() => fetchAllMasterDataTableRows(route), [route]);
+
   const [value, setValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const loading = entitiesLoading || dataLoading;
+  const loadError = entitiesError || dataError;
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
 
-    const match = findActiveMatch(data, identityKey, value);
+    const match = findActiveMatch(data ?? [], identityKey, value);
     if (!match) {
       setError(`No active ${singularLabel.toLowerCase()} found with ${label} "${value}".`);
       return;
@@ -65,12 +79,12 @@ function DeleteRecordModal({ route, singularLabel, data, onClose, onDeleted }) {
       >
         <h2 id="delete-record-title">Delete {singularLabel}</h2>
 
-        {entitiesLoading ? (
+        {loading ? (
           <p role="status" aria-live="polite">
             Loading…
           </p>
-        ) : entitiesError ? (
-          <p role="alert">Could not load form: {entitiesError.message}</p>
+        ) : loadError ? (
+          <p role="alert">Could not load form: {loadError.message}</p>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className={styles.formRow}>
@@ -108,7 +122,6 @@ function DeleteRecordModal({ route, singularLabel, data, onClose, onDeleted }) {
 DeleteRecordModal.propTypes = {
   route: PropTypes.string.isRequired,
   singularLabel: PropTypes.string.isRequired,
-  data: PropTypes.arrayOf(PropTypes.object).isRequired,
   onClose: PropTypes.func.isRequired,
   onDeleted: PropTypes.func.isRequired,
 };

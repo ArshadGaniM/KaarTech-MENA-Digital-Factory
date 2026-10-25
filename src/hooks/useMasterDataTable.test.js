@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { useMasterDataTable } from './useMasterDataTable';
+import { useMasterDataTable, PAGE_SIZE } from './useMasterDataTable';
 import { fetchMasterDataTable } from '../lib/masterDataApi';
 
 vi.mock('../lib/masterDataApi');
@@ -10,8 +10,8 @@ beforeEach(() => {
 });
 
 describe('useMasterDataTable', () => {
-  it('starts loading, then returns the fetched rows', async () => {
-    fetchMasterDataTable.mockResolvedValue([{ id: '1', name: 'Digital Factory' }]);
+  it('starts loading, then returns the fetched page and total', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1', name: 'Digital Factory' }], total: 1 });
 
     const { result } = renderHook(() => useMasterDataTable('practices'));
 
@@ -19,8 +19,11 @@ describe('useMasterDataTable', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.data).toEqual([{ id: '1', name: 'Digital Factory' }]);
+    expect(result.current.total).toBe(1);
+    expect(result.current.page).toBe(1);
+    expect(result.current.totalPages).toBe(1);
     expect(result.current.error).toBeNull();
-    expect(fetchMasterDataTable).toHaveBeenCalledWith('practices');
+    expect(fetchMasterDataTable).toHaveBeenCalledWith('practices', { limit: PAGE_SIZE, offset: 0 });
   });
 
   it('surfaces a fetch failure as `error`', async () => {
@@ -34,13 +37,16 @@ describe('useMasterDataTable', () => {
   });
 
   it('calling `refetch` re-triggers a fetch (FEAT-14: lets the Add-record modal refresh the table without a full reload)', async () => {
-    fetchMasterDataTable.mockResolvedValue([{ id: '1', name: 'First' }]);
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1', name: 'First' }], total: 1 });
 
     const { result } = renderHook(() => useMasterDataTable('practices'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(fetchMasterDataTable).toHaveBeenCalledTimes(1);
 
-    fetchMasterDataTable.mockResolvedValue([{ id: '1', name: 'First' }, { id: '2', name: 'Second' }]);
+    fetchMasterDataTable.mockResolvedValue({
+      rows: [{ id: '1', name: 'First' }, { id: '2', name: 'Second' }],
+      total: 2,
+    });
 
     act(() => {
       result.current.refetch();
@@ -51,5 +57,40 @@ describe('useMasterDataTable', () => {
 
     expect(fetchMasterDataTable).toHaveBeenCalledTimes(2);
     expect(result.current.data).toEqual([{ id: '1', name: 'First' }, { id: '2', name: 'Second' }]);
+  });
+
+  it('setPage advances to the next page, fetching with the matching offset (FEAT-18)', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1' }], total: 45 });
+
+    const { result } = renderHook(() => useMasterDataTable('resources'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.totalPages).toBe(3);
+
+    act(() => {
+      result.current.setPage(2);
+    });
+
+    await waitFor(() => expect(result.current.page).toBe(2));
+    await waitFor(() =>
+      expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: PAGE_SIZE })
+    );
+  });
+
+  it('switching routes resets back to page 1', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1' }], total: 45 });
+
+    const { result, rerender } = renderHook(({ route }) => useMasterDataTable(route), {
+      initialProps: { route: 'resources' },
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      result.current.setPage(2);
+    });
+    await waitFor(() => expect(result.current.page).toBe(2));
+
+    rerender({ route: 'projects' });
+
+    await waitFor(() => expect(result.current.page).toBe(1));
   });
 });

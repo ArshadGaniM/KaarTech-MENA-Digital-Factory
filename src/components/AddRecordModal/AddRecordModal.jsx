@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { createRecord, fetchMasterDataTable } from '../../lib/masterDataApi';
+import { createRecord, fetchAllMasterDataTableRows } from '../../lib/masterDataApi';
 import { useEntityRelationships } from '../../hooks/useEntityRelationships';
 import styles from './AddRecordModal.module.css';
 
@@ -111,7 +111,7 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
       referenceFields.map(async (field) => {
         const referencedEntity = entities.find((entity) => entity.route === field.references.route);
         const identityKey = referencedEntity?.identity?.field;
-        const rows = await fetchMasterDataTable(field.references.route);
+        const rows = await fetchAllMasterDataTableRows(field.references.route);
         const options = identityKey
           ? rows
               .filter((row) => row.markedDeleted !== 'Yes')
