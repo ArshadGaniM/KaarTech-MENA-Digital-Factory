@@ -274,6 +274,7 @@ export const MASTER_DATA_TABLES = [
         column: "allocation_percentage",
         required: true,
         type: "number",
+        numeric: true,
         min: 0.01,
         max: 100,
       },

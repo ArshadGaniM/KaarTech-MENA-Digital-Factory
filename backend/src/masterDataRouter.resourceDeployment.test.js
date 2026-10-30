@@ -1,4 +1,4 @@
-import { test, before, after } from "node:test";
+import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "./db.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
@@ -25,8 +25,34 @@ const RESOURCE_DEPLOYMENT_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 let server;
 let baseUrl;
 
+// Writes run on a pooled client inside a transaction holding a per-resource
+// advisory lock (see withAllocationLock in masterDataRouter.js). The client
+// here delegates to whatever pool.query mock the current test installed, and
+// answers the transaction plumbing and the post-write re-select itself.
+let lastWrittenRow = null;
+let connectCalls = 0;
+let clientStatements = [];
+
 before(async () => {
   ({ server, baseUrl } = await startTestServer(resourceDeploymentTable));
+  mock.method(pool, "connect", async () => {
+    connectCalls += 1;
+    return {
+      query: async (sql, params) => {
+        clientStatements.push(sql.split(" ")[0]);
+        if (/^(begin|commit|rollback)$/i.test(sql) || sql.startsWith("select pg_advisory_xact_lock")) {
+          return { rows: [] };
+        }
+        if (sql.includes("as employee_total_allocation") && sql.includes(".id = $1")) {
+          return { rows: [{ ...lastWrittenRow, employee_total_allocation: "100.00" }] };
+        }
+        const result = await pool.query(sql, params);
+        if (/^(insert|update)/.test(sql)) lastWrittenRow = result.rows[0] ?? null;
+        return result;
+      },
+      release: () => {},
+    };
+  });
 });
 
 after(async () => {
@@ -392,4 +418,95 @@ test("POST /v1/resource-deployment/:id/restore is refused when the resource has 
   assert.equal(res.status, 422);
   assert.ok((await res.json()).error.details.allocationPercentage);
   assert.equal(wrote, false);
+});
+
+// Gate findings (FEAT-21): concurrency, rounding, moving a row between
+// resources, and the response carrying the resource's total.
+test("a write takes the per-resource advisory lock inside one transaction and commits", async (t) => {
+  clientStatements = [];
+  allocationMock(t, []);
+
+  const res = await postDeployment({ employeeId: 42, positionId: "POS-001", allocationPercentage: 100 });
+
+  assert.equal(res.status, 201);
+  assert.deepEqual(clientStatements.slice(0, 2), ["begin", "select"]);
+  assert.equal(clientStatements.at(-1), "commit");
+  const body = await res.json();
+  assert.equal(body.data.employeeTotalAllocation, 100);
+});
+
+test("a rejected allocation rolls the transaction back instead of committing", async (t) => {
+  clientStatements = [];
+  allocationMock(t, [["POS-001", "90.00"]]);
+
+  const res = await postDeployment({ employeeId: 42, positionId: "POS-002", allocationPercentage: 20 });
+
+  assert.equal(res.status, 422);
+  assert.equal(clientStatements.at(-1), "rollback");
+  assert.ok(!clientStatements.includes("commit"));
+});
+
+test("33.33 + 33.33 + 33.34 totals exactly 100 and is accepted; 33.35 is not", async (t) => {
+  allocationMock(t, [["POS-001", "33.33"], ["POS-002", "33.33"]]);
+  assert.equal((await postDeployment({ employeeId: 42, positionId: "POS-003", allocationPercentage: 33.34 })).status, 201);
+
+  const over = await postDeployment({ employeeId: 42, positionId: "POS-003", allocationPercentage: 33.35 });
+  assert.equal(over.status, 422);
+  assert.match((await over.json()).error.details.allocationPercentage, /at most 33\.34%/);
+});
+
+test("PATCH moving a row to another resource is checked against that resource's rows, not the old one's", async (t) => {
+  const groupsQueried = [];
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.startsWith("select 1 from")) return { rows: [{}] };
+    if (sql.startsWith("select * from resource_deployment where id")) return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    if (sql.startsWith("select position_code as unique_value")) {
+      groupsQueried.push(params[0]);
+      return { rows: params[0] === 43 ? [{ unique_value: "POS-009", value: "80.00" }] : [] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ employeeId: 43 }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.deepEqual(groupsQueried, [43]);
+  assert.match((await res.json()).error.details.allocationPercentage, /at most 20%/);
+});
+
+test("PATCH onto a position another row of the same resource already holds is a 422", async (t) => {
+  allocationMock(t, [["POS-002", "10.00"]]);
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ positionId: "POS-002" }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.positionId);
+});
+
+test("restore succeeds when the row's allocation still fits", async (t) => {
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from resource_deployment where id")) {
+      return { rows: [baseRow({ allocation_percentage: "50.00", deleted_at: "2026-02-01T00:00:00Z" })] };
+    }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [{ unique_value: "POS-002", value: "50.00" }] };
+    if (sql.startsWith("select 1 from")) return { rows: [{}] };
+    if (sql.startsWith("update")) return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}/restore`, {
+    method: "POST",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).data.employeeTotalAllocation, 100);
 });

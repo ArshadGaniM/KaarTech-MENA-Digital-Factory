@@ -89,6 +89,38 @@ export function createMasterDataRouter(table) {
   // — same reasoning for qualifying deleted_at/sortColumn in ORDER BY.
   const selectList = [`${tableName}.*`, ...lookupColumns, ...allocationSelectSql(table)].join(", ");
 
+  // Rows of one group (resource) are checked and written under a per-group
+  // advisory lock held for the transaction, so two concurrent writes can't
+  // both pass validateAllocation and together exceed the total. Tables
+  // without an allocationRule skip the transaction entirely.
+  async function withAllocationLock(groupValue, fn) {
+    if (!table.allocationRule) return fn(pool);
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock(hashtext($1), $2::int)", [tableName, groupValue]);
+      const out = await fn(client);
+      await client.query("commit");
+      return out;
+    } catch (err) {
+      await client.query("rollback").catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  // A write's `returning *` has no lookup/total columns; re-select through the
+  // list query so the response carries employeeTotalAllocation like a GET.
+  async function reselect(db, row) {
+    if (!table.allocationRule) return row;
+    const again = await db.query(
+      `select ${selectList} from ${tableName} ${joinSql} where ${tableName}.id = $1`,
+      [row.id]
+    );
+    return again.rows[0] ?? row;
+  }
+
   router.get("/", async (req, res, next) => {
     try {
       const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
@@ -132,17 +164,20 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, req.body);
       validateCrossFields(table, req.body);
       const actor = actorOf(req.body);
-      await validateAllocation(pool, table, Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]])));
 
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
       const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
 
-      const result = await pool.query(
-        `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
-        values
-      );
-      res.status(201).json({ data: toResponse(table, result.rows[0]) });
+      const created = await withAllocationLock(req.body[table.allocationRule?.groupKey], async (db) => {
+        await validateAllocation(db, table, Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]])));
+        const result = await db.query(
+          `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
+          values
+        );
+        return reselect(db, result.rows[0]);
+      });
+      res.status(201).json({ data: toResponse(table, created) });
     } catch (err) {
       next(mapWriteError(err, fields, req.body));
     }
@@ -162,34 +197,33 @@ export function createMasterDataRouter(table) {
       validateCrossFields(table, req.body, { current });
       const actor = actorOf(req.body);
 
-      await validateAllocation(
-        pool,
-        table,
-        Object.fromEntries(
-          fields.map((f) => [f.column, Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column]])
-        ),
-        req.params.id
-      );
-
       const columns = [...fields.map((f) => f.column), "updated_by"];
       // ?? would treat an explicit null the same as "not sent" and silently
       // keep the current value — Object.hasOwn distinguishes "the key is
       // absent" (keep current) from "the key is present, set to null"
       // (clear it), so an optional field like practiceId can actually be
       // unset again once it's been set.
-      const values = [
-        ...fields.map((f) => (Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column])),
-        actor,
-      ];
+      const merged = fields.map((f) => (Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column]));
+      const values = [...merged, actor];
       const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
 
-      const result = await pool.query(
-        `update ${tableName} set ${setClause}
-         where id = $${values.length + 1} and deleted_at is null returning *`,
-        [...values, req.params.id]
-      );
-      if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
-      res.json({ data: toResponse(table, result.rows[0]) });
+      const groupIndex = fields.findIndex((f) => f.key === table.allocationRule?.groupKey);
+      const updated = await withAllocationLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
+        await validateAllocation(
+          db,
+          table,
+          Object.fromEntries(fields.map((f, i) => [f.column, merged[i]])),
+          req.params.id
+        );
+        const result = await db.query(
+          `update ${tableName} set ${setClause}
+           where id = $${values.length + 1} and deleted_at is null returning *`,
+          [...values, req.params.id]
+        );
+        if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
+        return reselect(db, result.rows[0]);
+      });
+      res.json({ data: toResponse(table, updated) });
     } catch (err) {
       next(mapWriteError(err, fields, req.body));
     }
@@ -243,19 +277,21 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, referenceBody, { partial: true });
 
       const actor = actorOf(req.body);
-      await validateAllocation(
-        pool,
-        table,
-        Object.fromEntries(fields.map((f) => [f.column, current[f.column]])),
-        req.params.id
-      );
-
-      const result = await pool.query(
-        `update ${tableName} set deleted_at = null, updated_by = $1
-         where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
-        [actor, req.params.id]
-      );
-      if (result.rows.length === 0) {
+      const restored = await withAllocationLock(current[table.allocationRule?.groupColumn], async (db) => {
+        await validateAllocation(
+          db,
+          table,
+          Object.fromEntries(fields.map((f) => [f.column, current[f.column]])),
+          req.params.id
+        );
+        const result = await db.query(
+          `update ${tableName} set deleted_at = null, updated_by = $1
+           where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
+          [actor, req.params.id]
+        );
+        return result.rows.length === 0 ? null : reselect(db, result.rows[0]);
+      });
+      if (restored === null) {
         // Either someone restored it first (409/404 below) or a parent was
         // deleted in the window since the check above (the re-check throws
         // the 422).
@@ -265,7 +301,7 @@ export function createMasterDataRouter(table) {
         await validateReferences(table, referenceBody, { partial: true });
         throw notFound(resourceName, req.params.id);
       }
-      res.json({ data: toResponse(table, result.rows[0]) });
+      res.json({ data: toResponse(table, restored) });
     } catch (err) {
       next(mapWriteError(err, fields, req.body));
     }

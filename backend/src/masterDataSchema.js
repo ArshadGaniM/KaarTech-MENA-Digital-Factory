@@ -55,10 +55,9 @@ export function toResponse(table, row) {
   const response = { id: row.id };
   if (table.hasCode) response.code = row.code;
   for (const field of table.fields) {
-    // pg returns a `numeric` column as a string; a field with a range is
-    // always stored as numeric, and the UI needs a real number to total.
+    // pg returns a `numeric` column as a string; the UI needs a real number to total.
     response[field.key] =
-      field.max !== undefined && row[field.column] != null ? Number(row[field.column]) : row[field.column];
+      field.numeric && row[field.column] != null ? Number(row[field.column]) : row[field.column];
   }
   if (table.allocationRule) {
     // Only present on rows from the router's own SELECT (see allocationSelectSql).
@@ -270,10 +269,12 @@ export async function validateAllocation(pool, table, candidate, excludeId = nul
   if (rows.some((row) => row.unique_value === candidate[rule.uniqueColumn])) {
     details[rule.uniqueKey] = `${rule.groupKey} ${candidate[rule.groupColumn]} is already allocated to ${candidate[rule.uniqueColumn]}; edit that row instead of adding another.`;
   }
-  const others = rows.reduce((sum, row) => sum + Number(row.value), 0);
-  const resulting = Math.round((others + Number(candidate[rule.valueColumn])) * 100) / 100;
+  // Postgres stores the value at 2 decimals, so compare what will be stored.
+  const cents = (n) => Math.round(Number(n) * 100);
+  const others = rows.reduce((sum, row) => sum + cents(row.value), 0) / 100;
+  const resulting = (cents(others) + cents(candidate[rule.valueColumn])) / 100;
   if (resulting > rule.total) {
-    const remaining = Math.max(0, Math.round((rule.total - others) * 100) / 100);
+    const remaining = Math.max(0, (cents(rule.total) - cents(others)) / 100);
     details[rule.valueKey] = `Allocations for ${rule.groupKey} ${candidate[rule.groupColumn]} cannot exceed ${rule.total}%: ${others}% is already allocated, so at most ${remaining}% remains.`;
   }
   if (Object.keys(details).length > 0) throw validationError(details);
