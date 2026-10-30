@@ -1,38 +1,36 @@
-# Gate Report: Control Center section
+# Gate Report: Control Center factory floors from the database
 
 **Verdict: WARN** (zero FAIL, zero Critical, security PASS clean)
 
 **Branch:** `claude/sleepy-hopper-bpow3i` to `main`
-**Scope:** `git diff origin/main..HEAD`. New `ControlCenter` view, placed first in the section list with Dashboard second. `Header` uses a `DASHBOARD_HASH` constant.
-**Checks run after the fixes below:** frontend 172/172 tests, `vite build` clean, no lint warnings in changed files.
+**Scope:** `git diff origin/main..HEAD`. The Control Center page shows the MENA Digital Factory as floors (departments) with a box per team. Department names and team codes are read from the `departments` and `teams` tables through the new `useFactoryData` hook.
+**Checks run after the fixes below:** frontend 174/174 tests, `vite build` clean, no lint warnings in changed files.
 
 ## Agent results
 
 | Agent | Verdict | Summary |
 |---|---|---|
-| code-reviewer | PASS | No Critical. Three warnings, fixed below. |
-| security-auditor | PASS | No injection, XSS, secrets or new network surface. |
-| debugger | PASS | Null counts, id lookups and fallback view verified. Tests and build run. |
-| test-writer | PASS | About 90% of changed lines covered (estimate, no coverage tool run). |
-| refactorer | WARN | Duplication with Dashboard (open, optional). |
-| doc-writer | WARN | Stale README and comment, fixed below. |
-| silent-failure-hunter | WARN | Partial total and missing alert, fixed below. |
-| pr-test-analyzer | WARN | Test gaps, mostly fixed below. |
+| code-reviewer | WARN | No Critical. Hardcoded floor list, fallback label, fetch size (see checklist). |
+| security-auditor | PASS | Backend values rendered as text only. No new write path or secrets. |
+| debugger | PASS | Missing department, missing teams and soft-deleted rows verified. Tests and build run. |
+| test-writer | PASS | About 95% of changed logic covered (estimate, no coverage tool run). |
+| refactorer | PASS | Soft-delete check now appears in three files (optional). |
+| doc-writer | WARN | Stale README line and two comments, fixed below. |
+| silent-failure-hunter | WARN | Missing-department floor looked normal, fixed below. |
+| pr-test-analyzer | WARN | Test gaps, fixed below. |
 
-Subagent verification rule (CLAUDE.md §8): no agent made a negative file-existence claim that needed a cross-check. Six agents first failed on a nonexistent `deep`/`fast` model alias and were re-run on `sonnet`.
+Subagent verification rule (CLAUDE.md §8): no agent made a negative file-existence claim that needed a cross-check. Eight agents ran on `sonnet` because the `deep` and `fast` model aliases in their definitions do not exist here.
 
 ## Fixed in this push
 
-- "Total records" now says how many tables it excludes, and a page alert appears when any table is unreachable.
-- `mcp-server/README.md` lists the three non-table sections. The `navigation.js` comment no longer tracks ordinals.
-- `Header` reads `DASHBOARD_HASH` instead of a module-load `.find`.
-- Tests: distinct per-status counts, the dash for a null count, number formatting, the alert, mock reset, and an AppShell test that opens a table from Control Center.
+- A floor whose department is missing now reads "DEPT-xxx (department not found)" instead of a bare code.
+- `mcp-server/README.md` describes the factory view. Comments added for the hook's return shape and for why `factoryLayout.js` is the list of floors.
+- Tests: either table failing to load, both tables empty, the missing-department label, and an AppShell check that the factory renders.
 
 ## Open (not blocking)
 
-- [ ] Control Center repeats Dashboard's loading/error text, number formatting and tile styles. Share them in a follow-up.
-- [ ] Per-table error cause is not shown in the UI.
-- [ ] `resolveViewId('')` may warn on an empty hash (pre-existing).
-- [ ] `.numeric` uses `!important` in `ControlCenter.module.css`.
-
-Hero "Enter the Application" now opens Control Center. This is intended.
+- [ ] `factoryLayout.js` hardcodes ten department codes. A department or team outside the list is not shown.
+- [ ] "No teams yet" also appears when team rows carry a department code that matches no floor. The teams table is empty today.
+- [ ] Soft-delete check `markedDeleted !== 'Yes'` appears in three files. Share it in a follow-up.
+- [ ] The view loads once when opened and does not refresh on its own.
+- [ ] The old per-table health and Open buttons are gone from Control Center. Dashboard still shows counts.

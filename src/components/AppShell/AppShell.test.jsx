@@ -44,7 +44,8 @@ describe('AppShell', () => {
     render(<AppShell />);
 
     expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByRole('heading', { name: 'Factory status' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: controlCenter.label })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory' })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
@@ -84,16 +85,6 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
-  });
-
-  it('opens a table from its Control Center row', async () => {
-    const user = userEvent.setup();
-    render(<AppShell initialHash={controlCenter.hash} />);
-
-    await user.click(await screen.findByRole('button', { name: `Open ${firstTable.label}` }));
-
-    expect(screen.getByRole('button', { name: firstTable.label })).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByRole('columnheader', { name: firstTable.columns[0].label })).toBeInTheDocument();
   });
 
   it('renders a skip link targeting the main content region', () => {

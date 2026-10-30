@@ -1,17 +1,10 @@
-import PropTypes from 'prop-types';
-import { useTableCounts } from '../../hooks/useTableCounts';
+import FactoryFloor from './FactoryFloor';
+import { FLOORS } from './factoryLayout';
+import { useFactoryData } from '../../hooks/useFactoryData';
 import styles from './ControlCenter.module.css';
 
-const numberFormat = new Intl.NumberFormat('en-US');
-
-function tableStatus(table) {
-  if (table.error !== null) return { key: 'error', label: 'Unreachable' };
-  if (table.count === 0) return { key: 'empty', label: 'No records' };
-  return { key: 'healthy', label: 'Healthy' };
-}
-
-function ControlCenter({ onNavigate }) {
-  const { data, isLoading, error } = useTableCounts();
+function ControlCenter() {
+  const { data, isLoading, error } = useFactoryData();
 
   if (isLoading) {
     return (
@@ -23,94 +16,29 @@ function ControlCenter({ onNavigate }) {
   if (error) {
     return (
       <p className={styles.statusError} role="alert">
-        Could not load the control center: {error.message}
+        Could not load the factory: {error.message}
       </p>
     );
   }
 
-  const rows = data.map((table) => ({ ...table, status: tableStatus(table) }));
-  const countOf = (key) => rows.filter((row) => row.status.key === key).length;
-  const unreachableCount = countOf('error');
-  const totalRecords = rows.reduce((sum, row) => sum + (row.count ?? 0), 0);
-
-  const summary = [
-    { label: 'Healthy tables', value: countOf('healthy') },
-    { label: 'Tables with no records', value: countOf('empty') },
-    { label: 'Unreachable tables', value: unreachableCount },
-    {
-      label: unreachableCount > 0 ? `Total records (excludes ${unreachableCount} unreachable)` : 'Total records',
-      value: totalRecords,
-    },
-  ];
-
   return (
     <div className={styles.controlCenter}>
-      {unreachableCount > 0 && (
-        <p className={styles.statusError} role="alert">
-          {unreachableCount} of {rows.length} tables could not be reached.
-        </p>
-      )}
-
-      <section aria-labelledby="control-center-summary" className={styles.section}>
-        <h2 id="control-center-summary" className={styles.sectionTitle}>
-          Factory status
+      <section className={styles.building} aria-labelledby="factory-title">
+        <h2 id="factory-title" className={styles.roof}>
+          MENA Digital Factory
         </h2>
-        <ul className={styles.tiles}>
-          {summary.map((tile) => (
-            <li key={tile.label} className={styles.tile}>
-              <span className={styles.tileLabel}>{tile.label}</span>
-              <span className={styles.tileValue}>{numberFormat.format(tile.value)}</span>
-            </li>
+        <ol className={styles.floors}>
+          {FLOORS.map((floor) => (
+            <FactoryFloor
+              key={floor.id}
+              name={data.departmentNames.get(floor.departmentCode) ?? `${floor.departmentCode} (department not found)`}
+              teams={data.teamCodesByDepartment.get(floor.departmentCode) ?? []}
+            />
           ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="control-center-tables" className={styles.section}>
-        <h2 id="control-center-tables" className={styles.sectionTitle}>
-          Master data
-        </h2>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th scope="col">Table</th>
-              <th scope="col" className={styles.numeric}>
-                Records
-              </th>
-              <th scope="col">Status</th>
-              <th scope="col">
-                <span className={styles.srOnly}>Action</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.route}>
-                <th scope="row">{row.label}</th>
-                <td className={styles.numeric}>{row.count === null ? '—' : numberFormat.format(row.count)}</td>
-                <td>
-                  <span className={styles[`badge_${row.status.key}`]}>{row.status.label}</span>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className={styles.openButton}
-                    aria-label={`Open ${row.label}`}
-                    onClick={() => onNavigate(row.route)}
-                  >
-                    Open
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        </ol>
       </section>
     </div>
   );
 }
-
-ControlCenter.propTypes = {
-  onNavigate: PropTypes.func.isRequired,
-};
 
 export default ControlCenter;

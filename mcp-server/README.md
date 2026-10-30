@@ -11,9 +11,9 @@ routes it calls).
 removing it. Records added/modified/deleted here are visible in the
 frontend's dashboard, where each master-data table is its own sidebar
 section (e.g. `#resources`, `#delivery-centers`) — the sidebar also has
-non-table sections: `#control-center` (per-table health and record counts),
+non-table sections: `#control-center` (the factory building: one floor per department, with its teams),
 `#dashboard` (an overview of live record counts per table) and
-`#entity-relationship`. They read directly from the backend and does not go through this
+`#entity-relationship`. They read directly from the backend and do not go through this
 MCP server.
 
 ## Setup
