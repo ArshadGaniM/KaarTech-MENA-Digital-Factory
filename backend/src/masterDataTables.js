@@ -105,7 +105,13 @@ export const MASTER_DATA_TABLES = [
     tableName: "departments",
     resourceName: "department",
     hasCode: true,
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    fields: [
+      { key: "name", column: "name", required: true, type: "string" },
+      // FEAT-20: free-text, both optional — existing departments predate
+      // them and stay valid with neither set.
+      { key: "input", column: "input", required: false, type: "string", maxLength: 2000 },
+      { key: "output", column: "output", required: false, type: "string", maxLength: 2000 },
+    ],
   },
   {
     route: "resource-cost",

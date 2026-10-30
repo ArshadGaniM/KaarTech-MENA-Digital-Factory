@@ -2,6 +2,8 @@ import { Router } from "express";
 import { pool } from "./db.js";
 import {
   notFound,
+  notDeleted,
+  validationError,
   isUniqueViolation,
   duplicateFieldError,
   isForeignKeyViolation,
@@ -25,6 +27,19 @@ import { requireInternalApiKey } from "./auth.js";
 // Ghani"), defaulting here so the MCP tools stay simple to call day to
 // day while remaining overridable once more than one person uses them.
 const DEFAULT_ACTOR = "Arshad Gani";
+
+// `updatedBy` comes straight from the request body: a non-string (a number,
+// an object) would otherwise throw on `.trim()` and surface as a 500
+// instead of a 422 (gate finding, security-auditor).
+function actorOf(body) {
+  const raw = body?.updatedBy;
+  if (raw !== undefined && raw !== null && typeof raw !== "string") {
+    throw validationError({ updatedBy: "updatedBy must be a string." });
+  }
+  const actor = raw?.trim() || DEFAULT_ACTOR;
+  validateActor(actor);
+  return actor;
+}
 
 // Shared CRUD behaviour for every master data table (CLAUDE.md request:
 // practices, delivery_centers, competencies, modules, resources, departments
@@ -114,8 +129,7 @@ export function createMasterDataRouter(table) {
       validateBody(table, req.body);
       await validateReferences(table, req.body);
       validateCrossFields(table, req.body);
-      const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
-      validateActor(actor);
+      const actor = actorOf(req.body);
 
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
@@ -143,8 +157,7 @@ export function createMasterDataRouter(table) {
 
       const current = existing.rows[0];
       validateCrossFields(table, req.body, { current });
-      const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
-      validateActor(actor);
+      const actor = actorOf(req.body);
 
       const columns = [...fields.map((f) => f.column), "updated_by"];
       // ?? would treat an explicit null the same as "not sent" and silently
@@ -181,6 +194,62 @@ export function createMasterDataRouter(table) {
       res.status(204).send();
     } catch (err) {
       next(err);
+    }
+  });
+
+  // Undo of DELETE (FEAT-19): clears deleted_at. A non-CRUD action, so a
+  // verb sub-resource per api.md rather than a PATCH (PATCH deliberately
+  // refuses soft-deleted rows). validateReferences() requires a *live*
+  // referenced row, so restoring a child whose parent is itself still
+  // deleted would resurrect a row pointing at nothing — every FK is
+  // re-checked here, with the same 422 shape, instead of silently
+  // allowing it. The same check is repeated inside the UPDATE itself (see
+  // liveParentsSql) so a parent deleted between the up-front check and the
+  // write can't slip through either.
+  const liveParentsSql = fields
+    .filter((f) => f.references)
+    .map(
+      (f) =>
+        ` and (${tableName}.${f.column} is null or exists (select 1 from ${f.references.table} where ${f.references.column} = ${tableName}.${f.column} and deleted_at is null))`
+    )
+    .join("");
+
+  router.post("/:id/restore", requireInternalApiKey, async (req, res, next) => {
+    try {
+      const existing = await pool.query(`select * from ${tableName} where id = $1`, [req.params.id]);
+      if (existing.rows.length === 0) throw notFound(resourceName, req.params.id);
+
+      const current = existing.rows[0];
+      if (current.deleted_at === null) throw notDeleted(resourceName, req.params.id);
+
+      const referenceBody = {};
+      for (const field of fields) {
+        if (field.references && current[field.column] !== null) {
+          referenceBody[field.key] = current[field.column];
+        }
+      }
+      await validateReferences(table, referenceBody, { partial: true });
+
+      const actor = actorOf(req.body);
+
+      const result = await pool.query(
+        `update ${tableName} set deleted_at = null, updated_by = $1
+         where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
+        [actor, req.params.id]
+      );
+      if (result.rows.length === 0) {
+        // Either someone restored it first (409/404 below) or a parent was
+        // deleted in the window since the check above (the re-check throws
+        // the 422).
+        const again = await pool.query(`select * from ${tableName} where id = $1`, [req.params.id]);
+        if (again.rows.length === 0) throw notFound(resourceName, req.params.id);
+        if (again.rows[0].deleted_at === null) throw notDeleted(resourceName, req.params.id);
+        await validateReferences(table, referenceBody, { partial: true });
+        throw notFound(resourceName, req.params.id);
+      }
+      res.json({ data: toResponse(table, result.rows[0]) });
+    } catch (err) {
+      next(mapWriteError(err, fields, req.body));
     }
   });
 

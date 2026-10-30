@@ -4,13 +4,13 @@ import userEvent from '@testing-library/user-event';
 import MasterDataTable from './MasterDataTable';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
 import { useEntityRelationships } from '../../hooks/useEntityRelationships';
-import { deleteRecord } from '../../lib/masterDataApi';
+import { deleteRecord, restoreRecord, updateRecord } from '../../lib/masterDataApi';
 
 vi.mock('../../hooks/useMasterDataTable');
 vi.mock('../../hooks/useEntityRelationships');
 vi.mock('../../lib/masterDataApi', async () => {
   const actual = await vi.importActual('../../lib/masterDataApi');
-  return { ...actual, deleteRecord: vi.fn(), fetchAllMasterDataTableRows: vi.fn().mockResolvedValue([]) };
+  return { ...actual, deleteRecord: vi.fn(), restoreRecord: vi.fn(), updateRecord: vi.fn(), fetchAllMasterDataTableRows: vi.fn().mockResolvedValue([]) };
 });
 
 beforeEach(() => {
@@ -25,7 +25,7 @@ const COLUMNS = [
 // A thin wrapper so every test only has to say what's unusual about its
 // page — page/totalPages/setPage default to "a single, first page" since
 // most tests aren't about pagination at all.
-function mockTable({ data, total, page = 1, totalPages = 1, isLoading = false, error = null, refetch = vi.fn(), setPage = vi.fn() }) {
+function mockTable({ data, total, page = 1, totalPages = 1, isLoading = false, error = null, refetch = vi.fn(), reload = vi.fn(), setPage = vi.fn() }) {
   useMasterDataTable.mockReturnValue({
     data,
     total: total ?? (data ? data.length : 0),
@@ -35,6 +35,7 @@ function mockTable({ data, total, page = 1, totalPages = 1, isLoading = false, e
     isLoading,
     error,
     refetch,
+    reload,
   });
 }
 
@@ -184,13 +185,168 @@ describe('MasterDataTable', () => {
     expect(refetch).not.toHaveBeenCalled();
   });
 
-  it('shows "Deleted" instead of a Delete button for an already soft-deleted row', () => {
+  // FEAT-19: a deleted row offers "Undo delete" in place of Edit/Delete —
+  // it can't be edited while deleted (the backend refuses a PATCH on it).
+  it('shows "Undo delete" instead of Edit/Delete for an already soft-deleted row', () => {
     mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'Digital Factory', markedDeleted: 'Yes' }] });
 
     render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
 
-    expect(screen.getByText('Deleted')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Undo delete' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
+  it('shows Edit and Delete, but not Undo delete, for an active row', () => {
+    mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'Digital Factory', markedDeleted: 'No' }] });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo delete' })).not.toBeInTheDocument();
+  });
+
+  it('restores that exact row when Undo delete is clicked, reloading the current page rather than resetting to page 1', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    const reload = vi.fn();
+    mockTable({
+      data: [{ id: 'row-1', code: 'PR-1', name: 'Digital Factory', markedDeleted: 'Yes' }],
+      refetch,
+      reload,
+    });
+    restoreRecord.mockResolvedValue({ id: 'row-1' });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    await user.click(screen.getByRole('button', { name: 'Undo delete' }));
+
+    await waitFor(() => expect(restoreRecord).toHaveBeenCalledWith('practices', 'row-1'));
+    await waitFor(() => expect(reload).toHaveBeenCalled());
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it('shows the backend\'s reason in an alert and does not reload when a restore is refused', async () => {
+    const user = userEvent.setup();
+    const reload = vi.fn();
+    mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'x', markedDeleted: 'Yes' }], reload });
+    restoreRecord.mockRejectedValue(new Error('Request failed validation.'));
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    await user.click(screen.getByRole('button', { name: 'Undo delete' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Request failed validation.');
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('keeps a separate alert per failing row, so a second failure does not overwrite the first', async () => {
+    const user = userEvent.setup();
+    mockTable({
+      data: [
+        { id: 'row-a', code: 'PR-A', name: 'A', markedDeleted: 'Yes' },
+        { id: 'row-b', code: 'PR-B', name: 'B', markedDeleted: 'Yes' },
+      ],
+    });
+    restoreRecord.mockRejectedValueOnce(new Error('Parent A is deleted.')).mockRejectedValueOnce(new Error('Parent B is deleted.'));
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    const [restoreA, restoreB] = screen.getAllByRole('button', { name: 'Undo delete' });
+    await user.click(restoreA);
+    await user.click(restoreB);
+
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts).toHaveLength(2);
+    expect(alerts[0]).toHaveTextContent('Parent A is deleted.');
+    expect(alerts[1]).toHaveTextContent('Parent B is deleted.');
+  });
+
+  it('disables Edit on a row while its delete is in flight', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    deleteRecord.mockReturnValue(new Promise(() => {}));
+    mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'x', markedDeleted: 'No' }] });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+  });
+
+  it('shows an in-flight state on the restoring row only', async () => {
+    const user = userEvent.setup();
+    let resolveRestore;
+    restoreRecord.mockReturnValue(new Promise((resolve) => (resolveRestore = resolve)));
+    mockTable({
+      data: [
+        { id: 'row-a', code: 'PR-A', name: 'A', markedDeleted: 'Yes' },
+        { id: 'row-b', code: 'PR-B', name: 'B', markedDeleted: 'Yes' },
+      ],
+    });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    const [restoreA, restoreB] = screen.getAllByRole('button', { name: /^(Undo delete|Restoring…)$/ });
+    await user.click(restoreA);
+
+    expect(restoreA).toHaveTextContent('Restoring…');
+    expect(restoreA).toBeDisabled();
+    expect(restoreB).toHaveTextContent('Undo delete');
+
+    resolveRestore({});
+    await waitFor(() => expect(restoreA).toHaveTextContent('Undo delete'));
+  });
+
+  it('opens the edit form for the clicked row, prefilled, and closing it saves nothing and reloads nothing', async () => {
+    const user = userEvent.setup();
+    const reload = vi.fn();
+    const refetch = vi.fn();
+    mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'Digital Factory', markedDeleted: 'No' }], reload, refetch });
+    useEntityRelationships.mockReturnValue({
+      data: [{ route: 'practices', identity: { type: 'auto-generated', field: 'code' }, fields: [{ key: 'name', type: 'string', required: true }] }],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(screen.getByRole('dialog', { name: 'Edit Practice' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name *')).toHaveValue('Digital Factory');
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(reload).not.toHaveBeenCalled();
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it('saving an edit closes the form and reloads the current page (not page 1)', async () => {
+    const user = userEvent.setup();
+    const reload = vi.fn();
+    const refetch = vi.fn();
+    mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'Digital Factory', markedDeleted: 'No' }], reload, refetch, page: 3, totalPages: 5 });
+    useEntityRelationships.mockReturnValue({
+      data: [{ route: 'practices', identity: { type: 'auto-generated', field: 'code' }, fields: [{ key: 'name', type: 'string', required: true }] }],
+      isLoading: false,
+      error: null,
+    });
+    updateRecord.mockResolvedValue({ id: 'row-1' });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.clear(screen.getByLabelText('Name *'));
+    await user.type(screen.getByLabelText('Name *'), 'Renamed');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(updateRecord).toHaveBeenCalledWith('practices', 'row-1', { name: 'Renamed' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(reload).toHaveBeenCalled();
+    expect(refetch).not.toHaveBeenCalled();
   });
 
   it('shows an alert with the backend error and keeps the row if the row-level delete fails', async () => {

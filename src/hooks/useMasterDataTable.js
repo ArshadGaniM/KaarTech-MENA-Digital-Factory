@@ -8,6 +8,10 @@ export const PAGE_SIZE = 20;
 // the table after a successful create without a full page reload, without
 // changing what every existing caller already relies on. `page`/`setPage`/
 // `totalPages` (FEAT-18) add offset-based pagination (CLAUDE.md §10).
+// `reload` (FEAT-19) re-fetches the *current* page, for an edit or an
+// undo-delete: neither changes how many rows there are, so jumping back to
+// page 1 (what `refetch` does, correctly, after an add or delete that can
+// empty the page you're on) would just lose the user's place.
 export function useMasterDataTable(route) {
   const [data, setData] = useState(null);
   const [total, setTotal] = useState(0);
@@ -15,6 +19,7 @@ export function useMasterDataTable(route) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [reloadToken, setReloadToken] = useState(0);
 
   // A route switch or a refetch both reset back to page 1, since neither
   // guarantees the current page still has anything on it. This resets
@@ -55,10 +60,11 @@ export function useMasterDataTable(route) {
     return () => {
       cancelled = true;
     };
-  }, [route, page, refreshToken]);
+  }, [route, page, refreshToken, reloadToken]);
 
   const refetch = useCallback(() => setRefreshToken((token) => token + 1), []);
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  return { data, total, page, totalPages, setPage, isLoading, error, refetch };
+  return { data, total, page, totalPages, setPage, isLoading, error, refetch, reload };
 }

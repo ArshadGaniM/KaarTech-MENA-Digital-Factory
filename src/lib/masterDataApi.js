@@ -95,6 +95,8 @@ export const MASTER_DATA_TABLES = [
     columns: [
       { key: "code", label: "Department Code" },
       { key: "name", label: "Department Name" },
+      { key: "input", label: "Input" },
+      { key: "output", label: "Output" },
       ...AUDIT_COLUMNS,
     ],
   },
@@ -266,7 +268,7 @@ export async function fetchAllMasterDataTableRows(route) {
   return [firstRows, ...restPages.map((page) => page.rows)].flat();
 }
 
-// FEAT-14: creates a record via the generic "Add <Entity>" form. Every
+// FEAT-14: shared by the generic Add/Edit/Restore write calls. Every
 // write route requires the internal API key (see backend/README.md) —
 // this app has no user-login system yet, so there is no way to keep this
 // key out of the browser bundle once the browser itself needs to write;
@@ -274,9 +276,9 @@ export async function fetchAllMasterDataTableRows(route) {
 // §20), not an oversight. On a 422, the thrown error carries `details`
 // (the same field->message map the backend returns) so the form can show
 // per-field errors instead of one generic message.
-export async function createRecord(route, body) {
-  const res = await fetch(`${BACKEND_URL}/v1/${route}`, {
-    method: 'POST',
+async function writeRecord(method, path, body, failureMessage) {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
+    method,
     headers: {
       'Content-Type': 'application/json',
       'x-internal-api-key': import.meta.env.VITE_INTERNAL_API_KEY || '',
@@ -285,11 +287,37 @@ export async function createRecord(route, body) {
   });
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
-    const error = new Error(payload?.error?.message || `Failed to create ${route} record`);
+    // The HTTP status goes in the fallback so a gateway 502/504 (an HTML
+    // body, no backend message) isn't indistinguishable from a real
+    // refusal (gate finding, silent-failure-hunter).
+    const error = new Error(payload?.error?.message || `${failureMessage} (HTTP ${res.status}).`);
     error.details = payload?.error?.details ?? {};
     throw error;
   }
-  return payload?.data;
+  // A 2xx that carries no readable record means the write can't be
+  // confirmed — don't let the form close and the table reload as if it
+  // had saved (same stance as fetchMasterDataTable's malformed-response
+  // error).
+  if (payload?.data === undefined) {
+    throw new Error(`${failureMessage}: the server's response (HTTP ${res.status}) could not be read.`);
+  }
+  return payload.data;
+}
+
+export function createRecord(route, body) {
+  return writeRecord('POST', `/v1/${route}`, body, `Failed to create ${route} record`);
+}
+
+// FEAT-19: PATCH — only the keys in `body` change; an explicit null clears
+// an optional field (see backend/src/masterDataRouter.js's PATCH handler).
+export function updateRecord(route, id, body) {
+  return writeRecord('PATCH', `/v1/${route}/${id}`, body, `Failed to update ${route} record`);
+}
+
+// FEAT-19: undo of deleteRecord — the backend refuses (422) if the row
+// references another row that is itself still deleted.
+export function restoreRecord(route, id) {
+  return writeRecord('POST', `/v1/${route}/${id}/restore`, {}, `Failed to restore ${route} record`);
 }
 
 // FEAT-15: marks a record deleted via the backend's existing DELETE
@@ -304,6 +332,6 @@ export async function deleteRecord(route, id) {
   });
   if (!res.ok) {
     const payload = await res.json().catch(() => null);
-    throw new Error(payload?.error?.message || `Failed to delete ${route} record`);
+    throw new Error(payload?.error?.message || `Failed to delete ${route} record (HTTP ${res.status}).`);
   }
 }

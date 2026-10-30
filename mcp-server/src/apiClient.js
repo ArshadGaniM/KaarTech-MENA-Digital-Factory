@@ -45,3 +45,7 @@ export function updateRecord(route, id, fields) {
 export function markDeleted(route, id) {
   return request(`/v1/${route}/${id}`, { method: "DELETE" });
 }
+
+export function restoreRecord(route, id, fields = {}) {
+  return request(`/v1/${route}/${id}/restore`, { method: "POST", body: fields });
+}
