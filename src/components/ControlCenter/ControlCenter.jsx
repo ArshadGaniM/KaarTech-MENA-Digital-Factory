@@ -31,7 +31,7 @@ function ControlCenter() {
           {FLOORS.map((floor) => (
             <FactoryFloor
               key={floor.id}
-              name={data.departmentNames.get(floor.departmentCode) ?? floor.departmentCode}
+              name={data.departmentNames.get(floor.departmentCode) ?? `${floor.departmentCode} (department not found)`}
               teams={data.teamCodesByDepartment.get(floor.departmentCode) ?? []}
             />
           ))}

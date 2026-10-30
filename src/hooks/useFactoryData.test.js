@@ -38,9 +38,9 @@ describe('useFactoryData', () => {
     expect(result.current.data.teamCodesByDepartment.get('DEPT-002')).toEqual(['TEAM-01', 'TEAM-02']);
   });
 
-  it('surfaces a failed load of either table as an error', async () => {
+  it.each(['departments', 'teams'])('surfaces a failed load of the %s table as an error', async (failing) => {
     fetchAllMasterDataTableRows.mockImplementation(async (route) => {
-      if (route === 'teams') throw new Error('Backend unreachable');
+      if (route === failing) throw new Error('Backend unreachable');
       return [];
     });
 
@@ -48,5 +48,15 @@ describe('useFactoryData', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error.message).toBe('Backend unreachable');
+  });
+
+  it('returns empty maps when both tables are empty', async () => {
+    mockTables({ departments: [], teams: [] });
+
+    const { result } = renderHook(() => useFactoryData());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data.departmentNames.size).toBe(0);
+    expect(result.current.data.teamCodesByDepartment.size).toBe(0);
   });
 });

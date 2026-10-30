@@ -5,6 +5,8 @@ import { useAsyncResource } from './useAsyncResource';
 // which must not name a floor or fill one with a team.
 const isLive = (row) => row.markedDeleted !== 'Yes';
 
+// Resolves to { departmentNames: Map<code, name>, teamCodesByDepartment:
+// Map<departmentCode, sorted team codes> }.
 async function fetchFactoryData() {
   const [departments, teams] = await Promise.all([
     fetchAllMasterDataTableRows('departments'),

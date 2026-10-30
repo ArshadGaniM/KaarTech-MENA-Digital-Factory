@@ -45,6 +45,7 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { name: controlCenter.label })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory' })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no

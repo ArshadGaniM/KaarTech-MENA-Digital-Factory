@@ -1,5 +1,7 @@
 // Floors run top to bottom. Each floor is a department; its name and teams
-// come from the departments and teams tables.
+// come from the departments and teams tables. This list is the source of
+// truth for which departments appear and in what order, so a new department
+// needs an entry here before it shows up.
 export const FLOORS = [
   { id: 'design', departmentCode: 'DEPT-002' },
   { id: 'config', departmentCode: 'DEPT-009' },

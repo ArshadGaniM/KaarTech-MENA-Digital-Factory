@@ -39,7 +39,7 @@ describe('ControlCenter', () => {
     expect(floorNames).toEqual(FLOORS.map((floor) => `Name of ${floor.departmentCode}`));
   });
 
-  it('falls back to the department code when the departments table has no such row', () => {
+  it('marks a floor whose department is missing from the departments table', () => {
     useFactoryData.mockReturnValue({
       data: { departmentNames: new Map(), teamCodesByDepartment: new Map() },
       isLoading: false,
@@ -47,7 +47,7 @@ describe('ControlCenter', () => {
     });
     render(<ControlCenter />);
 
-    expect(screen.getAllByRole('heading', { level: 3 })[0]).toHaveTextContent('DEPT-002');
+    expect(screen.getAllByRole('heading', { level: 3 })[0]).toHaveTextContent('DEPT-002 (department not found)');
   });
 
   it('lists a department\'s team codes in a row on its own floor', () => {
