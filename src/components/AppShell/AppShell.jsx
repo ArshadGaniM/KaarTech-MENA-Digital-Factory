@@ -45,7 +45,7 @@ function AppShell({ initialHash = '' }) {
           ) : activeItem.kind === 'entity-relationship' ? (
             <EntityRelationship key={activeItem.id} />
           ) : activeItem.kind === 'control-center' ? (
-            <ControlCenter key={activeItem.id} onNavigate={setActiveViewId} />
+            <ControlCenter key={activeItem.id} />
           ) : (
             <Dashboard key={activeItem.id} onNavigate={setActiveViewId} />
           )}
