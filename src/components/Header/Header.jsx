@@ -1,10 +1,10 @@
-import { NAV_ITEMS } from '../../lib/navigation';
+import { DASHBOARD_HASH } from '../../lib/navigation';
 import styles from './Header.module.css';
 
 const NAV_LINKS = [
   { label: 'Services', href: '#services' },
   { label: 'Delivery Centers', href: '#our-delivery-centers' },
-  { label: 'Dashboard', href: NAV_ITEMS[0].hash },
+  { label: 'Dashboard', href: DASHBOARD_HASH },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
 ];

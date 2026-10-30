@@ -5,6 +5,7 @@ import TopBar from '../TopBar';
 import MasterDataTable from '../MasterDataTable';
 import Dashboard from '../Dashboard';
 import EntityRelationship from '../EntityRelationship';
+import ControlCenter from '../ControlCenter';
 import { NAV_ITEMS } from '../../lib/navigation';
 import styles from './AppShell.module.css';
 
@@ -43,6 +44,8 @@ function AppShell({ initialHash = '' }) {
             />
           ) : activeItem.kind === 'entity-relationship' ? (
             <EntityRelationship key={activeItem.id} />
+          ) : activeItem.kind === 'control-center' ? (
+            <ControlCenter key={activeItem.id} onNavigate={setActiveViewId} />
           ) : (
             <Dashboard key={activeItem.id} onNavigate={setActiveViewId} />
           )}

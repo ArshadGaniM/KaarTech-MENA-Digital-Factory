@@ -21,10 +21,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// NAV_ITEMS[0] is "Dashboard" (no route/columns — the overview page).
-// NAV_ITEMS[1]/[2] are the first two real master-data tables, used to
+// NAV_ITEMS[0] is "Control Center" and NAV_ITEMS[1] is "Dashboard" (no
+// route/columns). NAV_ITEMS[2]/[3] are the first two real master-data tables, used to
 // genuinely exercise the item-switching path without a mocked registry.
-const [dashboard, firstTable, secondTable] = NAV_ITEMS;
+const [controlCenter, dashboard, firstTable, secondTable] = NAV_ITEMS;
 
 describe('AppShell', () => {
   it('resolves the initial view from a valid initialHash', async () => {
@@ -34,17 +34,17 @@ describe('AppShell', () => {
     expect(await screen.findByRole('columnheader', { name: firstTable.columns[0].label })).toBeInTheDocument();
   });
 
-  it('falls back to the first NAV_ITEMS entry (Dashboard) for an invalid or missing hash', () => {
+  it('falls back to the first NAV_ITEMS entry (Control Center) for an invalid or missing hash', () => {
     render(<AppShell initialHash="#does-not-exist" />);
 
-    expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('uses the first NAV_ITEMS entry (Dashboard) when no initialHash is passed at all', async () => {
+  it('uses the first NAV_ITEMS entry (Control Center) when no initialHash is passed at all', async () => {
     render(<AppShell />);
 
-    expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('heading', { name: 'Factory status' })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
@@ -84,6 +84,16 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+  });
+
+  it('opens a table from its Control Center row', async () => {
+    const user = userEvent.setup();
+    render(<AppShell initialHash={controlCenter.hash} />);
+
+    await user.click(await screen.findByRole('button', { name: `Open ${firstTable.label}` }));
+
+    expect(screen.getByRole('button', { name: firstTable.label })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('columnheader', { name: firstTable.columns[0].label })).toBeInTheDocument();
   });
 
   it('renders a skip link targeting the main content region', () => {
