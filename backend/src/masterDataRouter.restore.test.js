@@ -176,3 +176,29 @@ test("POST /v1/departments/:id/restore (no FK) restores without issuing any refe
   assert.equal(res.status, 200);
   assert.equal(referenceChecked, false);
 });
+
+// Gate finding (security-auditor): a non-string updatedBy used to throw on
+// `.trim()` and surface as a 500; every write route now answers 422.
+test("a non-string updatedBy is a 422 (not a 500) on restore, POST and PATCH, and never writes", async (t) => {
+  let wrote = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select") && sql.includes("deleted_at is not null")) return { rows: [teamRow()] };
+    if (sql.includes("select 1 from departments")) return { rows: [{}] };
+    if (sql.startsWith("select * from teams where id")) return { rows: [teamRow({ deleted_at: null })] };
+    if (sql.startsWith("update") || sql.startsWith("insert")) wrote = true;
+    return { rows: [] };
+  });
+  const headers = { "Content-Type": "application/json", "x-internal-api-key": "test-secret" };
+
+  for (const [method, path, body] of [
+    ["POST", `/${TEAM_ID}/restore`, { updatedBy: 123 }],
+    ["POST", "", { name: "T", departmentCode: "DEPT-001", updatedBy: { a: 1 } }],
+    ["PATCH", `/${TEAM_ID}`, { name: "T", updatedBy: ["x"] }],
+  ]) {
+    const res = await fetch(`${teamsBaseUrl}/v1/teams${path}`, { method, headers, body: JSON.stringify(body) });
+    assert.equal(res.status, 422, `${method} ${path}`);
+    const json = await res.json();
+    assert.ok(json.error.details.updatedBy);
+  }
+  assert.equal(wrote, false);
+});

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "./db.js";
 import {
   notFound,
+  validationError,
   isUniqueViolation,
   duplicateFieldError,
   isForeignKeyViolation,
@@ -25,6 +26,19 @@ import { requireInternalApiKey } from "./auth.js";
 // Ghani"), defaulting here so the MCP tools stay simple to call day to
 // day while remaining overridable once more than one person uses them.
 const DEFAULT_ACTOR = "Arshad Gani";
+
+// `updatedBy` comes straight from the request body: a non-string (a number,
+// an object) would otherwise throw on `.trim()` and surface as a 500
+// instead of a 422 (gate finding, security-auditor).
+function actorOf(body) {
+  const raw = body?.updatedBy;
+  if (raw !== undefined && raw !== null && typeof raw !== "string") {
+    throw validationError({ updatedBy: "updatedBy must be a string." });
+  }
+  const actor = raw?.trim() || DEFAULT_ACTOR;
+  validateActor(actor);
+  return actor;
+}
 
 // Shared CRUD behaviour for every master data table (CLAUDE.md request:
 // practices, delivery_centers, competencies, modules, resources, departments
@@ -114,8 +128,7 @@ export function createMasterDataRouter(table) {
       validateBody(table, req.body);
       await validateReferences(table, req.body);
       validateCrossFields(table, req.body);
-      const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
-      validateActor(actor);
+      const actor = actorOf(req.body);
 
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
@@ -143,8 +156,7 @@ export function createMasterDataRouter(table) {
 
       const current = existing.rows[0];
       validateCrossFields(table, req.body, { current });
-      const actor = req.body.updatedBy?.trim() || DEFAULT_ACTOR;
-      validateActor(actor);
+      const actor = actorOf(req.body);
 
       const columns = [...fields.map((f) => f.column), "updated_by"];
       // ?? would treat an explicit null the same as "not sent" and silently
@@ -207,8 +219,7 @@ export function createMasterDataRouter(table) {
       }
       await validateReferences(table, referenceBody, { partial: true });
 
-      const actor = req.body?.updatedBy?.trim() || DEFAULT_ACTOR;
-      validateActor(actor);
+      const actor = actorOf(req.body);
 
       const result = await pool.query(
         `update ${tableName} set deleted_at = null, updated_by = $1
