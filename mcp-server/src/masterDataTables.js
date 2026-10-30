@@ -175,6 +175,15 @@ export const MASTER_DATA_TABLES = [
         required: true,
         type: "string",
       },
+      {
+        key: "allocationPercentage",
+        label:
+          "share of the resource's time spent on this position, above 0 and up to 100. One resource " +
+          "can have several rows (one per position); their percentages must not add up to more than " +
+          "100 and should reach 100, and the same position cannot be used twice for a resource",
+        required: true,
+        type: "number",
+      },
     ],
   },
   {

@@ -1,3 +1,4 @@
+import { ApiError } from "./errors.js";
 import express from "express";
 import cors from "cors";
 import { teamMembersRouter } from "./routes/teamMembers.js";
@@ -36,7 +37,7 @@ app.use((req, res) => {
 // Never expose stack traces, internal paths, or SQL errors to the client (api.md).
 app.use((err, req, res, _next) => {
   const status = err.status || 500;
-  const code = err.code || "internal_error";
+  const code = err instanceof ApiError ? err.code : "internal_error";
   const message = status === 500 ? "An unexpected error occurred." : err.message;
   if (status === 500) console.error(err);
   res.status(status).json({ error: { code, message, details: err.details || {} } });

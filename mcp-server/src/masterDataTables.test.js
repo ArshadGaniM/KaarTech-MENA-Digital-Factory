@@ -167,9 +167,9 @@ function resourceDeploymentTable() {
   return table;
 }
 
-test("resource_deployment's writable fields are exactly employeeId/positionId", () => {
+test("resource_deployment's writable fields are exactly employeeId/positionId/allocationPercentage", () => {
   const fieldKeys = resourceDeploymentTable().fields.map((f) => f.key).sort();
-  assert.deepEqual(fieldKeys, ["employeeId", "positionId"]);
+  assert.deepEqual(fieldKeys, ["allocationPercentage", "employeeId", "positionId"]);
 });
 
 test("resource_deployment never exposes employeeName/positionName as a writable MCP field (live lookup only)", () => {
