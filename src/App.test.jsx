@@ -31,11 +31,12 @@ describe('App', () => {
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
-  it('landing on NAV_ITEMS[0].hash — the same value Header\'s "Dashboard" link and Hero\'s "Enter the Application" CTA use — resolves to the Dashboard section', async () => {
-    window.location.hash = NAV_ITEMS[0].hash;
+  it('landing on the Dashboard hash — the same value Header\'s "Dashboard" link uses — resolves to the Dashboard section', async () => {
+    const dashboard = NAV_ITEMS.find((item) => item.id === 'dashboard');
+    window.location.hash = dashboard.hash;
     render(<App />);
 
-    expect(screen.getByRole('button', { name: NAV_ITEMS[0].label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 

@@ -1,17 +1,24 @@
 import { MASTER_DATA_TABLES } from './masterDataApi';
 
-// Single registry both AppShell and Sidebar read from. "Dashboard" is a
-// standalone first section with no master-data table behind it — it
-// renders the overview Dashboard. Every master-data
+// Single registry both AppShell and Sidebar read from. "Control Center" is
+// the first section and "Dashboard" the second; neither has a master-data
+// table behind it. Every master-data
 // table is one entry, each carrying the route/columns MasterDataTable
 // needs to render it directly. "Entity Relationship" (FEAT-12) is the
 // second non-table section, appended after the tables rather than inserted after
 // Dashboard, so it never shifts the index of any real master-data table —
-// "Control Center" is the third non-table section, appended last.
 // AppShell.test.jsx destructures NAV_ITEMS by position and relies on
-// NAV_ITEMS[1]/[2] being the first two actual tables. `kind` is what
+// NAV_ITEMS[2]/[3] being the first two actual tables. `kind` is what
 // AppShell branches on to decide which component to render.
 export const NAV_ITEMS = [
+  {
+    id: 'control-center',
+    label: 'Control Center',
+    hash: '#control-center',
+    route: null,
+    columns: null,
+    kind: 'control-center',
+  },
   { id: 'dashboard', label: 'Dashboard', hash: '#dashboard', route: null, columns: null, kind: 'dashboard' },
   ...MASTER_DATA_TABLES.map((table) => ({
     id: table.route,
@@ -29,14 +36,6 @@ export const NAV_ITEMS = [
     route: null,
     columns: null,
     kind: 'entity-relationship',
-  },
-  {
-    id: 'control-center',
-    label: 'Control Center',
-    hash: '#control-center',
-    route: null,
-    columns: null,
-    kind: 'control-center',
   },
 ];
 

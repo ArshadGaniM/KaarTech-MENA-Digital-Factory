@@ -7,7 +7,7 @@ describe('Header', () => {
   it('links "Dashboard" to the first dashboard section', () => {
     render(<Header />);
 
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', NAV_ITEMS[0].hash);
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', NAV_ITEMS.find((item) => item.id === 'dashboard').hash);
   });
 
   it('links "Delivery Centers" to the marketing anchor, not the dashboard\'s colliding route', () => {
