@@ -29,6 +29,15 @@ describe('useTableCounts', () => {
     expect(fetchMasterDataTable).toHaveBeenCalledWith(MASTER_DATA_TABLES[0].route, { limit: 1, offset: 0 });
   });
 
+  it('counts only live rows: prefers activeTotal over total', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [], total: 10, activeTotal: 4 });
+
+    const { result } = renderHook(() => useTableCounts());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data[0].count).toBe(4);
+  });
+
   it('records a per-table failure without failing the rest', async () => {
     fetchMasterDataTable.mockImplementation((route) =>
       route === 'teams' ? Promise.reject(new Error('boom')) : Promise.resolve({ rows: [], total: 1 })

@@ -2,7 +2,7 @@
 
 Express + `pg` (Postgres/Supabase) API following the conventions in
 `../.claude/rules/api.md` and `../.claude/rules/database.md`: response
-bodies are always `{ data }` / `{ data, total } ` / `{ error }`, never raw
+bodies are always `{ data }` / `{ data, total, activeTotal } ` (list routes only: `total` counts soft-deleted rows for pagination, `activeTotal` leaves them out) / `{ error }`, never raw
 ORM/query rows.
 
 ## Setup
