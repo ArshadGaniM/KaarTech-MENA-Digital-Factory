@@ -5,8 +5,9 @@ import { MASTER_DATA_TABLES } from './masterDataApi';
 // renders the overview Dashboard. Every master-data
 // table is one entry, each carrying the route/columns MasterDataTable
 // needs to render it directly. "Entity Relationship" (FEAT-12) is the
-// second non-table section, appended LAST rather than inserted after
+// second non-table section, appended after the tables rather than inserted after
 // Dashboard, so it never shifts the index of any real master-data table —
+// "Control Center" is the third non-table section, appended last.
 // AppShell.test.jsx destructures NAV_ITEMS by position and relies on
 // NAV_ITEMS[1]/[2] being the first two actual tables. `kind` is what
 // AppShell branches on to decide which component to render.
@@ -28,6 +29,14 @@ export const NAV_ITEMS = [
     route: null,
     columns: null,
     kind: 'entity-relationship',
+  },
+  {
+    id: 'control-center',
+    label: 'Control Center',
+    hash: '#control-center',
+    route: null,
+    columns: null,
+    kind: 'control-center',
   },
 ];
 
