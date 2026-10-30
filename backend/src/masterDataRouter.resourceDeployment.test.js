@@ -56,13 +56,14 @@ test("POST /v1/resource-deployment rejects a non-existent employeeId AND positio
       insertCalled = true;
       return { rows: [] };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
   const res = await fetch(`${baseUrl}/v1/resource-deployment`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
-    body: JSON.stringify({ employeeId: 999999, positionId: "POS-999" }),
+    body: JSON.stringify({ employeeId: 999999, positionId: "POS-999", allocationPercentage: 100 }),
   });
 
   assert.equal(res.status, 422);
@@ -84,13 +85,14 @@ test("POST /v1/resource-deployment rejects a bad positionId even when employeeId
       insertCalled = true;
       return { rows: [] };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
   const res = await fetch(`${baseUrl}/v1/resource-deployment`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
-    body: JSON.stringify({ employeeId: 42, positionId: "POS-999" }),
+    body: JSON.stringify({ employeeId: 42, positionId: "POS-999", allocationPercentage: 100 }),
   });
 
   assert.equal(res.status, 422);
@@ -107,13 +109,14 @@ test("POST /v1/resource-deployment with valid employeeId/positionId inserts and 
     if (sql.startsWith("insert into resource_deployment")) {
       return { rows: [baseRow()] };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
   const res = await fetch(`${baseUrl}/v1/resource-deployment`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
-    body: JSON.stringify({ employeeId: 42, positionId: "POS-001" }),
+    body: JSON.stringify({ employeeId: 42, positionId: "POS-001", allocationPercentage: 100 }),
   });
 
   assert.equal(res.status, 201);
@@ -133,6 +136,7 @@ test("GET /v1/resource-deployment/:id resolves employeeName and positionName via
         rows: [baseRow({ lookup_0_name: "Jane Doe", lookup_1_name: "Consultant" })],
       };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
@@ -151,6 +155,7 @@ test("GET /v1/resource-deployment/:id yields employeeName === null and positionN
       // lookups' LEFT JOINs are independent of each other.
       return { rows: [baseRow({ lookup_0_name: null, lookup_1_name: "Consultant" })] };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
@@ -168,6 +173,7 @@ test("GET /v1/resource-deployment (list) orders by employee_id, not the dropped 
       listSql = sql;
       return { rows: [] };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
@@ -189,6 +195,7 @@ test("PATCH /v1/resource-deployment/:id can update positionId without touching e
     if (sql.startsWith("update resource_deployment set")) {
       return { rows: [baseRow({ position_code: "POS-002" })] };
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
@@ -241,13 +248,14 @@ test("POST /v1/resource-deployment maps a foreign_key_violation (23503) from the
       err.constraint = "fk_resource_deployment_positions";
       throw err;
     }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
     throw new Error(`unexpected query: ${sql}`);
   });
 
   const res = await fetch(`${baseUrl}/v1/resource-deployment`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
-    body: JSON.stringify({ employeeId: 42, positionId: "POS-001" }),
+    body: JSON.stringify({ employeeId: 42, positionId: "POS-001", allocationPercentage: 100 }),
   });
 
   assert.equal(res.status, 422);
@@ -261,7 +269,7 @@ registerAuthGateTests({
   getBaseUrl: () => baseUrl,
   route: "resource-deployment",
   getId: () => RESOURCE_DEPLOYMENT_ID,
-  postBody: { employeeId: 42, positionId: "POS-001" },
+  postBody: { employeeId: 42, positionId: "POS-001", allocationPercentage: 100 },
   patchBody: { positionId: "POS-002" },
 });
 
@@ -271,4 +279,117 @@ registerDeleteTests({
   getId: () => RESOURCE_DEPLOYMENT_ID,
   tableName: "resource_deployment",
   resourceName: "resource_deployment",
+});
+
+// FEAT-21: one resource can be deployed to several positions, each with its
+// own allocation percentage; a resource's live rows never exceed 100 in total.
+function allocationMock(t, existing, { onWrite } = {}) {
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.startsWith("select 1 from resources where employee_id")) return { rows: [{}] };
+    if (sql.startsWith("select 1 from positions where code")) return { rows: [{}] };
+    if (sql.startsWith("select position_code as unique_value")) {
+      return { rows: existing.map(([position, value]) => ({ unique_value: position, value })) };
+    }
+    if (sql.startsWith("select * from resource_deployment where id")) return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    if (sql.startsWith("insert into") || sql.startsWith("update")) {
+      onWrite?.(sql, params);
+      return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+}
+
+function postDeployment(body) {
+  return fetch(`${baseUrl}/v1/resource-deployment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify(body),
+  });
+}
+
+test("POST /v1/resource-deployment accepts a second position that brings the resource to exactly 100", async (t) => {
+  let wrote = false;
+  allocationMock(t, [["POS-001", "50.00"]], { onWrite: () => (wrote = true) });
+
+  const res = await postDeployment({ employeeId: 42, positionId: "POS-002", allocationPercentage: 50 });
+
+  assert.equal(res.status, 201);
+  assert.equal(wrote, true);
+  assert.equal((await res.json()).data.allocationPercentage, 50);
+});
+
+test("POST /v1/resource-deployment rejects an allocation that would push the resource over 100 and never inserts", async (t) => {
+  let wrote = false;
+  allocationMock(t, [["POS-001", "70.00"]], { onWrite: () => (wrote = true) });
+
+  const res = await postDeployment({ employeeId: 42, positionId: "POS-002", allocationPercentage: 40 });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /at most 30%/);
+  assert.equal(wrote, false);
+});
+
+test("POST /v1/resource-deployment rejects the same resource and position twice", async (t) => {
+  allocationMock(t, [["POS-001", "50.00"]]);
+
+  const res = await postDeployment({ employeeId: 42, positionId: "POS-001", allocationPercentage: 25 });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.positionId);
+});
+
+test("POST /v1/resource-deployment rejects a percentage that is missing, zero, negative or above 100", async (t) => {
+  allocationMock(t, []);
+  for (const allocationPercentage of [undefined, 0, -5, 100.5]) {
+    const res = await postDeployment({ employeeId: 42, positionId: "POS-001", allocationPercentage });
+    assert.equal(res.status, 422, String(allocationPercentage));
+    assert.ok((await res.json()).error.details.allocationPercentage);
+  }
+});
+
+test("PATCH /v1/resource-deployment/:id does not count the row being edited against itself", async (t) => {
+  allocationMock(t, [["POS-002", "50.00"]]);
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ allocationPercentage: 50 }),
+  });
+
+  assert.equal(res.status, 200);
+});
+
+test("PATCH /v1/resource-deployment/:id rejects raising the percentage past what the other rows leave", async (t) => {
+  allocationMock(t, [["POS-002", "60.00"]]);
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ allocationPercentage: 50 }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /at most 40%/);
+});
+
+test("POST /v1/resource-deployment/:id/restore is refused when the resource has since been allocated elsewhere", async (t) => {
+  let wrote = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from resource_deployment where id")) {
+      return { rows: [baseRow({ allocation_percentage: "50.00", deleted_at: "2026-02-01T00:00:00Z" })] };
+    }
+    if (sql.startsWith("select 1 from")) return { rows: [{}] };
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [{ unique_value: "POS-002", value: "80.00" }] };
+    if (sql.startsWith("update")) wrote = true;
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}/restore`, {
+    method: "POST",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.allocationPercentage);
+  assert.equal(wrote, false);
 });

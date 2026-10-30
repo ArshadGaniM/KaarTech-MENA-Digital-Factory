@@ -33,6 +33,12 @@ describe('MASTER_DATA_TABLES column definitions', () => {
     expect(keys.slice(0, 4)).toEqual(['code', 'name', 'input', 'output']);
   });
 
+  // FEAT-21: a resource can hold several deployments, each with a share.
+  it('gives resource-deployment Allocation % and Employee Total % columns after the position columns', () => {
+    const keys = columnsFor('resource-deployment').map((column) => column.key);
+    expect(keys.slice(3, 7)).toEqual(['positionId', 'positionName', 'allocationPercentage', 'employeeTotalAllocation']);
+  });
+
   // Tables with a business identity (auto-generated code or caller-supplied
   // unique field) don't need the internal id surfaced — the Delete popup
   // matches on their business identity instead.

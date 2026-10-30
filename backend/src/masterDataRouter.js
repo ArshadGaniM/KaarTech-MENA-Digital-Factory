@@ -19,6 +19,8 @@ import {
   validateCrossFields,
   lookupJoinSql,
   lookupSelectSql,
+  allocationSelectSql,
+  validateAllocation,
 } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
@@ -85,7 +87,7 @@ export function createMasterDataRouter(table) {
   // `${tableName}.*` (not bare `*`) so a joined lookup table's same-named
   // columns (e.g. resources.name) can't collide with resource_cost's own
   // — same reasoning for qualifying deleted_at/sortColumn in ORDER BY.
-  const selectList = [`${tableName}.*`, ...lookupColumns].join(", ");
+  const selectList = [`${tableName}.*`, ...lookupColumns, ...allocationSelectSql(table)].join(", ");
 
   router.get("/", async (req, res, next) => {
     try {
@@ -130,6 +132,7 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, req.body);
       validateCrossFields(table, req.body);
       const actor = actorOf(req.body);
+      await validateAllocation(pool, table, Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]])));
 
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
@@ -158,6 +161,15 @@ export function createMasterDataRouter(table) {
       const current = existing.rows[0];
       validateCrossFields(table, req.body, { current });
       const actor = actorOf(req.body);
+
+      await validateAllocation(
+        pool,
+        table,
+        Object.fromEntries(
+          fields.map((f) => [f.column, Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column]])
+        ),
+        req.params.id
+      );
 
       const columns = [...fields.map((f) => f.column), "updated_by"];
       // ?? would treat an explicit null the same as "not sent" and silently
@@ -231,6 +243,12 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, referenceBody, { partial: true });
 
       const actor = actorOf(req.body);
+      await validateAllocation(
+        pool,
+        table,
+        Object.fromEntries(fields.map((f) => [f.column, current[f.column]])),
+        req.params.id
+      );
 
       const result = await pool.query(
         `update ${tableName} set deleted_at = null, updated_by = $1

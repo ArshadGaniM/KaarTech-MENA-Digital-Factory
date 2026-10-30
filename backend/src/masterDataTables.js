@@ -206,6 +206,22 @@ export const MASTER_DATA_TABLES = [
     // reasoning as resource_cost (0013): the list query's ORDER BY needs
     // an explicit override since it no longer has one to fall back on.
     sortColumn: "employee_id",
+    // One resource can be deployed to several positions, each with its own
+    // allocation percentage; a resource's live rows must never add up to
+    // more than `total` (enforced on create, edit and restore by
+    // masterDataRouter.js's validateAllocation) and are expected to reach it
+    // (surfaced per row as employeeTotalAllocation so a short resource is
+    // visible — rows are entered one at a time, so a hard "exactly 100"
+    // check could never let the first row in).
+    allocationRule: {
+      groupKey: "employeeId",
+      groupColumn: "employee_id",
+      uniqueKey: "positionId",
+      uniqueColumn: "position_code",
+      valueKey: "allocationPercentage",
+      valueColumn: "allocation_percentage",
+      total: 100,
+    },
     // employeeName/positionName are NOT stored columns — they're live
     // joins against resources/positions at read time (see
     // masterDataSchema.js's lookupJoinSql/lookupSelectSql/toResponse).
@@ -252,6 +268,14 @@ export const MASTER_DATA_TABLES = [
         // matching department_code/team_code) even though the JSON/API
         // key stays `positionId`.
         references: { table: "positions", column: "code" },
+      },
+      {
+        key: "allocationPercentage",
+        column: "allocation_percentage",
+        required: true,
+        type: "number",
+        min: 0.01,
+        max: 100,
       },
     ],
   },

@@ -55,7 +55,15 @@ export function toResponse(table, row) {
   const response = { id: row.id };
   if (table.hasCode) response.code = row.code;
   for (const field of table.fields) {
-    response[field.key] = row[field.column];
+    // pg returns a `numeric` column as a string; a field with a range is
+    // always stored as numeric, and the UI needs a real number to total.
+    response[field.key] =
+      field.max !== undefined && row[field.column] != null ? Number(row[field.column]) : row[field.column];
+  }
+  if (table.allocationRule) {
+    // Only present on rows from the router's own SELECT (see allocationSelectSql).
+    response.employeeTotalAllocation =
+      row.employee_total_allocation != null ? Number(row.employee_total_allocation) : null;
   }
   // A lookup column is only present on rows the router's own SELECT
   // joined it into — a POST/PATCH's `returning *` never carries it, since
@@ -110,6 +118,10 @@ export function validateBody(table, body, { partial = false } = {}) {
     if (field.type === "number") {
       if (typeof value !== "number" || !Number.isFinite(value)) {
         details[field.key] = `${field.key} must be a number.`;
+      } else if (field.min !== undefined && value < field.min) {
+        details[field.key] = `${field.key} must be at least ${field.min}.`;
+      } else if (field.max !== undefined && value > field.max) {
+        details[field.key] = `${field.key} must be at most ${field.max}.`;
       }
       continue;
     }
@@ -229,4 +241,40 @@ export function validateActor(actor) {
   if (actor.length > MAX_TEXT_LENGTH) {
     throw validationError({ updatedBy: `updatedBy must be ${MAX_TEXT_LENGTH} characters or fewer.` });
   }
+}
+
+// A resource's allocation total across all of its live rows, selected next to
+// each row so the table can show when a resource is short of the target.
+export function allocationSelectSql(table) {
+  const rule = table.allocationRule;
+  if (!rule) return [];
+  return [
+    `(select coalesce(sum(a.${rule.valueColumn}), 0) from ${table.tableName} a where a.${rule.groupColumn} = ${table.tableName}.${rule.groupColumn} and a.deleted_at is null) as employee_total_allocation`,
+  ];
+}
+
+// Rejects a row that would push its group (resource) past the rule's total,
+// or repeat a unique value (position) within the group. `candidate` is keyed
+// by column name; `excludeId` is the row being edited so it isn't counted
+// against itself. Soft-deleted rows never count.
+export async function validateAllocation(pool, table, candidate, excludeId = null) {
+  const rule = table.allocationRule;
+  if (!rule) return;
+  const { rows } = await pool.query(
+    `select ${rule.uniqueColumn} as unique_value, ${rule.valueColumn} as value
+     from ${table.tableName}
+     where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)`,
+    [candidate[rule.groupColumn], excludeId]
+  );
+  const details = {};
+  if (rows.some((row) => row.unique_value === candidate[rule.uniqueColumn])) {
+    details[rule.uniqueKey] = `${rule.groupKey} ${candidate[rule.groupColumn]} is already allocated to ${candidate[rule.uniqueColumn]}; edit that row instead of adding another.`;
+  }
+  const others = rows.reduce((sum, row) => sum + Number(row.value), 0);
+  const resulting = Math.round((others + Number(candidate[rule.valueColumn])) * 100) / 100;
+  if (resulting > rule.total) {
+    const remaining = Math.max(0, Math.round((rule.total - others) * 100) / 100);
+    details[rule.valueKey] = `Allocations for ${rule.groupKey} ${candidate[rule.groupColumn]} cannot exceed ${rule.total}%: ${others}% is already allocated, so at most ${remaining}% remains.`;
+  }
+  if (Object.keys(details).length > 0) throw validationError(details);
 }

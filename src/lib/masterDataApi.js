@@ -140,6 +140,8 @@ export const MASTER_DATA_TABLES = [
       { key: "employeeName", label: "Employee Name" },
       { key: "positionId", label: "Position ID" },
       { key: "positionName", label: "Position Name" },
+      { key: "allocationPercentage", label: "Allocation %" },
+      { key: "employeeTotalAllocation", label: "Employee Total %" },
       ...AUDIT_COLUMNS,
     ],
   },
