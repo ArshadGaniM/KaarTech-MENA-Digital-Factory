@@ -11,7 +11,7 @@ beforeEach(() => {
     'fetch',
     vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [] }),
+      json: () => Promise.resolve({ data: [], total: 0 }),
     })
   );
 });

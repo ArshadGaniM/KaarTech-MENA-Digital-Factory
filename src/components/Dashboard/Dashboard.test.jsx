@@ -85,6 +85,40 @@ describe('Dashboard', () => {
     expect(screen.getByText('Every table has at least one record.')).toBeInTheDocument();
   });
 
+  it('does not claim every table has records when some failed to load', () => {
+    const data = counts({ practices: 5 }).map((table) =>
+      table.route === 'teams' ? { ...table, count: null, error: new Error('boom') } : table
+    );
+    useTableCounts.mockReturnValue({ data, isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.queryByText('Every table has at least one record.')).not.toBeInTheDocument();
+    expect(screen.getByText('No empty tables among those that loaded.')).toBeInTheDocument();
+  });
+
+  it('shows one alert and no healthy-looking panels when every table failed', () => {
+    const data = counts().map((table) => ({ ...table, count: null, error: new Error('boom') }));
+    useTableCounts.mockReturnValue({ data, isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load counts for any table');
+    expect(screen.queryByRole('region', { name: 'Needs data' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/active records across/)).not.toBeInTheDocument();
+  });
+
+  it('leaves a failed table out of "Needs data"', () => {
+    const data = counts().map((table) =>
+      table.route === 'practices' ? { ...table, count: null, error: new Error('boom') } : table
+    );
+    useTableCounts.mockReturnValue({ data, isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(within(screen.getByRole('region', { name: 'Needs data' })).queryByRole('button', { name: 'Practices' })).not.toBeInTheDocument();
+  });
+
   it('navigates to a table when its tile, bar, or empty-state link is clicked', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();

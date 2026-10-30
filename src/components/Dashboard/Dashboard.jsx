@@ -31,6 +31,14 @@ function Dashboard({ onNavigate }) {
 
   const failed = data.filter((table) => table.error !== null);
   const loaded = data.filter((table) => table.error === null);
+  if (loaded.length === 0) {
+    return (
+      <p className={styles.statusError} role="alert">
+        Could not load counts for any table. Check that the backend is running.
+      </p>
+    );
+  }
+
   const featured = FEATURED_ROUTES.map((route) => data.find((table) => table.route === route));
   const ranked = [...loaded].sort((a, b) => b.count - a.count);
   const maxCount = Math.max(1, ...loaded.map((table) => table.count));
@@ -87,7 +95,11 @@ function Dashboard({ onNavigate }) {
             Needs data
           </h2>
           {empty.length === 0 ? (
-            <p className={styles.panelMeta}>Every table has at least one record.</p>
+            <p className={styles.panelMeta}>
+              {failed.length > 0
+                ? 'No empty tables among those that loaded.'
+                : 'Every table has at least one record.'}
+            </p>
           ) : (
             <>
               <p className={styles.panelMeta}>These tables have no records yet.</p>

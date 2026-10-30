@@ -99,11 +99,20 @@ describe('fetchMasterDataTable', () => {
     vi.unstubAllGlobals();
   });
 
-  it('passes activeTotal through when the backend sends it, and ignores an invalid one', async () => {
+  it('passes activeTotal through when the backend sends it', async () => {
     fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 10, activeTotal: 4 }) });
-    expect((await fetchMasterDataTable('resources')).activeTotal).toBe(4);
 
-    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 10, activeTotal: -1 }) });
+    expect((await fetchMasterDataTable('resources')).activeTotal).toBe(4);
+  });
+
+  it.each([
+    ['absent', undefined],
+    ['negative', -1],
+    ['a string', '4'],
+    ['NaN', NaN],
+  ])('treats an activeTotal that is %s as missing', async (_label, activeTotal) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 10, activeTotal }) });
+
     expect((await fetchMasterDataTable('resources')).activeTotal).toBeUndefined();
   });
 

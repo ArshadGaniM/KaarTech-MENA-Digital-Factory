@@ -1,37 +1,38 @@
-# Merge-to-Main Gate Report — FEAT-19 and FEAT-20
+# Gate Report — FEAT-21: Dashboard overview page
 
-**Features:** (FEAT-19) Undo delete and edit-a-record on every master-data table.
-(FEAT-20) Input and Output columns on Departments.
+**Verdict: WARN** (zero FAIL, zero Critical, security PASS clean)
 
-**Diff reviewed:** `git diff origin/main..HEAD` (branch `claude/trusting-curie-hlx1r6`)
+**Branch:** `claude/dreamy-knuth-76pnsa` → `main`
+**Scope:** `git diff origin/main..HEAD`. New `Dashboard` component and `useTableCounts` hook, an additive `activeTotal` field on master-data list routes, `AppShell` wiring, `DashboardPlaceholder` removed.
+**Checks run after the fixes below:** frontend 163/163 tests, backend 211/211 tests, `vite build` clean, no new lint warnings in changed files.
 
-**Overall verdict: PASS (WARN items below).** All 8 gate agents ran. Every real
-finding was fixed and covered by a test. Fixes were verified by the full test
-suites, not by a second full agent round.
+## Agent results
 
-## Test results
-- backend: 210 pass, 0 fail
-- mcp-server: 53 pass, 0 fail
-- frontend: 144 pass, 0 fail
-- lint: 0 errors (pre-existing warnings only), build OK
-
-## Findings fixed
-| Agent | Finding | Fix |
+| Agent | Verdict | Summary |
 |---|---|---|
-| security-auditor | Non-string `updatedBy` threw on `.trim()` and returned 500 | `actorOf()` returns 422 on POST, PATCH, restore |
-| code-reviewer | Restore of a row that is not deleted answered 404 | 409 `<resource>_not_deleted` |
-| debugger | Parent deleted between the reference check and the UPDATE | Live-parent check repeated inside the UPDATE, re-validated on miss |
-| silent-failure-hunter | Generic fallback hid gateway errors; 2xx without a record counted as success | Fallback carries HTTP status; 2xx without `data` throws |
-| silent-failure-hunter | One shared row-action error was overwritten or wiped | One alert per failing row |
-| code-reviewer | Edit stayed clickable during a pending delete or restore | Edit disabled while in flight |
-| refactorer | Duplicate in-flight/error code in delete and restore handlers | `runRowAction` helper |
-| doc-writer | Stale hook comments, restore status codes undocumented | Comments, `backend/README.md`, `.claude/rules/api.md` updated |
-| test-writer | MCP restore tool untested; mirror drift unchecked | `restoreTool.test.js`, `masterDataTables.drift.test.js`; drift found and fixed `delivery-centers` `hasCode` |
-| test-writer | Form edit paths thin | 6 added `RecordFormModal` tests |
+| code-reviewer | PASS | No Critical. Two Warns, both transitional or future-rename only (see checklist). |
+| security-auditor | PASS | Static SQL, escaped React output, nothing new exposed. Info only. |
+| debugger | PASS | No crash paths. Bar-width math guarded. Ran both test suites and the build. |
+| test-writer | PASS | About 90-95% of changed lines and 85% of branches covered. |
+| refactorer | PASS | No duplication, no dead code. Cosmetic Info only. |
+| doc-writer | WARN | Fixed in this push (below). |
+| silent-failure-hunter | WARN | Real finding, fixed in this push (below). |
+| pr-test-analyzer | WARN | Gaps filled in this push where verified (below). |
 
-## WARN (not blocking, logged for follow-up)
-- Edit sends a diff against the loaded snapshot, so two editors on the same row are last-write-wins by field.
-- Postgres `date` columns depend on the driver's default parser.
-- `deleteRecord` does not go through the shared `writeRecord` helper.
-- Backend HTTP tests mock `pool.query`; the SQL itself ran only against the live database in manual checks.
-- Input and Output are free text; the owner's note "in input, you can let it be like that" was ambiguous.
+Subagent verification rule (CLAUDE.md §8): no agent made a negative file-existence claim that needed a cross-check. The doc agent's claims about `mcp-server/README.md` and `.claude/rules/api.md` were confirmed by direct read (manual cross-check, CONFIRMED). The test-quality agent cited line numbers that do not exist in the 40-line `masterDataRouter.list.test.js` (HALLUCINATED line numbers), so each of its findings was re-checked against the real files before acting.
+
+## Fixed in this push
+
+- **Misleading healthy state (silent-failure-hunter, CONFIRMED).** With failed tables, "Needs data" said "Every table has at least one record" and the bar panel could say "0 active records across 0 tables". Now: when every table fails, the page shows one alert only. When some fail, "Needs data" says "No empty tables among those that loaded." Three new tests.
+- **Stale and missing docs (doc-writer, CONFIRMED).** `mcp-server/README.md` no longer says the Dashboard has no content. `.claude/rules/api.md` documents `activeTotal`. `backend/README.md` sentence tidied.
+- **Test gaps (pr-test-analyzer, CONFIRMED).** `fetchMasterDataTable` now tests an absent, negative, string and NaN `activeTotal` separately. Failed-table-excluded-from-"Needs data" is tested.
+- **`src/App.test.jsx`** fetch stub now returns `total: 0` like the real API. It returned a malformed body, which the new all-failed state exposed.
+
+## Remaining checklist (non-blocking)
+
+- [ ] Backend list-route test covers the happy path only. Add a case where the count query rejects and the error reaches the error handler. The SQL assertion is a regex on the query text, so it does not prove soft-deleted rows are excluded against a real Postgres. No database is reachable from this sandbox.
+- [ ] `Dashboard.jsx` looks up `FEATURED_ROUTES` with `find`. A future rename of one of those four routes in `MASTER_DATA_TABLES` would throw. Not reachable today.
+- [ ] Against a backend that predates `activeTotal`, counts fall back to `total` and include soft-deleted rows. Transitional, both ship together.
+- [ ] Counts load when the Dashboard opens and are not auto-refreshed. A refresh button or timed refresh is a possible follow-up.
+- [ ] No test asserts that `AppShell` passes `onNavigate` through so a click changes the active view. Dashboard tests only check the callback with a mock.
+- [ ] Twelve count requests go out on every Dashboard mount. Bounded and parallel, no caching.
