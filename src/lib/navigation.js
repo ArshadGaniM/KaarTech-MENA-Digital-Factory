@@ -1,8 +1,8 @@
 import { MASTER_DATA_TABLES } from './masterDataApi';
 
 // Single registry both AppShell and Sidebar read from. "Dashboard" is a
-// standalone first section with no master-data table behind it yet — its
-// content is intentionally empty until that's defined. Every master-data
+// standalone first section with no master-data table behind it — it
+// renders the overview Dashboard. Every master-data
 // table is one entry, each carrying the route/columns MasterDataTable
 // needs to render it directly. "Entity Relationship" (FEAT-12) is the
 // second non-table section, appended LAST rather than inserted after
