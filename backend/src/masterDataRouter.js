@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "./db.js";
 import {
   notFound,
+  notDeleted,
   validationError,
   isUniqueViolation,
   duplicateFieldError,
@@ -200,17 +201,27 @@ export function createMasterDataRouter(table) {
   // verb sub-resource per api.md rather than a PATCH (PATCH deliberately
   // refuses soft-deleted rows). validateReferences() requires a *live*
   // referenced row, so restoring a child whose parent is itself still
-  // deleted would resurrect a row pointing at nothing — re-check every FK
-  // here, with the same 422 shape, instead of silently allowing it.
+  // deleted would resurrect a row pointing at nothing — every FK is
+  // re-checked here, with the same 422 shape, instead of silently
+  // allowing it. The same check is repeated inside the UPDATE itself (see
+  // liveParentsSql) so a parent deleted between the up-front check and the
+  // write can't slip through either.
+  const liveParentsSql = fields
+    .filter((f) => f.references)
+    .map(
+      (f) =>
+        ` and (${tableName}.${f.column} is null or exists (select 1 from ${f.references.table} where ${f.references.column} = ${tableName}.${f.column} and deleted_at is null))`
+    )
+    .join("");
+
   router.post("/:id/restore", requireInternalApiKey, async (req, res, next) => {
     try {
-      const existing = await pool.query(
-        `select * from ${tableName} where id = $1 and deleted_at is not null`,
-        [req.params.id]
-      );
+      const existing = await pool.query(`select * from ${tableName} where id = $1`, [req.params.id]);
       if (existing.rows.length === 0) throw notFound(resourceName, req.params.id);
 
       const current = existing.rows[0];
+      if (current.deleted_at === null) throw notDeleted(resourceName, req.params.id);
+
       const referenceBody = {};
       for (const field of fields) {
         if (field.references && current[field.column] !== null) {
@@ -223,13 +234,22 @@ export function createMasterDataRouter(table) {
 
       const result = await pool.query(
         `update ${tableName} set deleted_at = null, updated_by = $1
-         where id = $2 and deleted_at is not null returning *`,
+         where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
         [actor, req.params.id]
       );
-      if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
+      if (result.rows.length === 0) {
+        // Either someone restored it first (409/404 below) or a parent was
+        // deleted in the window since the check above (the re-check throws
+        // the 422).
+        const again = await pool.query(`select * from ${tableName} where id = $1`, [req.params.id]);
+        if (again.rows.length === 0) throw notFound(resourceName, req.params.id);
+        if (again.rows[0].deleted_at === null) throw notDeleted(resourceName, req.params.id);
+        await validateReferences(table, referenceBody, { partial: true });
+        throw notFound(resourceName, req.params.id);
+      }
       res.json({ data: toResponse(table, result.rows[0]) });
     } catch (err) {
-      next(err);
+      next(mapWriteError(err, fields, req.body));
     }
   });
 

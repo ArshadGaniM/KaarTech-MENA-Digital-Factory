@@ -287,11 +287,21 @@ async function writeRecord(method, path, body, failureMessage) {
   });
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
-    const error = new Error(payload?.error?.message || failureMessage);
+    // The HTTP status goes in the fallback so a gateway 502/504 (an HTML
+    // body, no backend message) isn't indistinguishable from a real
+    // refusal (gate finding, silent-failure-hunter).
+    const error = new Error(payload?.error?.message || `${failureMessage} (HTTP ${res.status}).`);
     error.details = payload?.error?.details ?? {};
     throw error;
   }
-  return payload?.data;
+  // A 2xx that carries no readable record means the write can't be
+  // confirmed — don't let the form close and the table reload as if it
+  // had saved (same stance as fetchMasterDataTable's malformed-response
+  // error).
+  if (payload?.data === undefined) {
+    throw new Error(`${failureMessage}: the server's response (HTTP ${res.status}) could not be read.`);
+  }
+  return payload.data;
 }
 
 export function createRecord(route, body) {
@@ -322,6 +332,6 @@ export async function deleteRecord(route, id) {
   });
   if (!res.ok) {
     const payload = await res.json().catch(() => null);
-    throw new Error(payload?.error?.message || `Failed to delete ${route} record`);
+    throw new Error(payload?.error?.message || `Failed to delete ${route} record (HTTP ${res.status}).`);
   }
 }

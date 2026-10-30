@@ -55,8 +55,7 @@ here so it doesn't get "fixed" back into a bug.
 returns 200 (not 404) for a soft-deleted resource — the response includes
 `markedDeleted: "Yes"` instead. 404 is reserved for an id that doesn't exist
 at all. Only PATCH/DELETE on those routes still 404 a soft-deleted resource,
-since those refuse to act on one; the inverse verb route
-`POST /v1/<table>/:id/restore` 404s a row that is *not* soft-deleted.
+since those refuse to act on one; the inverse verb route `POST /v1/<table>/:id/restore` answers 409 (`<resource>_not_deleted`) for a row that exists but is *not* soft-deleted, and 404 only when the id doesn't exist.
 
 ## Error Responses
 ```json

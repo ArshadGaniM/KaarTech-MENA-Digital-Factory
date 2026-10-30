@@ -241,6 +241,41 @@ describe('MasterDataTable', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it('keeps a separate alert per failing row, so a second failure does not overwrite the first', async () => {
+    const user = userEvent.setup();
+    mockTable({
+      data: [
+        { id: 'row-a', code: 'PR-A', name: 'A', markedDeleted: 'Yes' },
+        { id: 'row-b', code: 'PR-B', name: 'B', markedDeleted: 'Yes' },
+      ],
+    });
+    restoreRecord.mockRejectedValueOnce(new Error('Parent A is deleted.')).mockRejectedValueOnce(new Error('Parent B is deleted.'));
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    const [restoreA, restoreB] = screen.getAllByRole('button', { name: 'Undo delete' });
+    await user.click(restoreA);
+    await user.click(restoreB);
+
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts).toHaveLength(2);
+    expect(alerts[0]).toHaveTextContent('Parent A is deleted.');
+    expect(alerts[1]).toHaveTextContent('Parent B is deleted.');
+  });
+
+  it('disables Edit on a row while its delete is in flight', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    deleteRecord.mockReturnValue(new Promise(() => {}));
+    mockTable({ data: [{ id: 'row-1', code: 'PR-1', name: 'x', markedDeleted: 'No' }] });
+
+    render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+  });
+
   it('shows an in-flight state on the restoring row only', async () => {
     const user = userEvent.setup();
     let resolveRestore;

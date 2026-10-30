@@ -103,9 +103,7 @@
 }
 
 .table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  position: relative;
   background: var(--color-bg-alt);
   color: var(--color-text-muted);
   font-weight: 700;
@@ -161,6 +159,7 @@
 .table td:last-child {
   position: sticky;
   right: 0;
+  z-index: 1;
   box-shadow: -1px 0 0 var(--color-border);
 }
 

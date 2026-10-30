@@ -19,6 +19,7 @@ export const MASTER_DATA_TABLES = [
     slug: "delivery_center",
     route: "delivery-centers",
     label: "Delivery Center",
+    hasCode: true,
     fields: [
       { key: "name", label: "name", required: true, type: "string" },
       {

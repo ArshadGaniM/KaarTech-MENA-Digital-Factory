@@ -32,6 +32,12 @@ function optionLabel(row, identityKey) {
 
 function FieldControl({ field, label, value, onChange, pickListOptions, pickListLoading, locked }) {
   const inputId = `record-form-field-${field.key}`;
+  const hasUnlistedValue =
+    field.references &&
+    !pickListLoading &&
+    pickListOptions !== undefined &&
+    value !== '' &&
+    !pickListOptions.some((option) => option.value === value);
 
   if (field.references) {
     return (
@@ -48,6 +54,14 @@ function FieldControl({ field, label, value, onChange, pickListOptions, pickList
             {option.label}
           </option>
         ))}
+        {/* The pick-list leaves out soft-deleted parents, but an existing
+            row can still point at one (deleting a parent doesn't cascade).
+            Without its own option the select would fall back to the blank
+            placeholder and `required` would block saving *any* edit to that
+            row (gate finding, code-reviewer/debugger). */}
+        {hasUnlistedValue && (
+          <option value={value}>{`${value} (deleted)`}</option>
+        )}
       </select>
     );
   }
@@ -81,6 +95,7 @@ function FieldControl({ field, label, value, onChange, pickListOptions, pickList
       required={field.required}
       maxLength={field.maxLength}
       disabled={locked}
+      step={field.type === 'number' ? 'any' : undefined}
     />
   );
 }
@@ -105,6 +120,8 @@ FieldControl.propTypes = {
 function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, onSaved }) {
   const isEdit = record != null;
   const title = `${isEdit ? 'Edit' : 'Add'} ${singularLabel}`;
+  const submitLabel = isEdit ? 'Save' : 'Add';
+  const submittingLabel = isEdit ? 'Saving…' : 'Adding…';
   const { data: entities, isLoading: entitiesLoading, error: entitiesError } = useEntityRelationships();
   const tableEntity = entities?.find((entity) => entity.route === route);
   const fields = tableEntity?.fields ?? [];
@@ -114,6 +131,10 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
   const [pickListsLoading, setPickListsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  // Kept apart from submitError: handleSubmit clears that on every submit,
+  // which would erase the only explanation of why a required pick-list is
+  // empty (gate finding, silent-failure-hunter).
+  const [pickListError, setPickListError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
   // Fetch every referenced table's current rows once the field list is
@@ -135,12 +156,13 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
       referenceFields.map(async (field) => {
         const referencedEntity = entities.find((entity) => entity.route === field.references.route);
         const identityKey = referencedEntity?.identity?.field;
+        if (!identityKey) {
+          throw new Error(`Cannot list ${field.references.route} options: it has no identity field to select by.`);
+        }
         const rows = await fetchAllMasterDataTableRows(field.references.route);
-        const options = identityKey
-          ? rows
-              .filter((row) => row.markedDeleted !== 'Yes')
-              .map((row) => ({ value: String(row[identityKey]), label: optionLabel(row, identityKey) }))
-          : [];
+        const options = rows
+          .filter((row) => row.markedDeleted !== 'Yes')
+          .map((row) => ({ value: String(row[identityKey]), label: optionLabel(row, identityKey) }));
         return [field.key, options];
       })
     )
@@ -148,7 +170,7 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
         if (!cancelled) setPickLists(Object.fromEntries(entries));
       })
       .catch((err) => {
-        if (!cancelled) setSubmitError(err);
+        if (!cancelled) setPickListError(err);
       })
       .finally(() => {
         if (!cancelled) setPickListsLoading(false);
@@ -213,14 +235,15 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
     // Add sends every non-empty field. Edit sends only what actually
     // changed (PATCH is partial), and a field the user emptied is sent as an
     // explicit null so an optional value can really be cleared.
+    const coerce = (field, raw) => (field.type === 'number' ? Number(raw) : raw);
     const body = {};
     for (const field of fields) {
       const raw = valueOf(field);
       if (isEdit) {
         if (raw === formValueOf(record, field)) continue;
-        body[field.key] = raw === '' ? null : field.type === 'number' ? Number(raw) : raw;
+        body[field.key] = raw === '' ? null : coerce(field, raw);
       } else if (raw !== '') {
-        body[field.key] = field.type === 'number' ? Number(raw) : raw;
+        body[field.key] = coerce(field, raw);
       }
     }
 
@@ -274,6 +297,12 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
             );
           })}
 
+          {pickListError && (
+            <p className={styles.formError} role="alert">
+              Could not load the options for a selection field: {pickListError.message}
+            </p>
+          )}
+
           {submitError && !Object.keys(fieldErrors).length && (
             <p className={styles.formError} role="alert">
               {submitError.message}
@@ -285,7 +314,7 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
               Cancel
             </button>
             <button type="submit" disabled={submitting || pickListsLoading}>
-              {submitting ? (isEdit ? 'Saving…' : 'Adding…') : isEdit ? 'Save' : 'Add'}
+              {submitting ? submittingLabel : submitLabel}
             </button>
           </div>
         </form>

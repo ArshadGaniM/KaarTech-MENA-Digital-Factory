@@ -86,7 +86,7 @@ describe('deleteRecord', () => {
       json: () => Promise.reject(new Error('not json')),
     });
 
-    await expect(deleteRecord('practices', 'row-1')).rejects.toThrow('Failed to delete practices record');
+    await expect(deleteRecord('practices', 'row-1')).rejects.toThrow('Failed to delete practices record (HTTP');
   });
 });
 
@@ -280,11 +280,18 @@ describe('updateRecord / restoreRecord / createRecord', () => {
   });
 
   it.each([
-    ['updateRecord', () => updateRecord('departments', 'row-1', {}), 'Failed to update departments record'],
-    ['restoreRecord', () => restoreRecord('departments', 'row-1'), 'Failed to restore departments record'],
-  ])('%s falls back to a generic message when the error body is not JSON', async (_name, call, message) => {
-    fetch.mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('not json')) });
+    ['createRecord', () => createRecord('departments', {}), 'Failed to create departments record (HTTP 502).'],
+    ['updateRecord', () => updateRecord('departments', 'row-1', {}), 'Failed to update departments record (HTTP 502).'],
+    ['restoreRecord', () => restoreRecord('departments', 'row-1'), 'Failed to restore departments record (HTTP 502).'],
+  ])('%s falls back to a message carrying the HTTP status when the error body is not JSON', async (_name, call, message) => {
+    fetch.mockResolvedValue({ ok: false, status: 502, json: () => Promise.reject(new Error('not json')) });
 
     await expect(call()).rejects.toMatchObject({ message, details: {} });
+  });
+
+  it('throws rather than reporting success when a 2xx response carries no readable record', async () => {
+    fetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.reject(new Error('not json')) });
+
+    await expect(updateRecord('departments', 'row-1', {})).rejects.toThrow(/could not be read/);
   });
 });

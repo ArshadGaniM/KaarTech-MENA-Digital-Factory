@@ -11,6 +11,12 @@ export function notFound(resource, id) {
   return new ApiError(404, `${resource}_not_found`, `No ${resource} with id '${id}' exists.`);
 }
 
+// 409, not 404: the row exists, it just isn't in the state the action needs
+// (restore of a row that isn't deleted — e.g. two clients both hit Undo).
+export function notDeleted(resource, id) {
+  return new ApiError(409, `${resource}_not_deleted`, `The ${resource} with id '${id}' is not deleted, so there is nothing to restore.`);
+}
+
 export function validationError(details) {
   return new ApiError(422, "validation_error", "Request failed validation.", details);
 }

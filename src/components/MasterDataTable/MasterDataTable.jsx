@@ -28,11 +28,16 @@ function MasterDataTable({ route, columns, singularLabel }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // FEAT-19: the row being edited (null = the edit modal is closed).
   const [editingRow, setEditingRow] = useState(null);
-  const [rowActionError, setRowActionError] = useState(null);
-  // A Set, not a single id — two different rows can be deleting
-  // concurrently (user clicks Delete on row A, then row B before A's
-  // request resolves), and a scalar would let one request's `finally`
-  // clear the other's in-flight indicator (gate finding, code-reviewer).
+  // Errors from row actions (delete / undo delete), one per row id: a
+  // single shared message let a second failure overwrite the first, and
+  // starting any new action wipe an unread one (gate finding,
+  // silent-failure-hunter). Starting an action on a row clears only that
+  // row's own earlier error.
+  const [rowErrors, setRowErrors] = useState({});
+  // Sets, not single ids — two different rows can be in flight at once
+  // (user clicks Delete on row A, then row B before A's request resolves),
+  // and a scalar would let one request's `finally` clear the other's
+  // in-flight indicator (gate finding, code-reviewer, FEAT-15).
   const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
   const [restoringRowIds, setRestoringRowIds] = useState(() => new Set());
   const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
@@ -54,21 +59,21 @@ function MasterDataTable({ route, columns, singularLabel }) {
     reload();
   }
 
-  // FEAT-15: per-row delete — the row already carries its own internal
-  // id, so this skips the code/id lookup the toolbar's Delete popup does.
-  // window.confirm is a deliberately minimal confirmation step (Simplicity
-  // First, CLAUDE.md §1) rather than a second modal for the same action.
-  async function handleRowDelete(row) {
-    if (!window.confirm(`Mark this ${singularLabel.toLowerCase()} record as deleted?`)) return;
-    setRowActionError(null);
-    setDeletingRowIds((prev) => new Set(prev).add(row.id));
+  // The shared shape of a per-row action: mark the row in flight in `setIds`,
+  // run it, and record a failure against that row only.
+  async function runRowAction(row, setIds, action) {
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      delete next[row.id];
+      return next;
+    });
+    setIds((prev) => new Set(prev).add(row.id));
     try {
-      await deleteRecord(route, row.id);
-      refetch();
+      await action();
     } catch (err) {
-      setRowActionError(err.message);
+      setRowErrors((prev) => ({ ...prev, [row.id]: `${row[columns[0].key]}: ${err.message}` }));
     } finally {
-      setDeletingRowIds((prev) => {
+      setIds((prev) => {
         const next = new Set(prev);
         next.delete(row.id);
         return next;
@@ -76,26 +81,27 @@ function MasterDataTable({ route, columns, singularLabel }) {
     }
   }
 
+  // FEAT-15: per-row delete — the row already carries its own internal
+  // id, so this skips the code/id lookup the toolbar's Delete popup does.
+  // window.confirm is a deliberately minimal confirmation step (Simplicity
+  // First, CLAUDE.md §1) rather than a second modal for the same action.
+  async function handleRowDelete(row) {
+    if (!window.confirm(`Mark this ${singularLabel.toLowerCase()} record as deleted?`)) return;
+    await runRowAction(row, setDeletingRowIds, async () => {
+      await deleteRecord(route, row.id);
+      refetch();
+    });
+  }
+
   // FEAT-19: undo of the above. No confirm() — restoring is itself the
-  // safe direction (nothing is lost if it was a misclick; Delete undoes it).
-  // The backend refuses if this row references a record that is itself
-  // still deleted; that message is shown in the same banner as a failed
-  // delete. Same Set-not-scalar reasoning as deletingRowIds.
+  // safe direction (nothing is lost if it was a misclick; Delete undoes
+  // it). The backend refuses if this row references a record that is
+  // itself still deleted; that message shows against this row.
   async function handleRowRestore(row) {
-    setRowActionError(null);
-    setRestoringRowIds((prev) => new Set(prev).add(row.id));
-    try {
+    await runRowAction(row, setRestoringRowIds, async () => {
       await restoreRecord(route, row.id);
       reload();
-    } catch (err) {
-      setRowActionError(err.message);
-    } finally {
-      setRestoringRowIds((prev) => {
-        const next = new Set(prev);
-        next.delete(row.id);
-        return next;
-      });
-    }
+    });
   }
 
   return (
@@ -109,11 +115,11 @@ function MasterDataTable({ route, columns, singularLabel }) {
         </button>
       </div>
 
-      {rowActionError && (
-        <p className={styles.statusError} role="alert">
-          {rowActionError}
+      {Object.entries(rowErrors).map(([rowId, message]) => (
+        <p key={rowId} className={styles.statusError} role="alert">
+          {message}
         </p>
-      )}
+      ))}
 
       {isLoading && data === null ? (
         <p className={styles.status} role="status" aria-live="polite">
@@ -175,7 +181,12 @@ function MasterDataTable({ route, columns, singularLabel }) {
                         </button>
                       ) : (
                         <div className={styles.rowActions}>
-                          <button type="button" className={styles.rowEditButton} onClick={() => setEditingRow(row)}>
+                          <button
+                            type="button"
+                            className={styles.rowEditButton}
+                            onClick={() => setEditingRow(row)}
+                            disabled={deletingRowIds.has(row.id) || restoringRowIds.has(row.id)}
+                          >
                             Edit
                           </button>
                           <button

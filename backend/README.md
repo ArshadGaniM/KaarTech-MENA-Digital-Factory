@@ -43,7 +43,7 @@ same data at runtime rather than reading source.
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
 | PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |
 | DELETE | `/v1/<table>/:id` | — | `x-internal-api-key` | Soft delete — sets `deleted_at`, does not remove the row. 204 on success. |
-| POST | `/v1/<table>/:id/restore` | optional `updatedBy` | `x-internal-api-key` | Undo of DELETE — clears `deleted_at`, returns the row (200). 404 if the row doesn't exist or isn't deleted. 422 `validation_error` if a field it references (an enforced FK) points at a row that is itself still soft-deleted, same check/shape as POST/PATCH. |
+| POST | `/v1/<table>/:id/restore` | optional `updatedBy` | `x-internal-api-key` | Undo of DELETE — clears `deleted_at`, returns the row (200). 404 if the row doesn't exist, 409 `<resource>_not_deleted` if it exists but isn't deleted (e.g. a second client's Undo). 422 `validation_error` if a field it references (an enforced FK) points at a row that is itself still soft-deleted, same check/shape as POST/PATCH. |
 
 Per-table fields, as of this writing:
 

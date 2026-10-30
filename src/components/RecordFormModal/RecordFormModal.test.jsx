@@ -225,6 +225,43 @@ describe('RecordFormModal', () => {
   });
 
   // FEAT-19: edit mode — same form, prefilled from `record`, saved via PATCH.
+  it('leaves a caller-supplied identity field editable when adding (it is only locked on edit)', async () => {
+    const user = userEvent.setup();
+    createRecord.mockResolvedValue({ id: 'new' });
+    useEntityRelationships.mockReturnValue({
+      data: [
+        {
+          route: 'resources',
+          identity: { type: 'caller-supplied-unique', field: 'employeeId' },
+          fields: [
+            { key: 'employeeId', type: 'number', required: true },
+            { key: 'name', type: 'string', required: true },
+          ],
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+    render(
+      <RecordFormModal
+        route="resources"
+        singularLabel="Resource"
+        labelByKey={{ employeeId: 'Employee ID', name: 'Name' }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Add Resource' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Employee ID *')).toBeEnabled();
+    await user.type(screen.getByLabelText('Employee ID *'), '42');
+    await user.type(screen.getByLabelText('Name *'), 'Sam');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => expect(createRecord).toHaveBeenCalledWith('resources', { employeeId: 42, name: 'Sam' }));
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
   describe('edit mode', () => {
     const PROJECT_ASSIGNMENT_ENTITY = {
       route: 'project-assignments',
@@ -339,6 +376,90 @@ describe('RecordFormModal', () => {
 
       expect(await screen.findByText('name is too long.')).toBeInTheDocument();
       expect(onSaved).not.toHaveBeenCalled();
+    });
+
+    const COSTED_ENTITY = {
+      route: 'resource-cost',
+      identity: { type: 'none' },
+      fields: [
+        { key: 'offshoreCost', type: 'number', required: false },
+        { key: 'onsiteCost', type: 'number', required: false },
+      ],
+    };
+
+    function renderCostEdit(props = {}) {
+      useEntityRelationships.mockReturnValue({ data: [COSTED_ENTITY], isLoading: false, error: null });
+      return render(
+        <RecordFormModal
+          route="resource-cost"
+          singularLabel="Resource Cost"
+          labelByKey={{ offshoreCost: 'Offshore Cost', onsiteCost: 'Onsite Cost' }}
+          record={{ id: 'rc-1', offshoreCost: 500, onsiteCost: null }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+          {...props}
+        />
+      );
+    }
+
+    it('sends an edited number field as a number, not a string', async () => {
+      const user = userEvent.setup();
+      updateRecord.mockResolvedValue({ id: 'rc-1' });
+      renderCostEdit();
+
+      expect(screen.getByLabelText('Offshore Cost')).toHaveValue(500);
+      expect(screen.getByLabelText('Onsite Cost')).toHaveValue(null);
+      await user.type(screen.getByLabelText('Onsite Cost'), '750');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(updateRecord).toHaveBeenCalledWith('resource-cost', 'rc-1', { onsiteCost: 750 }));
+    });
+
+    it('sends null when a number field with a value is emptied', async () => {
+      const user = userEvent.setup();
+      updateRecord.mockResolvedValue({ id: 'rc-1' });
+      renderCostEdit();
+
+      await user.clear(screen.getByLabelText('Offshore Cost'));
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(updateRecord).toHaveBeenCalledWith('resource-cost', 'rc-1', { offshoreCost: null }));
+    });
+
+    it('treats retyping a number field to its existing value as no change', async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      renderCostEdit({ onClose });
+
+      await user.clear(screen.getByLabelText('Offshore Cost'));
+      await user.type(screen.getByLabelText('Offshore Cost'), '500');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(updateRecord).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it('sends a changed enum selection', async () => {
+      const user = userEvent.setup();
+      updateRecord.mockResolvedValue({ id: 'row-1' });
+      renderResourceEdit();
+
+      await user.selectOptions(screen.getByLabelText('Location Type *'), 'Onsite');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => expect(updateRecord).toHaveBeenCalledWith('resources', 'row-1', { locationType: 'Onsite' }));
+    });
+
+    it('shows a non-field error from a failed save as an alert and re-enables Save', async () => {
+      const user = userEvent.setup();
+      updateRecord.mockRejectedValue(new Error('Backend unreachable'));
+      renderResourceEdit();
+
+      await user.type(screen.getByLabelText('Name *'), 'x');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Backend unreachable');
+      expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
     });
 
     it('prefills a date field as YYYY-MM-DD even though the API returns a full ISO timestamp', () => {

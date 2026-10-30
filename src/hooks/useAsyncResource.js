@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-// The cancelled-flag fetch-on-mount pattern (frontend.md: "a hook that
-// fetches data returns { data, isLoading, error }"), extracted once it
-// showed up a third time (useMasterDataTable, RecordFormModal's pick-list
-// loader, and DeleteRecordModal's full-dataset loader all hand-rolled the
-// same shape — gate finding, refactorer). `fetcher` is called once per
-// `deps` change; a change mid-flight is discarded rather than applied.
+// The cancelled-flag fetch-on-deps-change pattern (frontend.md: "a hook that
+// fetches data returns { data, isLoading, error }"). `fetcher` is called
+// once per `deps` change; a response that arrives after the deps changed is
+// discarded rather than applied. Used by DeleteRecordModal; the richer
+// fetch effects (useMasterDataTable's pagination, RecordFormModal's
+// multi-table pick-lists) carry extra state and stay hand-rolled.
 export function useAsyncResource(fetcher, deps) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,7 +16,10 @@ export function useAsyncResource(fetcher, deps) {
     setIsLoading(true);
     setError(null);
 
-    fetcher()
+    // Promise.resolve().then so a fetcher that throws synchronously (or
+    // returns a non-promise) lands in `error` instead of escaping the effect.
+    Promise.resolve()
+      .then(fetcher)
       .then((result) => {
         if (!cancelled) setData(result);
       })
