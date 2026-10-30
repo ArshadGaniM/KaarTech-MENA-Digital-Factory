@@ -11,6 +11,13 @@
   --color-border: #e5e5e7;
   --color-on-primary: #ffffff;
   --color-row-hover: #fdecee;
+  --color-sky-top: #bcd9ec;
+  --color-sky-bottom: #f2f7fa;
+  --color-glass: #8fc1e3;
+  --color-light: #ffd27a;
+  --color-room: #efe7d9;
+  --color-room-shade: #d6ccb9;
+  --color-concrete: #b7babf;
 
   --font-sans: 'Poppins', system-ui, Roboto, sans-serif;
   --space-1: 8px;
