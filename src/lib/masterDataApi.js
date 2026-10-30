@@ -140,6 +140,8 @@ export const MASTER_DATA_TABLES = [
       { key: "employeeName", label: "Employee Name" },
       { key: "positionId", label: "Position ID" },
       { key: "positionName", label: "Position Name" },
+      { key: "allocationPercentage", label: "Allocation %" },
+      { key: "employeeTotalAllocation", label: "Employee Total %" },
       ...AUDIT_COLUMNS,
     ],
   },
@@ -224,9 +226,7 @@ export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {
   if (total === null) {
     throw new Error(`${route} returned a malformed response: invalid total "${payload.total}".`);
   }
-  // Absent on a backend that predates activeTotal; callers fall back to total.
-  const activeTotal = Number.isFinite(payload.activeTotal) && payload.activeTotal >= 0 ? payload.activeTotal : undefined;
-  return { rows: payload.data, total, activeTotal };
+  return { rows: payload.data, total };
 }
 
 // Pages through the backend's own max page size until every row has been
