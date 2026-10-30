@@ -93,4 +93,44 @@ describe('useMasterDataTable', () => {
 
     await waitFor(() => expect(result.current.page).toBe(1));
   });
+
+  // FEAT-19: an edit or an undo-delete re-fetches the page you're on;
+  // `refetch` (after an add/delete) deliberately goes back to page 1.
+  it('reload re-fetches the current page, keeping page > 1', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1' }], total: 45 });
+
+    const { result } = renderHook(() => useMasterDataTable('resources'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => {
+      result.current.setPage(3);
+    });
+    await waitFor(() => expect(result.current.page).toBe(3));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const callsBefore = fetchMasterDataTable.mock.calls.length;
+
+    act(() => {
+      result.current.reload();
+    });
+
+    await waitFor(() => expect(fetchMasterDataTable.mock.calls.length).toBe(callsBefore + 1));
+    expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: 2 * PAGE_SIZE });
+    expect(result.current.page).toBe(3);
+  });
+
+  it('refetch, by contrast, goes back to page 1', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1' }], total: 45 });
+
+    const { result } = renderHook(() => useMasterDataTable('resources'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => {
+      result.current.setPage(3);
+    });
+    await waitFor(() => expect(result.current.page).toBe(3));
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => expect(result.current.page).toBe(1));
+  });
 });

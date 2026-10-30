@@ -100,7 +100,11 @@ export const MASTER_DATA_TABLES = [
     route: "departments",
     label: "Department",
     hasCode: true,
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    fields: [
+      { key: "name", label: "name", required: true, type: "string" },
+      { key: "input", label: "input", required: false, type: "string", maxLength: 2000 },
+      { key: "output", label: "output", required: false, type: "string", maxLength: 2000 },
+    ],
   },
   {
     slug: "resource_cost",

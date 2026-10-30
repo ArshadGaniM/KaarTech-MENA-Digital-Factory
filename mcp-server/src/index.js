@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
-import { createRecord, updateRecord, markDeleted, ApiClientError } from "./apiClient.js";
+import { createRecord, updateRecord, markDeleted, restoreRecord, ApiClientError } from "./apiClient.js";
 
 const server = new McpServer({ name: "kaartech-mena-digital-factory-mcp", version: "0.1.0" });
 
@@ -87,6 +87,24 @@ for (const table of MASTER_DATA_TABLES) {
       try {
         await markDeleted(table.route, id);
         return json({ id, deleted: true });
+      } catch (err) {
+        return errorResult(err);
+      }
+    }
+  );
+
+  server.tool(
+    `restore_${table.slug}`,
+    `Undo a delete: restore a soft-deleted ${table.label} record (clears deleted_at). ` +
+      "Refused if the record references another record that is itself still deleted. " +
+      "Bumps updated_at automatically; updated_by is set from updatedBy (or defaults to Arshad Gani).",
+    {
+      id: z.string().uuid().describe(`The ${table.label}'s id.`),
+      updatedBy: z.string().min(1).optional().describe(UPDATED_BY_DESCRIPTION),
+    },
+    async ({ id, updatedBy }) => {
+      try {
+        return json(await restoreRecord(table.route, id, { updatedBy }));
       } catch (err) {
         return errorResult(err);
       }

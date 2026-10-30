@@ -6,13 +6,14 @@
 
 **Active run ID:** none — direct-build is the current standing mode, with the "continuous autonomous execution through the queue" standing instruction (§7.2) in effect: once a feature's gate passes and pushes, immediately pick up the next queued/in_flight feature without waiting to be told. Queue is now empty as of FEAT-16's completion — no further work queued. Also this session: found and fixed a real production gap — the Render backend's `autoDeploy` had silently stopped firing after PR #13 (2026-09-16), so every feature merged since (FEAT-5 through FEAT-12) never reached production despite the Vercel frontend being current. Triggered a manual deploy (`dep-dao4080ae00c73amau5g`) to the latest `main` commit; confirmed live via curl (`/v1/schema/entity-relationships` responding) and a full headless-browser walkthrough of the real site (marketing page, Dashboard, all 12 tables, Entity Relationship — no errors, empty tables correctly showing "No records yet"). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants.
 
-**Feature counter:** 18
+**Feature counter:** 20
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
-| *(empty)* | | | |
+| FEAT-19 | in_flight | Undo-delete (restore) for soft-deleted rows, and edit-a-record from any row, on every master-data table. Owner: "I should be able to click a line item and modify it, and if I already delete something, then I should be able to undo the delete if required in all the sections." | claude/trusting-curie-hlx1r6 |
+| FEAT-20 | in_flight | Add two columns, Input and Output, to the Departments table — shown in the table and as fields in the Add/Edit pop-up. Owner: "for each of the departments here, I want you to include two columns. Input and output ... every time I add a department or modify in the pop-up screen, you should have input and output. And in input, you can let it be like that." Interpreted as two optional free-text fields (the last sentence is ambiguous; flagged to the owner). | claude/trusting-curie-hlx1r6 |
 
 ## Completed
 

@@ -2,6 +2,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   MASTER_DATA_TABLES,
   deleteRecord,
+  createRecord,
+  updateRecord,
+  restoreRecord,
   fetchMasterDataTable,
   fetchAllMasterDataTableRows,
 } from './masterDataApi';
@@ -23,6 +26,12 @@ describe('MASTER_DATA_TABLES column definitions', () => {
       expect(columns[0]).toEqual({ key: 'id', label: 'Record ID' });
     }
   );
+
+  // FEAT-20: departments gained two optional free-text fields.
+  it('gives departments Input and Output columns between the name and the audit columns', () => {
+    const keys = columnsFor('departments').map((column) => column.key);
+    expect(keys.slice(0, 4)).toEqual(['code', 'name', 'input', 'output']);
+  });
 
   // Tables with a business identity (auto-generated code or caller-supplied
   // unique field) don't need the internal id surfaced — the Delete popup
@@ -217,5 +226,65 @@ describe('fetchAllMasterDataTableRows', () => {
     });
 
     await expect(fetchAllMasterDataTableRows('resources')).rejects.toThrow(/more pages than expected/);
+  });
+});
+
+// FEAT-19: PATCH and the restore action share createRecord's write path.
+describe('updateRecord / restoreRecord / createRecord', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('updateRecord PATCHes the record\'s own route/id with the key header and only the given fields', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: { id: 'row-1' } }) });
+
+    const result = await updateRecord('departments', 'row-1', { name: 'New' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/v1\/departments\/row-1$/),
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({ 'x-internal-api-key': expect.any(String) }),
+        body: JSON.stringify({ name: 'New' }),
+      })
+    );
+    expect(result).toEqual({ id: 'row-1' });
+  });
+
+  it('restoreRecord POSTs to /:id/restore', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: { id: 'row-1' } }) });
+
+    await restoreRecord('teams', 'row-1');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/v1\/teams\/row-1\/restore$/),
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it.each([
+    ['createRecord', () => createRecord('departments', {}), 'Failed to create departments record'],
+    ['updateRecord', () => updateRecord('departments', 'row-1', {}), 'Failed to update departments record'],
+    ['restoreRecord', () => restoreRecord('departments', 'row-1'), 'Failed to restore departments record'],
+  ])('%s throws the backend message and carries the per-field `details` from a 422', async (_name, call) => {
+    fetch.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: { message: 'Request failed validation.', details: { name: 'bad' } } }),
+    });
+
+    await expect(call()).rejects.toMatchObject({ message: 'Request failed validation.', details: { name: 'bad' } });
+  });
+
+  it.each([
+    ['updateRecord', () => updateRecord('departments', 'row-1', {}), 'Failed to update departments record'],
+    ['restoreRecord', () => restoreRecord('departments', 'row-1'), 'Failed to restore departments record'],
+  ])('%s falls back to a generic message when the error body is not JSON', async (_name, call, message) => {
+    fetch.mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('not json')) });
+
+    await expect(call()).rejects.toMatchObject({ message, details: {} });
   });
 });

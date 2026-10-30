@@ -1,8 +1,22 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { createRecord, fetchAllMasterDataTableRows } from '../../lib/masterDataApi';
+import { createRecord, updateRecord, fetchAllMasterDataTableRows } from '../../lib/masterDataApi';
 import { useEntityRelationships } from '../../hooks/useEntityRelationships';
-import styles from './AddRecordModal.module.css';
+import styles from './RecordFormModal.module.css';
+
+// FEAT-19: one form for both "Add <Entity>" (FEAT-14) and "Edit <Entity>" —
+// everything it renders comes from the same live field descriptor either
+// way, so a separate edit modal would only be a second copy to keep in sync.
+// Passing a `record` (a row from the table) switches it to edit mode.
+
+// The string a form control holds for a row's value: an absent value is an
+// empty control, and a date arrives from the API as a full ISO timestamp
+// but an <input type="date"> only accepts YYYY-MM-DD.
+function formValueOf(record, field) {
+  const raw = record?.[field.key];
+  if (raw === null || raw === undefined) return '';
+  return field.type === 'date' ? String(raw).slice(0, 10) : String(raw);
+}
 
 // A pick-list option's label — the referenced row's identity value alone
 // isn't always readable on its own (e.g. a bare "TEAM-001"), so this adds
@@ -16,8 +30,8 @@ function optionLabel(row, identityKey) {
   return descriptive ? `${identityValue} — ${descriptive}` : String(identityValue);
 }
 
-function FieldControl({ field, label, value, onChange, pickListOptions, pickListLoading }) {
-  const inputId = `add-record-field-${field.key}`;
+function FieldControl({ field, label, value, onChange, pickListOptions, pickListLoading, locked }) {
+  const inputId = `record-form-field-${field.key}`;
 
   if (field.references) {
     return (
@@ -26,7 +40,7 @@ function FieldControl({ field, label, value, onChange, pickListOptions, pickList
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
-        disabled={pickListLoading}
+        disabled={pickListLoading || locked}
       >
         <option value="">{pickListLoading ? 'Loading…' : `Select ${label}`}</option>
         {(pickListOptions ?? []).map((option) => (
@@ -40,7 +54,13 @@ function FieldControl({ field, label, value, onChange, pickListOptions, pickList
 
   if (field.values) {
     return (
-      <select id={inputId} value={value} onChange={(e) => onChange(e.target.value)} required={field.required}>
+      <select
+        id={inputId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={field.required}
+        disabled={locked}
+      >
         <option value="">{`Select ${label}`}</option>
         {field.values.map((allowedValue) => (
           <option key={allowedValue} value={allowedValue}>
@@ -60,6 +80,7 @@ function FieldControl({ field, label, value, onChange, pickListOptions, pickList
       onChange={(e) => onChange(e.target.value)}
       required={field.required}
       maxLength={field.maxLength}
+      disabled={locked}
     />
   );
 }
@@ -78,9 +99,12 @@ FieldControl.propTypes = {
   onChange: PropTypes.func.isRequired,
   pickListOptions: PropTypes.arrayOf(PropTypes.shape({ value: PropTypes.string, label: PropTypes.string })),
   pickListLoading: PropTypes.bool,
+  locked: PropTypes.bool,
 };
 
-function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }) {
+function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, onSaved }) {
+  const isEdit = record != null;
+  const title = `${isEdit ? 'Edit' : 'Add'} ${singularLabel}`;
   const { data: entities, isLoading: entitiesLoading, error: entitiesError } = useEntityRelationships();
   const tableEntity = entities?.find((entity) => entity.route === route);
   const fields = tableEntity?.fields ?? [];
@@ -143,7 +167,7 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
           className={styles.dialog}
           role="dialog"
           aria-modal="true"
-          aria-label={`Add ${singularLabel}`}
+          aria-label={title}
           onClick={(e) => e.stopPropagation()}
         >
           {entitiesError ? (
@@ -163,6 +187,19 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
     );
   }
 
+  // What a control currently shows: the user's edit if they've made one
+  // (even an edit to ''), otherwise the record's own value (edit mode) or
+  // empty (add mode).
+  function valueOf(field) {
+    return values[field.key] ?? formValueOf(record, field);
+  }
+
+  // The caller-supplied identity (e.g. employeeId, projectId) is the row's
+  // key — other tables' foreign keys point at it, so editing it in place is
+  // not offered. An auto-generated code never appears in `fields` at all.
+  const lockedKey =
+    isEdit && tableEntity.identity?.type === 'caller-supplied-unique' ? tableEntity.identity.field : null;
+
   function handleChange(key, value) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
@@ -173,16 +210,29 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
     setSubmitError(null);
     setFieldErrors({});
 
+    // Add sends every non-empty field. Edit sends only what actually
+    // changed (PATCH is partial), and a field the user emptied is sent as an
+    // explicit null so an optional value can really be cleared.
     const body = {};
     for (const field of fields) {
-      const raw = values[field.key];
-      if (raw === undefined || raw === '') continue;
-      body[field.key] = field.type === 'number' ? Number(raw) : raw;
+      const raw = valueOf(field);
+      if (isEdit) {
+        if (raw === formValueOf(record, field)) continue;
+        body[field.key] = raw === '' ? null : field.type === 'number' ? Number(raw) : raw;
+      } else if (raw !== '') {
+        body[field.key] = field.type === 'number' ? Number(raw) : raw;
+      }
+    }
+
+    if (isEdit && Object.keys(body).length === 0) {
+      setSubmitting(false);
+      onClose();
+      return;
     }
 
     try {
-      await createRecord(route, body);
-      onCreated();
+      await (isEdit ? updateRecord(route, record.id, body) : createRecord(route, body));
+      onSaved();
     } catch (err) {
       setSubmitError(err);
       setFieldErrors(err.details ?? {});
@@ -197,26 +247,27 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="add-record-title"
+        aria-labelledby="record-form-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="add-record-title">Add {singularLabel}</h2>
+        <h2 id="record-form-title">{title}</h2>
         <form onSubmit={handleSubmit}>
           {fields.map((field) => {
             const label = labelByKey[field.key] ?? field.key;
             return (
               <div key={field.key} className={styles.formRow}>
-                <label htmlFor={`add-record-field-${field.key}`}>
+                <label htmlFor={`record-form-field-${field.key}`}>
                   {label}
                   {field.required ? ' *' : ''}
                 </label>
                 <FieldControl
                   field={field}
                   label={label}
-                  value={values[field.key] ?? ''}
+                  value={valueOf(field)}
                   onChange={(value) => handleChange(field.key, value)}
                   pickListOptions={pickLists[field.key]}
                   pickListLoading={field.references ? pickListsLoading : false}
+                  locked={field.key === lockedKey}
                 />
                 {fieldErrors[field.key] && <p className={styles.fieldError}>{fieldErrors[field.key]}</p>}
               </div>
@@ -234,7 +285,7 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
               Cancel
             </button>
             <button type="submit" disabled={submitting || pickListsLoading}>
-              {submitting ? 'Adding…' : 'Add'}
+              {submitting ? (isEdit ? 'Saving…' : 'Adding…') : isEdit ? 'Save' : 'Add'}
             </button>
           </div>
         </form>
@@ -243,12 +294,13 @@ function AddRecordModal({ route, singularLabel, labelByKey, onClose, onCreated }
   );
 }
 
-AddRecordModal.propTypes = {
+RecordFormModal.propTypes = {
   route: PropTypes.string.isRequired,
   singularLabel: PropTypes.string.isRequired,
   labelByKey: PropTypes.objectOf(PropTypes.string).isRequired,
+  record: PropTypes.shape({ id: PropTypes.string.isRequired }),
   onClose: PropTypes.func.isRequired,
-  onCreated: PropTypes.func.isRequired,
+  onSaved: PropTypes.func.isRequired,
 };
 
-export default AddRecordModal;
+export default RecordFormModal;

@@ -184,5 +184,43 @@ export function createMasterDataRouter(table) {
     }
   });
 
+  // Undo of DELETE (FEAT-19): clears deleted_at. A non-CRUD action, so a
+  // verb sub-resource per api.md rather than a PATCH (PATCH deliberately
+  // refuses soft-deleted rows). validateReferences() requires a *live*
+  // referenced row, so restoring a child whose parent is itself still
+  // deleted would resurrect a row pointing at nothing — re-check every FK
+  // here, with the same 422 shape, instead of silently allowing it.
+  router.post("/:id/restore", requireInternalApiKey, async (req, res, next) => {
+    try {
+      const existing = await pool.query(
+        `select * from ${tableName} where id = $1 and deleted_at is not null`,
+        [req.params.id]
+      );
+      if (existing.rows.length === 0) throw notFound(resourceName, req.params.id);
+
+      const current = existing.rows[0];
+      const referenceBody = {};
+      for (const field of fields) {
+        if (field.references && current[field.column] !== null) {
+          referenceBody[field.key] = current[field.column];
+        }
+      }
+      await validateReferences(table, referenceBody, { partial: true });
+
+      const actor = req.body?.updatedBy?.trim() || DEFAULT_ACTOR;
+      validateActor(actor);
+
+      const result = await pool.query(
+        `update ${tableName} set deleted_at = null, updated_by = $1
+         where id = $2 and deleted_at is not null returning *`,
+        [actor, req.params.id]
+      );
+      if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
+      res.json({ data: toResponse(table, result.rows[0]) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

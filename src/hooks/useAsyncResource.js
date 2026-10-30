@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 // The cancelled-flag fetch-on-mount pattern (frontend.md: "a hook that
 // fetches data returns { data, isLoading, error }"), extracted once it
-// showed up a third time (useMasterDataTable, AddRecordModal's pick-list
+// showed up a third time (useMasterDataTable, RecordFormModal's pick-list
 // loader, and DeleteRecordModal's full-dataset loader all hand-rolled the
 // same shape — gate finding, refactorer). `fetcher` is called once per
 // `deps` change; a change mid-flight is discarded rather than applied.

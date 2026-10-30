@@ -2,15 +2,15 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
 import { useColumnWidths } from '../../hooks/useColumnWidths';
-import { deleteRecord } from '../../lib/masterDataApi';
-import AddRecordModal from '../AddRecordModal';
+import { deleteRecord, restoreRecord } from '../../lib/masterDataApi';
+import RecordFormModal from '../RecordFormModal';
 import DeleteRecordModal from '../DeleteRecordModal';
 import styles from './MasterDataTable.module.css';
 
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
-const ACTIONS_COLUMN_WIDTH = 120;
+const ACTIONS_COLUMN_WIDTH = 190;
 
 function capitalize(value) {
   return typeof value === 'string' ? value.replace(/\b\w/g, (letter) => letter.toUpperCase()) : value;
@@ -23,15 +23,18 @@ function formatCell(column, value) {
 }
 
 function MasterDataTable({ route, columns, singularLabel }) {
-  const { data, total, page, totalPages, setPage, isLoading, error, refetch } = useMasterDataTable(route);
+  const { data, total, page, totalPages, setPage, isLoading, error, refetch, reload } = useMasterDataTable(route);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [rowDeleteError, setRowDeleteError] = useState(null);
+  // FEAT-19: the row being edited (null = the edit modal is closed).
+  const [editingRow, setEditingRow] = useState(null);
+  const [rowActionError, setRowActionError] = useState(null);
   // A Set, not a single id — two different rows can be deleting
   // concurrently (user clicks Delete on row A, then row B before A's
   // request resolves), and a scalar would let one request's `finally`
   // clear the other's in-flight indicator (gate finding, code-reviewer).
   const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
+  const [restoringRowIds, setRestoringRowIds] = useState(() => new Set());
   const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
   const { widths, startResize } = useColumnWidths(columns);
 
@@ -45,21 +48,49 @@ function MasterDataTable({ route, columns, singularLabel }) {
     refetch();
   }
 
+  // An edit doesn't change the row count, so stay on the current page.
+  function handleEdited() {
+    setEditingRow(null);
+    reload();
+  }
+
   // FEAT-15: per-row delete — the row already carries its own internal
   // id, so this skips the code/id lookup the toolbar's Delete popup does.
   // window.confirm is a deliberately minimal confirmation step (Simplicity
   // First, CLAUDE.md §1) rather than a second modal for the same action.
   async function handleRowDelete(row) {
     if (!window.confirm(`Mark this ${singularLabel.toLowerCase()} record as deleted?`)) return;
-    setRowDeleteError(null);
+    setRowActionError(null);
     setDeletingRowIds((prev) => new Set(prev).add(row.id));
     try {
       await deleteRecord(route, row.id);
       refetch();
     } catch (err) {
-      setRowDeleteError(err.message);
+      setRowActionError(err.message);
     } finally {
       setDeletingRowIds((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
+    }
+  }
+
+  // FEAT-19: undo of the above. No confirm() — restoring is itself the
+  // safe direction (nothing is lost if it was a misclick; Delete undoes it).
+  // The backend refuses if this row references a record that is itself
+  // still deleted; that message is shown in the same banner as a failed
+  // delete. Same Set-not-scalar reasoning as deletingRowIds.
+  async function handleRowRestore(row) {
+    setRowActionError(null);
+    setRestoringRowIds((prev) => new Set(prev).add(row.id));
+    try {
+      await restoreRecord(route, row.id);
+      reload();
+    } catch (err) {
+      setRowActionError(err.message);
+    } finally {
+      setRestoringRowIds((prev) => {
         const next = new Set(prev);
         next.delete(row.id);
         return next;
@@ -78,9 +109,9 @@ function MasterDataTable({ route, columns, singularLabel }) {
         </button>
       </div>
 
-      {rowDeleteError && (
+      {rowActionError && (
         <p className={styles.statusError} role="alert">
-          {rowDeleteError}
+          {rowActionError}
         </p>
       )}
 
@@ -134,16 +165,28 @@ function MasterDataTable({ route, columns, singularLabel }) {
                     ))}
                     <td>
                       {row.markedDeleted === 'Yes' ? (
-                        <span className={styles.status}>Deleted</span>
-                      ) : (
                         <button
                           type="button"
-                          className={styles.rowDeleteButton}
-                          onClick={() => handleRowDelete(row)}
-                          disabled={deletingRowIds.has(row.id)}
+                          className={styles.rowRestoreButton}
+                          onClick={() => handleRowRestore(row)}
+                          disabled={restoringRowIds.has(row.id)}
                         >
-                          {deletingRowIds.has(row.id) ? 'Deleting…' : 'Delete'}
+                          {restoringRowIds.has(row.id) ? 'Restoring…' : 'Undo delete'}
                         </button>
+                      ) : (
+                        <div className={styles.rowActions}>
+                          <button type="button" className={styles.rowEditButton} onClick={() => setEditingRow(row)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.rowDeleteButton}
+                            onClick={() => handleRowDelete(row)}
+                            disabled={deletingRowIds.has(row.id)}
+                          >
+                            {deletingRowIds.has(row.id) ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -169,12 +212,24 @@ function MasterDataTable({ route, columns, singularLabel }) {
       )}
 
       {isAddOpen && (
-        <AddRecordModal
+        <RecordFormModal
           route={route}
           singularLabel={singularLabel}
           labelByKey={labelByKey}
           onClose={() => setIsAddOpen(false)}
-          onCreated={handleCreated}
+          onSaved={handleCreated}
+        />
+      )}
+
+      {editingRow && (
+        <RecordFormModal
+          key={editingRow.id}
+          route={route}
+          singularLabel={singularLabel}
+          labelByKey={labelByKey}
+          record={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSaved={handleEdited}
         />
       )}
 

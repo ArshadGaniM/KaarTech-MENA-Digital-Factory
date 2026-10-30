@@ -1,6 +1,6 @@
 # KaarTech MENA Digital Factory — Master Data MCP Server
 
-An MCP server (stdio transport) exposing 36 tools — `add_`/`update_`/`delete_` for
+An MCP server (stdio transport) exposing 48 tools — `add_`/`update_`/`delete_`/`restore_` for
 each of the 12 master data tables (`practice`, `delivery_center`, `competency`,
 `module`, `resource`, `department`, `resource_cost`, `team`,
 `resource_deployment`, `position`, `project`, `project_assignment`). Each tool
@@ -64,7 +64,7 @@ e.g. in `claude_desktop_config.json` (Claude Desktop) or a project's
 
 For each of `practice`, `delivery_center`, `competency`, `module`,
 `resource`, `department`, `resource_cost`, `team`, `resource_deployment`,
-`position`, `project`, `project_assignment`, there's an `add_<table>`, `update_<table>`, and `delete_<table>` tool.
+`position`, `project`, `project_assignment`, there's an `add_<table>`, `update_<table>`, `delete_<table>`, and `restore_<table>` tool.
 Each table's own fields differ — see
 `src/masterDataTables.js` for the authoritative list — but every
 `add_`/`update_` tool additionally accepts an optional `updatedBy: string`
@@ -75,7 +75,8 @@ user/auth system exists yet). On create this sets both `createdBy` and
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
 | `competency` | `name` | `name` |
-| `practice`, `department` | `name` | `name` |
+| `practice` | `name` | `name` |
+| `department` | `name` (`input` / `output` optional free text, up to 2,000 chars each) | `name`, `input`, `output` |
 | `resource_deployment` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced), `positionId` (string — must reference an existing `position`'s own auto-generated code, enforced) | `employeeId`, `positionId` (independently settable) |
 | `resource_cost` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
 | `team` | `name`, `departmentCode` (string — must reference an existing `department`'s own auto-generated code, enforced) | `name`, `departmentCode` |
@@ -189,3 +190,6 @@ just on `add_project_assignment`).
 `delete_<table>` (`{ id }`) soft-deletes a record (sets `deleted_at`, not
 physically removed). The row still shows up in reads afterward, flagged
 `markedDeleted: "Yes"` — see `backend/README.md` for why.
+`restore_<table>` (`{ id, updatedBy? }`) undoes a delete (clears `deleted_at`); it's
+refused with a validation error if the record references another record that is
+itself still deleted, so a restored row never points at a deleted parent.

@@ -43,6 +43,7 @@ same data at runtime rather than reading source.
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
 | PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |
 | DELETE | `/v1/<table>/:id` | — | `x-internal-api-key` | Soft delete — sets `deleted_at`, does not remove the row. 204 on success. |
+| POST | `/v1/<table>/:id/restore` | optional `updatedBy` | `x-internal-api-key` | Undo of DELETE — clears `deleted_at`, returns the row (200). 404 if the row doesn't exist or isn't deleted. 422 `validation_error` if a field it references (an enforced FK) points at a row that is itself still soft-deleted, same check/shape as POST/PATCH. |
 
 Per-table fields, as of this writing:
 
@@ -54,7 +55,7 @@ Per-table fields, as of this writing:
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
-| `departments` | `name` (required) — plus an auto-generated `code` (`DEPT-001`, ...) |
+| `departments` | `name` (required), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** FK-validated against `practices` at the app layer; can be set/changed later via PATCH. The DB column is still typed `uuid`, so a non-UUID value is rejected with a 422 `validation_error`, not a raw 500 — see below) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
@@ -196,7 +197,8 @@ delete state. GET routes return every row, soft-deleted included, so a
 consumer doing its own aggregation/reporting sees `markedDeleted: "Yes"`
 rows and can choose to skip them, rather than have them silently
 disappear from every read. Only PATCH/DELETE still refuse to act on an
-already soft-deleted row.
+already soft-deleted row; `POST /v1/<table>/:id/restore` is the one write that
+acts *only* on a soft-deleted row.
 
 **`updatedBy`** (optional on every POST/PATCH): who is performing the
 write. Defaults server-side to `"Arshad Gani"` if omitted — no user/auth
@@ -243,6 +245,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0016_add_resource_deployment_columns.sql` | `resource_deployment`-specific: drops the placeholder `name` column, adds `employee_id integer not null` (with `fk_resource_deployment_resources` foreign key to `resources.employee_id` and `ix_resource_deployment_employee_id` index) and `position_code text not null` (with `fk_resource_deployment_positions` foreign key to `positions.code` and `ix_resource_deployment_position_code` index) — the first table with two foreign-key constraints and two indexes added in a single migration. |
 | `0017_create_projects.sql` | New table `projects`, created directly with its full real shape in one migration (same reasoning as `positions`, 0015 — the table starts empty). No `name` column and no `hasCode` trigger — all three business columns (`project_id`, `project_name`, `project_profit_center_code`) are manually entered, none auto-generated. `project_id` is caller-supplied and DB-enforced-unique (`projects_project_id_unique`), same mechanism as `resources.employee_id` (0012), not the `code`-sequence-and-trigger pattern every other table uses. No foreign keys — the first table since FEAT-5 with zero FK relationships. |
 | `0018_create_project_assignments.sql` | New table `project_assignments`, created directly with its full real shape in one migration (table starts empty). No `name`/`hasCode` — `project_id` (FK to `projects.project_id`, `fk_project_assignments_projects`, `ix_project_assignments_project_id` index) and `team_code` (FK to `teams.code`, `fk_project_assignments_teams`, `ix_project_assignments_team_code` index) are both pick-list-only references, the second table (after `resource_deployment`/0016) with two FK constraints at once. `project_assignment_start_date`/`project_assignment_end_date` are plain `date` columns with a DB-layer `CHECK (project_assignment_end_date >= project_assignment_start_date)` mirroring the app-layer cross-field validation as defense-in-depth. No `department_code` column — department fields are resolved entirely through the chained lookup via `teams.department_code`, so there's nothing to store for them here. |
+| `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

@@ -42,6 +42,32 @@
   cursor: pointer;
 }
 
+.rowEditButton,
+.rowRestoreButton {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rowEditButton:hover,
+.rowRestoreButton:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+}
+
+.rowRestoreButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rowActions {
+  display: flex;
+  gap: var(--space-1);
+}
+
 .status {
   color: var(--color-text-muted);
   padding: var(--space-3) 0;
@@ -122,6 +148,32 @@
 }
 
 .table tbody tr:hover {
+  background: var(--color-row-hover);
+}
+
+/* The Actions column (Edit / Delete / Undo delete) stays pinned to the
+   right edge: with a table this wide the row actions would otherwise sit
+   off-screen behind a horizontal scroll (FEAT-19/20). Each cell needs its
+   own opaque background — and one per row state, since the row's own
+   stripe/hover background doesn't reach a sticky cell — or scrolled
+   content shows through it. */
+.table th:last-child,
+.table td:last-child {
+  position: sticky;
+  right: 0;
+  box-shadow: -1px 0 0 var(--color-border);
+}
+
+.table td:last-child {
+  z-index: 1;
+  background: var(--color-bg);
+}
+
+.table tbody tr:nth-child(even) td:last-child {
+  background: var(--color-bg-alt);
+}
+
+.table tbody tr:hover td:last-child {
   background: var(--color-row-hover);
 }
 
