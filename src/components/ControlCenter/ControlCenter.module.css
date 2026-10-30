@@ -2,8 +2,86 @@
   padding: var(--space-3);
 }
 
+.building {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: var(--color-bg);
+  border: 3px solid var(--color-primary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.roof {
+  padding: var(--space-2) var(--space-3);
+  font-size: 22px;
+  text-align: center;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+.floors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.floor {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: stretch;
+  border-top: 2px solid var(--color-primary);
+}
+
+.floor:first-child {
+  border-top: 0;
+}
+
+.floorName {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  font-size: 15px;
+  text-align: center;
+  color: var(--color-on-primary);
+  background: var(--color-accent);
+}
+
+.teams {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  background: var(--color-bg-alt);
+}
+
+.team {
+  flex: 0 0 auto;
+  min-width: 96px;
+  padding: var(--space-2);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--color-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
 @media (max-width: 720px) {
   .controlCenter {
     padding: var(--space-2);
+  }
+
+  .floor {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+
+  .floorName {
+    font-size: 13px;
   }
 }
