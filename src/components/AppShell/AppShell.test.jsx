@@ -21,7 +21,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// NAV_ITEMS[0] is "Dashboard" (no route/columns — empty placeholder).
+// NAV_ITEMS[0] is "Dashboard" (no route/columns — the overview page).
 // NAV_ITEMS[1]/[2] are the first two real master-data tables, used to
 // genuinely exercise the item-switching path without a mocked registry.
 const [dashboard, firstTable, secondTable] = NAV_ITEMS;
@@ -40,11 +40,11 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('uses the first NAV_ITEMS entry (Dashboard) when no initialHash is passed at all', () => {
+  it('uses the first NAV_ITEMS entry (Dashboard) when no initialHash is passed at all', async () => {
     render(<AppShell />);
 
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
@@ -79,11 +79,11 @@ describe('AppShell', () => {
     expect(await screen.findByRole('columnheader', { name: secondTable.columns[0].label })).toBeInTheDocument();
   });
 
-  it('shows an empty placeholder for the Dashboard section itself', () => {
+  it('shows the Dashboard overview for the Dashboard section itself', async () => {
     render(<AppShell initialHash={dashboard.hash} />);
 
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 
   it('renders a skip link targeting the main content region', () => {

@@ -28,7 +28,7 @@ POST   /sessions/{id}/messages       → send a message
 - Response bodies always have a consistent shape:
   ```json
   { "data": { ... } }                  // single resource
-  { "data": [ ... ], "total": 42 }     // collection
+  { "data": [ ... ], "total": 42 }     // collection (master-data lists also add "activeTotal": live rows only)
   ```
 
 ## HTTP Status Codes
@@ -82,7 +82,7 @@ Offset-based:
 ```
 GET /sessions/messages?limit=20&offset=0
 ```
-Response includes `total`. Default `limit` is 20, max is 100 — enforced in the route handler.
+Response includes `total`; master-data list routes also include `activeTotal`, which leaves out soft-deleted rows. Default `limit` is 20, max is 100 — enforced in the route handler.
 
 ## Authentication
 - All routes except `/health` and `/auth/*` require a valid bearer token.
