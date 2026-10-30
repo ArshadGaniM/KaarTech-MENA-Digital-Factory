@@ -63,3 +63,22 @@ Tests: backend 227, mcp-server 53, frontend 145, build OK.
 - GET and DELETE on a malformed id still return a 500 (pre-existing; PATCH and restore answer 422).
 - `employeeId` has no integer-range bound, so an out-of-range value is a 500.
 - The total is capped at 100 and shown, not forced to exactly 100.
+
+---
+
+## FEAT-22: Positions Competencies column
+
+**Verdict: PASS (WARN below).** One gate agent ran (code-reviewer) because the
+change is small and reuses the existing reference-validation path. security,
+debugger, refactorer, doc-writer, silent-failure-hunter and test agents did not
+run separately for this change. READMEs and tests were updated and the suites
+pass: backend 231, mcp-server 53, frontend 146.
+
+| Agent | Finding | Fix |
+|---|---|---|
+| code-reviewer | A list of only commas was accepted and stored | Refused with a 422 asking for at least one name |
+| code-reviewer | Duplicates and spacing stored as typed | Stored canonically (`MM, SRM`) |
+| code-reviewer | Restoring a position whose competency was later deleted is blocked | Accepted: restore the competency first (same as other references) |
+| code-reviewer | Restore race re-check covers single references only | Accepted as narrow, not fixed |
+
+SQL safety was checked: identifiers come only from the descriptor and the names are bound parameters.

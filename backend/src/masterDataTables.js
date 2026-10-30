@@ -309,6 +309,19 @@ export const MASTER_DATA_TABLES = [
         // auto-generated `code` column, not `id`.
         references: { table: "teams", column: "code" },
       },
+      {
+        key: "competencies",
+        column: "competencies",
+        required: false,
+        type: "string",
+        maxLength: 500,
+        // Comma-separated competency names, each of which must be an
+        // existing, non-deleted Competencies row (checked by
+        // validateReferences, which reports the unknown names). A position
+        // often needs more than one (e.g. "MM, SRM"), hence a list in one
+        // column rather than a single foreign key.
+        listReferences: { table: "competencies", column: "name" },
+      },
     ],
   },
   {

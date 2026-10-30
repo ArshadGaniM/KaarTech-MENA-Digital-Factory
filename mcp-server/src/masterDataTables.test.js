@@ -117,9 +117,9 @@ function positionTable() {
   return table;
 }
 
-test("position's writable fields are exactly name/teamCode", () => {
+test("position's writable fields are exactly name/teamCode/competencies", () => {
   const fieldKeys = positionTable().fields.map((f) => f.key).sort();
-  assert.deepEqual(fieldKeys, ["name", "teamCode"]);
+  assert.deepEqual(fieldKeys, ["competencies", "name", "teamCode"]);
 });
 
 test("position never exposes code or teamName as a writable MCP field (auto-generated / live lookup only)", () => {

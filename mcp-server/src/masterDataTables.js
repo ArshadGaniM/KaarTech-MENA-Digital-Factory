@@ -205,6 +205,15 @@ export const MASTER_DATA_TABLES = [
         required: true,
         type: "string",
       },
+      {
+        key: "competencies",
+        label:
+          "comma-separated competency names the position needs, e.g. \"MM, SRM\" — each must match an " +
+          "existing, non-deleted Competency name; the backend rejects the request naming any that do not",
+        required: false,
+        type: "string",
+        maxLength: 500,
+      },
     ],
   },
   {

@@ -39,6 +39,12 @@ describe('MASTER_DATA_TABLES column definitions', () => {
     expect(keys.slice(3, 7)).toEqual(['positionId', 'positionName', 'allocationPercentage', 'employeeTotalAllocation']);
   });
 
+  // FEAT-22: positions record the competencies they need.
+  it('gives positions a Competencies column after the team columns', () => {
+    const keys = columnsFor('positions').map((column) => column.key);
+    expect(keys.slice(2, 5)).toEqual(['teamCode', 'teamName', 'competencies']);
+  });
+
   // Tables with a business identity (auto-generated code or caller-supplied
   // unique field) don't need the internal id surfaced — the Delete popup
   // matches on their business identity instead.

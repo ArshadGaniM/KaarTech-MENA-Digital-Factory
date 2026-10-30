@@ -154,6 +154,7 @@ export const MASTER_DATA_TABLES = [
       { key: "name", label: "Position Name" },
       { key: "teamCode", label: "Team Code" },
       { key: "teamName", label: "Team Name" },
+      { key: "competencies", label: "Competencies" },
       ...AUDIT_COLUMNS,
     ],
   },
