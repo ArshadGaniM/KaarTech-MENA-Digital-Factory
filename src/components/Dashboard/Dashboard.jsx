@@ -34,7 +34,7 @@ function Dashboard({ onNavigate }) {
   if (loaded.length === 0) {
     return (
       <p className={styles.statusError} role="alert">
-        Could not load counts for any table. Check that the backend is running.
+        Could not load counts for any table. Check that the backend is running and up to date.
       </p>
     );
   }

@@ -14,7 +14,7 @@ beforeEach(() => {
 
 describe('useTableCounts', () => {
   it('reads each table total with a one-row page', async () => {
-    fetchMasterDataTable.mockResolvedValue({ rows: [], total: 7 });
+    fetchMasterDataTable.mockResolvedValue({ rows: [], total: 9, activeTotal: 7 });
 
     const { result } = renderHook(() => useTableCounts());
 
@@ -29,7 +29,7 @@ describe('useTableCounts', () => {
     expect(fetchMasterDataTable).toHaveBeenCalledWith(MASTER_DATA_TABLES[0].route, { limit: 1, offset: 0 });
   });
 
-  it('counts only live rows: prefers activeTotal over total', async () => {
+  it('counts only live rows: uses activeTotal, never total', async () => {
     fetchMasterDataTable.mockResolvedValue({ rows: [], total: 10, activeTotal: 4 });
 
     const { result } = renderHook(() => useTableCounts());
@@ -38,9 +38,19 @@ describe('useTableCounts', () => {
     expect(result.current.data[0].count).toBe(4);
   });
 
+  it('reports a table as failed, not as its total, when the backend sends no activeTotal', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [], total: 10, activeTotal: undefined });
+
+    const { result } = renderHook(() => useTableCounts());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data[0]).toMatchObject({ count: null });
+    expect(result.current.data[0].error.message).toMatch(/did not report activeTotal/);
+  });
+
   it('records a per-table failure without failing the rest', async () => {
     fetchMasterDataTable.mockImplementation((route) =>
-      route === 'teams' ? Promise.reject(new Error('boom')) : Promise.resolve({ rows: [], total: 1 })
+      route === 'teams' ? Promise.reject(new Error('boom')) : Promise.resolve({ rows: [], total: 1, activeTotal: 1 })
     );
 
     const { result } = renderHook(() => useTableCounts());
