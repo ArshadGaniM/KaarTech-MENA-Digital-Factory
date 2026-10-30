@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from './App';
-import { NAV_ITEMS } from './lib/navigation';
+import { NAV_ITEMS, DASHBOARD_HASH } from './lib/navigation';
 
 // App's app-shell branch mounts MasterDataTable, which fetches over the
 // network via useMasterDataTable; stub fetch so this routing-boundary test
@@ -32,11 +32,10 @@ describe('App', () => {
   });
 
   it('landing on the Dashboard hash — the same value Header\'s "Dashboard" link uses — resolves to the Dashboard section', async () => {
-    const dashboard = NAV_ITEMS.find((item) => item.id === 'dashboard');
-    window.location.hash = dashboard.hash;
+    window.location.hash = DASHBOARD_HASH;
     render(<App />);
 
-    expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 

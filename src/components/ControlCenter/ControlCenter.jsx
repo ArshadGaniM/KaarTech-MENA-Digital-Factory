@@ -30,17 +30,27 @@ function ControlCenter({ onNavigate }) {
 
   const rows = data.map((table) => ({ ...table, status: tableStatus(table) }));
   const countOf = (key) => rows.filter((row) => row.status.key === key).length;
+  const unreachableCount = countOf('error');
   const totalRecords = rows.reduce((sum, row) => sum + (row.count ?? 0), 0);
 
   const summary = [
     { label: 'Healthy tables', value: countOf('healthy') },
     { label: 'Tables with no records', value: countOf('empty') },
-    { label: 'Unreachable tables', value: countOf('error') },
-    { label: 'Total records', value: totalRecords },
+    { label: 'Unreachable tables', value: unreachableCount },
+    {
+      label: unreachableCount > 0 ? `Total records (excludes ${unreachableCount} unreachable)` : 'Total records',
+      value: totalRecords,
+    },
   ];
 
   return (
     <div className={styles.controlCenter}>
+      {unreachableCount > 0 && (
+        <p className={styles.statusError} role="alert">
+          {unreachableCount} of {rows.length} tables could not be reached.
+        </p>
+      )}
+
       <section aria-labelledby="control-center-summary" className={styles.section}>
         <h2 id="control-center-summary" className={styles.sectionTitle}>
           Factory status
