@@ -4,7 +4,7 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import ServicesSection from './components/ServicesSection';
 import DeliveryCenters from './components/DeliveryCenters';
-import InitiativePlanSection from './components/InitiativePlanSection';
+import Charter from './components/Charter';
 import PortalGate from './components/PortalGate';
 import Footer from './components/Footer';
 import AppShell from './components/AppShell';
@@ -16,7 +16,7 @@ function Portal({ hash }) {
   const [unlocked, setUnlocked] = useState(readPortalUnlocked);
 
   // The sections do not exist until the portal opens, so a link such as
-  // #initiative-plan has to be scrolled to once they appear.
+  // #charter has to be scrolled to once they appear.
   useEffect(() => {
     if (unlocked && hash.length > 1) {
       document.getElementById(hash.slice(1))?.scrollIntoView();
@@ -37,7 +37,7 @@ function Portal({ hash }) {
           <>
             <ServicesSection />
             <DeliveryCenters />
-            <InitiativePlanSection />
+            <Charter />
           </>
         ) : (
           <PortalGate onUnlock={unlock} />

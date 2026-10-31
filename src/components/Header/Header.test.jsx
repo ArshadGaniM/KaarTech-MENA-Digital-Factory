@@ -19,9 +19,9 @@ describe('Header', () => {
     );
   });
 
-  it('links "Initiative Plan" to the portal section', () => {
+  it('links "Charter" to the portal section', () => {
     render(<Header />);
 
-    expect(screen.getByRole('link', { name: 'Initiative Plan' })).toHaveAttribute('href', '#initiative-plan');
+    expect(screen.getByRole('link', { name: 'Charter' })).toHaveAttribute('href', '#charter');
   });
 });
