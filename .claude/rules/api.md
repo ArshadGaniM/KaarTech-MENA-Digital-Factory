@@ -12,7 +12,7 @@
 - **Verbs only for non-CRUD actions**: `/v1/<table>/:id/restore`.
 - No trailing slashes.
 - A new master-data table gets its routes from its descriptor in
-  `backend/src/masterDataTables.js`. Do not hand-write the standard routes.
+  `backend/src/masterDataTables.js`. Do not hand-write the seven routes the factory builds (the ones listed above).
   `/v1/team-members` is the one older hand-written router, with its own schema in
   `teamMemberSchema.js`.
 
@@ -47,7 +47,7 @@ POST   /v1/<table>/:id/restore          → undo a soft delete
 | Successful read | 200 |
 | Resource created | 201 |
 | No content (delete) | 204 |
-| Validation error, unknown field, bad id | 422 |
+| Validation error | 422 |
 | Not found | 404 |
 | Missing or wrong internal API key, or no key set on the server | 401 |
 | State conflict (restore of a live row) | 409 |
@@ -92,6 +92,9 @@ Built with `ApiError` in `backend/src/errors.js`.
   500. Validate those in the API first.
 
 ## Validation
+- Ids are UUIDs and the routes do not check the format. A malformed id on `GET /:id` or
+  `DELETE /:id` reaches Postgres and returns a logged 500. PATCH and restore map it to a
+  422 under the key `value`. Validate the id yourself in any new route.
 - Validate at the boundary with `validateBody` from the table descriptor, before any
   query runs.
 - Use the descriptor's field constraints for lengths, ranges, patterns and enums.
@@ -110,10 +113,15 @@ Response includes `total`; master-data list routes also include `activeTotal`, w
 **Aggregate routes are not paginated.** `GET /v1/<table>/summary?groupBy=<field>` returns grouped counts, largest first, capped at 100 groups with no `limit` or `offset`. Its `total` still counts every matching row, including groups past the cap.
 
 ## Authentication
-- Reads are open. Writes (POST, PATCH, DELETE, restore) need the shared key in the
+- Reads are open. Master-data writes (POST, PATCH, DELETE, restore) need the shared key in the
   `x-internal-api-key` header. The check is `requireInternalApiKey` in
   `backend/src/auth.js`, applied per route, never inline in a handler.
 - `401` for a missing or wrong key.
+
+**Known gap:** `/v1/team-members` (`routes/teamMembers.js`) does not use
+`requireInternalApiKey`. Its POST, PATCH and DELETE are open, and DELETE removes the
+row for good. Nothing in the frontend or the MCP server calls it. Do not copy this
+pattern. Put new write routes behind the key.
 
 **Documented deviation:** the backend has no login system, so there are no bearer
 tokens and no `403`. Replace the shared key with bearer-token auth when real auth

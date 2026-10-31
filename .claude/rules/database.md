@@ -5,6 +5,7 @@
 
 ## Tables
 - Table names are **snake_case plural**: `project_assignments`, `delivery_centers`.
+  The legacy `resource_cost` and `resource_deployment` are the exceptions.
 - Column names are **snake_case**. The API turns them into camelCase.
 - Primary keys are `uuid` with `default gen_random_uuid()` — not auto-increment integers.
 - Every master-data table has `created_at`, `updated_at`, `created_by`, `updated_by`
@@ -29,7 +30,8 @@
   request. That is the one place interpolation is allowed.
 - Reads filter live rows with `deleted_at is null` unless the route says otherwise.
   `GET /v1/<table>` and `GET /v1/<table>/:id` return soft-deleted rows too (flagged
-  `markedDeleted: "Yes"`), and `activeTotal` counts live rows only.
+  `markedDeleted: "Yes"`, deleted rows sorted last), and `activeTotal` counts live rows
+  only. PATCH, DELETE, the summary route and the reference checks use live rows only.
 - Paginate any query that can return a large result set — never fetch unbounded rows.
   List routes use `limit` and `offset`. Grouped counts are capped at 100 groups.
 - Reuse the helpers in `backend/src/masterDataSchema.js` before writing new SQL by hand.
@@ -51,7 +53,7 @@
 ## Indexes and constraints
 - Add an index on any column used in a `WHERE` clause in a hot query.
 - Add an index on foreign keys. Postgres does not do this for you.
-- Lists are filtered to live rows, so index live rows only:
+- Writes, uniqueness and parent checks look at live rows only, so index live rows:
   `create index ix_<table>_<column> on <table> (<column>) where deleted_at is null`.
 - Uniqueness applies to live rows only, so deleting a row frees its value:
   `create unique index ux_<table>_<column>_live on <table> (<column>) where deleted_at is null`.
