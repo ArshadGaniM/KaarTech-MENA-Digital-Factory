@@ -45,7 +45,20 @@ describe('useTableCounts', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data[0]).toMatchObject({ count: null });
-    expect(result.current.data[0].error.message).toMatch(/did not report activeTotal/);
+    expect(result.current.data[0].error.message).toMatch(/did not report a valid activeTotal/);
+  });
+
+  it('logs the cause of a failed table to the console', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    fetchMasterDataTable.mockImplementation((route) =>
+      route === 'teams' ? Promise.reject(new Error('HTTP 500')) : Promise.resolve({ rows: [], total: 1, activeTotal: 1 })
+    );
+
+    const { result } = renderHook(() => useTableCounts());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(warn).toHaveBeenCalledWith('Dashboard: could not count teams: HTTP 500');
+    warn.mockRestore();
   });
 
   it('records a per-table failure without failing the rest', async () => {
