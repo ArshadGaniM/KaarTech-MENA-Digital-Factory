@@ -75,8 +75,10 @@
 - A write that must not race (for example a total that has to stay at or under 100)
   checks and writes in one transaction under `pg_advisory_xact_lock`. Add a partial
   unique index as a backstop.
-- On failure, let the error reach the central error handler. Map known Postgres codes
-  (23505 unique, 23503 foreign key) to a 422 there. Do not return raw database errors.
+- On failure, rethrow the original error after the rollback so it reaches the central
+  error handler. Map known Postgres codes (23505 unique, 23503 foreign key, 22P02 bad
+  text value) to a 422 with `mapWriteError` in `masterDataRouter.js`. Do not return raw
+  database errors.
 
 ## Access
 - The backend connects as the `backend_app` role, not the `postgres` superuser.

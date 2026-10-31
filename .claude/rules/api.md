@@ -81,8 +81,13 @@ Built with `ApiError` in `backend/src/errors.js`.
 - `message` — human-readable English.
 - `details` — optional extra context. For a 422 it maps field names to messages.
 - Never expose stack traces, internal paths, SQL errors or constraint names.
-- Postgres errors become `ApiError`s in the central handler: 23505 (unique) and 23503
-  (foreign key) answer 422 with the field name, not a 500.
+- The central handler in `index.js` returns an `ApiError` as is, logs every 500 and hides
+  its cause. It does not translate Postgres errors.
+- `mapWriteError` in `masterDataRouter.js` turns 23505 (unique), 23503 (foreign key) and
+  22P02 (bad text value) into a 422 that names the field. A router outside the
+  master-data router must call the same mapping itself, or the client gets a generic 500.
+- Other constraint errors, such as a `check` violation (23514), still surface as a logged
+  500. Validate those in the API first.
 
 ## Validation
 - Validate at the boundary with `validateBody` from the table descriptor, before any
