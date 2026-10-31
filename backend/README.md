@@ -38,7 +38,7 @@ same data at runtime rather than reading source.
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|
-| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. Returns `total` (all rows, for pagination) and `activeTotal` (live rows only). Optional `?q=` (up to 100 characters) keeps only rows where any cell — id, code, any field, a looked-up name or the audit names — contains the text or has a word that nearly matches it (a near miss such as `Nithyasri` finds `Nithyashri S`; fuzzy matching needs 4 or more characters). Exact hits sort first, and `total`/`activeTotal` then count the matches. |
+| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. Returns `total` (all rows, for pagination) and `activeTotal` (live rows only). Optional `?q=` (up to 100 characters) keeps only rows where any cell — id, code, any field, a looked-up name or the audit names — contains the text or has a word that nearly matches it (a near miss such as `Nithyasri` finds `Nithyashri S`; fuzzy matching needs 4 or more characters and no digits, so codes such as `TEAM-05` match as text only). Exact hits sort first, and `total`/`activeTotal` then count the matches. |
 | GET | `/v1/<table>/:id` | — | none | 404 only if the id doesn't exist — returns a soft-deleted row too. |
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
 | PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |

@@ -332,8 +332,9 @@ function searchableTextSql(table) {
   return `concat_ws(' ', ${parts.join(", ")})`;
 }
 
-// A term shorter than this only matches as plain text: trigram similarity on a
-// couple of letters matches almost everything.
+// A term shorter than this, or containing a digit, only matches as plain text:
+// trigram similarity on a couple of letters matches almost everything, and on
+// codes like TEAM-05 it matches every TEAM-0xx.
 const MIN_FUZZY_LENGTH = 4;
 const FUZZY_THRESHOLD = 0.55;
 
@@ -345,7 +346,7 @@ const FUZZY_THRESHOLD = 0.55;
 export function searchSql(table, param) {
   const text = searchableTextSql(table);
   const exact = `position(lower($${param}) in lower(${text})) > 0`;
-  const fuzzy = `(char_length($${param}) >= ${MIN_FUZZY_LENGTH} and public.word_similarity($${param}, ${text}) >= ${FUZZY_THRESHOLD})`;
+  const fuzzy = `(char_length($${param}) >= ${MIN_FUZZY_LENGTH} and $${param} !~ '[0-9]' and public.word_similarity($${param}, ${text}) >= ${FUZZY_THRESHOLD})`;
   return {
     where: `(${exact} or ${fuzzy})`,
     rank: `(case when ${exact} then 0 else 1 end), public.word_similarity($${param}, ${text}) desc`,
