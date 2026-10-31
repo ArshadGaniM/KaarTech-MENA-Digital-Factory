@@ -130,6 +130,17 @@ delta format.
 - `FRONTEND_URL` is a comma-separated list of allowed origins. Unset in production
   allows none.
 
+## Testing
+- Backend and `mcp-server/` tests use `node:test`. Run `npm test` inside `backend/` or
+  `mcp-server/`.
+- Tests sit next to the code as `src/<name>.test.js`.
+- Route tests mock the database with the helpers in `masterDataRouter.testHelpers.js`.
+  They prove wiring and SQL shape, not Postgres execution, so check a new query
+  against the real database too.
+- Every new route or rule needs a test for the success path, a 422, and a 404 or 401
+  where they apply.
+- Frontend tests follow `.claude/rules/frontend.md`.
+
 ## Versioning
 - Everything is under `/v1/`. Never break existing endpoints —
   add new fields, don't remove or rename.
