@@ -496,7 +496,8 @@ Report the PR URL and gate verdict.
 squash-merges only when the push contains a fresh `tasks/last-gate-report.md` whose
 verdict is not BLOCKED. "Fresh" is decided by `scripts/gate-fresh.sh`: the push's own
 commits (not merge commits, not commits already on `main`) must change the report and
-at least one other file. Merging `main` into the branch never counts, so the final push
+at least one other file. The first push of a new branch, a force-push whose old tip is missing, and any failed
+check are never fresh. Merging `main` into the branch never counts, so the final push
 must be a commit of the branch's own that contains the new report. Push the gate
 report last, after the gate has run on the merged code.
 
