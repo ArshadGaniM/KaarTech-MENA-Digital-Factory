@@ -345,10 +345,10 @@ const FUZZY_THRESHOLD = 0.55;
 export function searchSql(table, param) {
   const text = searchableTextSql(table);
   const exact = `position(lower($${param}) in lower(${text})) > 0`;
-  const fuzzy = `(char_length($${param}) >= ${MIN_FUZZY_LENGTH} and extensions.word_similarity($${param}, ${text}) >= ${FUZZY_THRESHOLD})`;
+  const fuzzy = `(char_length($${param}) >= ${MIN_FUZZY_LENGTH} and public.word_similarity($${param}, ${text}) >= ${FUZZY_THRESHOLD})`;
   return {
     where: `(${exact} or ${fuzzy})`,
-    rank: `(case when ${exact} then 0 else 1 end), extensions.word_similarity($${param}, ${text}) desc`,
+    rank: `(case when ${exact} then 0 else 1 end), public.word_similarity($${param}, ${text}) desc`,
   };
 }
 
