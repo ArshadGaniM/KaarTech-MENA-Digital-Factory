@@ -8,6 +8,10 @@ const RADIUS = 15.9155;
 const START_AT_TOP = 25;
 const COLOUR_CLASSES = ['colour1', 'colour2', 'colour3', 'colour4'];
 
+// Only a plain custom-property name is turned into a style value, so a value
+// that is not a CSS variable can never add other declarations.
+const colourVar = (name) => (typeof name === 'string' && /^--[\w-]+$/.test(name) ? `var(${name})` : undefined);
+
 const colourOf = (index) => styles[COLOUR_CLASSES[Math.min(index, COLOUR_CLASSES.length - 1)]];
 
 // The slices are drawn for the mouse. The legend buttons are the
@@ -42,7 +46,7 @@ function DonutChart({ segments, selectedKey = null, onSelect, centerLabel }) {
             className={`${styles.slice} ${colourOf(arc.index)} ${dimmed(arc.key) ? styles.dimmed : ''} ${arc.selectable === false ? '' : styles.clickable}`}
             strokeDasharray={`${arc.share} ${100 - arc.share}`}
             strokeDashoffset={arc.offset}
-            style={{ animationDelay: `${arc.index * 120}ms`, ...(arc.colorVar && { stroke: `var(${arc.colorVar})` }) }}
+            style={{ animationDelay: `${arc.index * 120}ms`, ...(colourVar(arc.colorVar) && { stroke: colourVar(arc.colorVar) }) }}
             onClick={arc.selectable === false ? undefined : () => onSelect(arc.key)}
           >
             <title>{`${arc.label}: ${formatCount(arc.count)} (${Math.round(arc.share)}%)`}</title>
@@ -67,7 +71,7 @@ function DonutChart({ segments, selectedKey = null, onSelect, centerLabel }) {
             >
               <span
                 className={`${styles.swatch} ${colourOf(arc.index)}`}
-                style={arc.colorVar ? { background: `var(${arc.colorVar})` } : undefined}
+                style={colourVar(arc.colorVar) ? { background: colourVar(arc.colorVar) } : undefined}
                 aria-hidden="true"
               />
               <span className={styles.legendLabel}>{arc.label}</span>{' '}

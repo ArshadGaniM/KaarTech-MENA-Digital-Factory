@@ -82,6 +82,20 @@ describe('DonutChart', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
+  it('ignores a colorVar that is not a plain CSS variable name', () => {
+    const { container } = render(
+      <DonutChart
+        segments={[{ key: 'a', label: 'A', count: 1, colorVar: 'red; background: url(x)' }]}
+        onSelect={() => {}}
+        centerLabel="resources"
+      />
+    );
+
+    const slice = [...container.querySelectorAll('circle')].find((circle) => circle.querySelector('title'));
+    expect(slice.style.stroke).toBe('');
+    expect(container.querySelector('li button > span[aria-hidden="true"]').getAttribute('style')).toBeNull();
+  });
+
   it('draws a segment in its own colour token when it names one, and the legend swatch matches', () => {
     const { container } = render(
       <DonutChart

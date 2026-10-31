@@ -10,7 +10,9 @@ const NOTHING = { good: null, failedKey: null, error: null, settledToken: null }
 // still the current one, so a slow answer for an old key can never touch
 // state after a newer request has started. Whether a result is still loading
 // or failed is read off which request settled last, so nothing lags behind
-// by a render.
+// by a render. A key change is loading from the same render it happens in,
+// and a failure that has settled is not loading, even while the old result
+// is held back.
 //
 // While a new key loads, the previous result stays on screen so a chart does
 // not blank on every click. If the fetch for a new key fails, that result is
@@ -31,8 +33,10 @@ export function useKeyedResource(fetcher, key, refreshKey = 0) {
         (result) => {
           if (!cancelled) setState({ good: { ...result, key }, failedKey: null, error: null, settledToken: token });
         },
-        (error) => {
+        (failure) => {
           if (!cancelled) {
+            // A rejection that is not an Error would otherwise be falsy or have no message.
+            const error = failure instanceof Error ? failure : new Error(String(failure));
             setState((current) => ({
               ...current,
               error,
@@ -53,6 +57,6 @@ export function useKeyedResource(fetcher, key, refreshKey = 0) {
   return {
     data: isStale && state.failedKey !== null ? null : state.good,
     error: settled ? state.error : null,
-    isLoading: !settled || isStale,
+    isLoading: !settled,
   };
 }

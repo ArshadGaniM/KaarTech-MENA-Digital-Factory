@@ -20,8 +20,8 @@ export function createAllocationRouter({ query = (...args) => pool.query(...args
 
   router.get("/summary", async (req, res, next) => {
     try {
-      const queryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
-      const raw = new URLSearchParams(queryString);
+      const queryStart = req.url.indexOf("?");
+      const raw = new URLSearchParams(queryStart === -1 ? "" : req.url.slice(queryStart + 1));
 
       // Problems are collected as pairs and turned into the details object
       // last: assigning to a key named `__proto__` on a plain object is

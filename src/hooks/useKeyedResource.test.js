@@ -156,10 +156,11 @@ describe('useKeyedResource', () => {
     rerender({ key: 'd', refresh: 0 });
 
     // The abandoned failure did not mark anything failed: c stays as the placeholder.
-    expect(result.current.error).toBeNull();
     expect(result.current.data.key).toBe('c');
     await act(async () => slowD.resolve({ n: 4 }));
     await settle(result);
+    expect(result.current.data).toEqual({ n: 4, key: 'd' });
+    expect(result.current.error).toBeNull();
   });
 
   it('keeps its data when a refresh of the same key fails, and still shows it as the placeholder for the next key', async () => {
@@ -178,6 +179,29 @@ describe('useKeyedResource', () => {
     expect(result.current.data.key).toBe('a');
     await act(async () => next.resolve({ n: 2 }));
     await settle(result);
+    expect(result.current.data).toEqual({ n: 2, key: 'b' });
+  });
+
+  it('is not loading once a failed fetch has settled, even though the old data is held back', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce({ n: 1 }).mockRejectedValueOnce(new Error('boom'));
+    const { result, rerender } = render(fetcher);
+    await settle(result);
+
+    rerender({ key: 'b', refresh: 0 });
+    expect(result.current.isLoading).toBe(true);
+    await waitFor(() => expect(result.current.error).toEqual(new Error('boom')));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.data).toBeNull();
+  });
+
+  it('turns a rejection that is not an Error into an Error', async () => {
+    const fetcher = vi.fn().mockRejectedValue('plain text');
+
+    const { result } = render(fetcher);
+
+    await waitFor(() => expect(result.current.error).toBeInstanceOf(Error));
+    expect(result.current.error.message).toBe('plain text');
   });
 
   it('shows the error with no data when the first load fails, and recovers on a retry', async () => {
