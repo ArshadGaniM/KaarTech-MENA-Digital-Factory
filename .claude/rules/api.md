@@ -19,6 +19,7 @@
 ```
 GET    /v1/<table>                      → list (limit, offset, q, equality filters)
 GET    /v1/<table>/summary?groupBy=f    → grouped counts for charts
+GET    /v1/allocation/summary           → people per allocation bucket and position
 GET    /v1/<table>/:id                  → get one
 POST   /v1/<table>                      → create
 PATCH  /v1/<table>/:id                  → partial update
@@ -110,7 +111,10 @@ GET /v1/resources?limit=20&offset=0
 ```
 Response includes `total`; master-data list routes also include `activeTotal`, which leaves out soft-deleted rows. Default `limit` is 20, max is 100 — enforced in the route handler.
 
-**Aggregate routes are not paginated.** `GET /v1/<table>/summary?groupBy=<field>` returns grouped counts, largest first, capped at 100 groups with no `limit` or `offset`. Its `total` still counts every matching row, including groups past the cap.
+**Aggregate routes are not paginated and do not use the `{ data: [...], total }` list envelope.** They return counts, never rows, and take no `limit` or `offset`.
+
+- `GET /v1/<table>/summary?groupBy=<field>` returns `{ data: [{ value, count }], total }`, largest group first, capped at 100 groups. `total` counts every matching row, including groups past the cap.
+- `GET /v1/allocation/summary` returns `{ data: { buckets, positions } }` and has no `total`. `buckets` is always the same four entries in a fixed order, and `positions` is largest first, capped at 50 names.
 
 ## Authentication
 - Reads are open. Every write (POST, PATCH, DELETE, restore), including

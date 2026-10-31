@@ -123,6 +123,40 @@ a non-UUID string still can't be written — also return a 422
 `validation_error` naming the field, not a raw 500. See
 `isInvalidTextRepresentation`/`invalidValueError` in `src/errors.js`.
 
+### `/v1/allocation`
+
+Read-only (no auth, like every GET) counts for the Dashboard's Allocation
+section. Code in `src/allocation.js` and `src/allocationRouter.js`.
+
+| Route | Returns |
+|---|---|
+| `GET /v1/allocation/summary` | `{ data: { buckets: [{ key, count }], positions: [{ value, count }] } }` |
+
+A resource's total allocation is the sum of its live `resource_deployment`
+percentages. `buckets` always holds the same four keys in this order, with
+`0` for an empty one:
+
+| Key | Meaning |
+|---|---|
+| `full` | total is exactly 100 |
+| `partial` | total is above 0 and below 100 |
+| `none` | no live deployment at all |
+| `over` | total is above 100. The allocation rule should make this impossible, so it is reported only so a broken rule cannot hide |
+
+Without a `position` filter, every live resource is in exactly one bucket. `positions` counts the
+resources deployed to each position **name** (a resource deployed twice to
+positions with the same name counts once), largest first, at most 50.
+Soft-deleted resources and deployments are left out everywhere.
+
+Each side is narrowed by the other's pick, never by its own: `?position=`
+narrows `buckets` to resources deployed to that position name, and
+`?bucket=` narrows `positions` to resources in that bucket. Any other query
+key (also a `__proto__` key), an unknown `bucket`, a `bucket` or `position`
+given twice, or a `position` that is empty, longer than 255 characters or
+contains a NUL byte is a 422 `validation_error`. The query string is read raw, so none of this depends on how Express
+parses it. Values are bound parameters. A deployment whose position is soft-deleted still counts
+toward its resource's bucket, but that position's name is never listed.
+
 ### `/v1/control-center`
 
 Read-only (no auth, like every GET) data for the frontend's Control Center

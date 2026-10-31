@@ -59,3 +59,9 @@ CLAUDE.md said no deployment platform existed and no backend was built while bot
 
 ### A test outside `src/*.test.js` never runs
 The backend `npm test` glob is `src/*.test.js`. A first copy of the team-members test sat in `src/routes/` and was silently skipped. After adding a test file, check that the full suite count went up, and keep tests directly in `src/`.
+
+### A hook that keeps the last result while loading must forget it after a failure
+`useKeyedResource` keeps the previous result on screen while new filters load, so a chart does not blank. A failed fetch must then drop that result, and keep dropping it through the retry. Dropping it only while the error was set let the first filter's numbers come back under a third filter's chip as soon as a retry cleared the error. Two reviewers found it in the same round. Remember the failure in state, only ever write state from a callback that checks its request is still the current one (a slow answer for an old filter must not flip it), and test the sequences: load A, fail B, retry or pick C, and a late answer for B after C failed.
+
+### Validate the raw query string, and build the error object from pairs
+Express's default query parser silently removes a `__proto__` key, turns `a[b]=c` into an object and a repeated key into an array, so a validator that reads `req.query` can pass a request it should reject, and what it sees changes with the parser setting. Read the raw query string with `URLSearchParams`, collect `[key, message]` pairs, and build the 422 details with `Object.fromEntries`, because assigning to a key named `__proto__` on a plain object is also silently dropped. Test it under the `extended`, `simple` and `false` parser settings.
