@@ -6,6 +6,8 @@
 **Scope:** `git diff origin/main..HEAD`. PR #40 was squashed from a branch cut before the Dashboard (#35) and Control Center (#36, #39) existed, so it deleted both and removed `activeTotal` from the master-data list routes. This change rebuilds them on current `main` and leaves #40's resource-deployment allocation and #42's position competencies as merged. The Dashboard no longer falls back to `total` when `activeTotal` is missing.
 **Checks after the fixes below:** frontend 178/178 tests, backend 232/232 tests, `vite build` clean, no new lint warnings in changed files.
 
+**Merge note:** the auto-PR workflow merged the earlier restore commits as #37 before this gate finished. The gate ran on that same code plus the three fixes below, which ship in this PR (#43). The Render backend was redeployed from `b9c8ce6` so `activeTotal` is live.
+
 ## Agent results
 
 | Agent | Verdict | Summary |
