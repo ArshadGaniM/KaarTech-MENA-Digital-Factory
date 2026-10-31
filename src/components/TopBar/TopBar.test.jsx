@@ -10,6 +10,12 @@ describe('TopBar', () => {
     expect(screen.getByRole('heading', { name: 'Master Data' })).toBeInTheDocument();
   });
 
+  it('renders no heading when there is no title', () => {
+    render(<TopBar />);
+
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+  });
+
   it('mounts UserBadge with no user prop passed — UserBadge is the sole useCurrentUser call site (AC-5)', () => {
     render(<TopBar title="Master Data" />);
 

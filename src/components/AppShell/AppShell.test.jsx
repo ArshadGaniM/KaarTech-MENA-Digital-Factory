@@ -10,10 +10,15 @@ import { NAV_ITEMS } from '../../lib/navigation';
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ data: [], total: 0, activeTotal: 0 }),
-    })
+    vi.fn((url) =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve(
+            String(url).includes('/v1/control-center') ? { data: { departments: [] } } : { data: [], total: 0, activeTotal: 0 }
+          ),
+      })
+    )
   );
 });
 
@@ -44,8 +49,9 @@ describe('AppShell', () => {
     render(<AppShell />);
 
     expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { name: controlCenter.label })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory' })).toBeInTheDocument();
+    // The Control Center drops the top bar's title; its own page heading names it.
+    expect(screen.queryByRole('heading', { name: controlCenter.label })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
