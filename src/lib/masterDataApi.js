@@ -236,6 +236,34 @@ export async function fetchMasterDataTable(route, { limit = 20, offset = 0, quer
   return { rows: payload.data, total, activeTotal };
 }
 
+// Grouped counts of live rows (GET /v1/<route>/summary), for dashboard
+// charts. `filters` narrows by equality on other groupable fields; entries
+// with no value are left out, so a cleared filter is simply absent. A group
+// whose `value` is null holds rows where that field is not set.
+export async function fetchGroupSummary(route, groupBy, filters = {}) {
+  const params = new URLSearchParams({ groupBy });
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) params.set(key, value);
+  });
+  const res = await fetch(`${BACKEND_URL}/v1/${route}/summary?${params}`);
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(payload?.error?.message || `Failed to load the ${route} summary (HTTP ${res.status})`);
+  }
+  const groups = payload?.data;
+  // `total` is required: summing the groups instead would quietly understate
+  // it when the backend cuts the group list off, or hide an old backend.
+  const valid =
+    Array.isArray(groups) &&
+    groups.every((group) => Number.isFinite(group?.count) && group.count >= 0) &&
+    Number.isFinite(payload.total) &&
+    payload.total >= 0;
+  if (!valid) {
+    throw new Error(`${route} summary returned a malformed response.`);
+  }
+  return { groups: groups.map(({ value, count }) => ({ value: value ?? null, count })), total: payload.total };
+}
+
 // Pages through the backend's own max page size until every row has been
 // collected. For callers that need the *complete* active dataset rather
 // than one visible page — an FK pick-list (every valid option must be
