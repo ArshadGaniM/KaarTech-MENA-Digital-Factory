@@ -55,7 +55,7 @@ Per-table fields, as of this writing:
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `competencies` (optional, comma-separated competency names up to 500 characters, e.g. `MM, SRM` — each must match an existing, non-deleted `competencies.name`, otherwise a 422 names the unknown ones) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
-| `departments` | `name` (required), `floorNumber` (required, whole number from 1 to 1000, unique among live departments: 1 is the ground floor of the Control Center building and higher numbers are higher up; a number already in use is a 422 naming `floorNumber`, and so is restoring a deleted department whose floor was taken meanwhile), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
+| `departments` | `name` (required), `floorNumber` (required, whole number from 1 to 1000, unique among live departments: 1 is the ground floor of the Control Center building and higher numbers are higher up; a number already in use is a 422 naming `floorNumber` (to swap two floors, move one department to a spare number first), and so is restoring a deleted department whose floor was taken meanwhile), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** FK-validated against `practices` at the app layer; can be set/changed later via PATCH. The DB column is still typed `uuid`, so a non-UUID value is rejected with a 422 `validation_error`, not a raw 500 — see below) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
@@ -63,7 +63,7 @@ Per-table fields, as of this writing:
 | `project-assignments` | `projectId` (required, string — pick-list only, must reference an existing `projects.project_id`, enforced), `projectName`/`projectProfitCenterCode` (**read-only**, live-looked-up from the referenced project), `teamId` (required, string — pick-list only, must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `departmentId`/`departmentName` (**read-only**, live-looked-up **transitively** through the referenced team's own `departmentCode` — Project Assignments → Teams → Departments, not a direct column/single-hop join on this table), `projectAssignmentStartDate`/`projectAssignmentEndDate` (both required, `date` type — `projectAssignmentEndDate` must not be earlier than `projectAssignmentStartDate`, enforced) — the first table with a chained lookup and cross-field validation |
 
 **Field types beyond `string`/`enum`:** a field's `type` can also be
-`"number"` (a finite JS number — no length/enum checks apply), `"date"`
+`"number"` (a finite JS number; optional `integer: true`, `min` and `max` limit it, as on `departments.floorNumber`), `"date"`
 (a string that must parse via `Date.parse` — any ISO 8601 date or
 datetime string, e.g. `project-assignments.projectAssignmentStartDate`),
 and any `"string"` field can set `maxLength` to override the default
@@ -215,7 +215,7 @@ as public API shape — one entry per **writable** field, in declared order.
 An auto-generated `hasCode` column and every `lookups` projection are
 never in `table.fields` to begin with, so they never appear here either —
 this is the complete, and only, list of fields a client should render an
-input for. `maxLength`/`values` are present only when the field actually
+input for. `maxLength`/`values`/`integer`/`min`/`max` are present only when the field actually
 sets them (never `null`). A `references` field additionally resolves its
 target table's own REST `route` (by matching `tableName` against every
 other entry in this same response) — the frontend fetches
