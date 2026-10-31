@@ -1,51 +1,85 @@
 # Database Rules
 
-> Applies to the Postgres database and `backend/migrations/`.
+> Applies to the Postgres database (Supabase) and `backend/migrations/`.
+> The backend talks to it with `pg` and plain SQL. There is no ORM.
 
-## Models
-- Every model inherits from a common `Base`.
-- Model files live in one directory. One model class per file for large models.
-- Table names are **snake_case plural**: `conversation_messages`, `user_preferences`.
-- Column names are **snake_case**.
-- Every table has `created_at` and `updated_at` timestamps, set automatically.
-- Primary keys use `uuid4` by default — not auto-increment integers.
+## Tables
+- Table names are **snake_case plural**: `project_assignments`, `delivery_centers`.
+- Column names are **snake_case**. The API turns them into camelCase.
+- Primary keys are `uuid` with `default gen_random_uuid()` — not auto-increment integers.
+- Every master-data table has `created_at`, `updated_at`, `created_by`, `updated_by`
+  and `deleted_at`.
+  - `created_at` and `updated_at` default to `now()`. A `set_updated_at()` trigger keeps
+    `updated_at` current. Reuse that function, do not redefine it.
+  - `created_by` and `updated_by` are `text not null`.
+  - `deleted_at` is null for live rows. Deleting sets it. Nothing is hard-deleted.
+- A new master-data table also needs a descriptor in `backend/src/masterDataTables.js`.
+  The routes, validation and docs come from that descriptor.
 
 ## Queries
-- Always use async sessions if the stack supports async DB access.
-- **Never use raw-SQL string interpolation.** Use bound parameters / the ORM query builder.
-  ```python
-  # Bad — SQL injection risk
-  await session.execute(text(f"SELECT * FROM users WHERE email = '{email}'"))
-  # Good
-  await session.execute(select(User).where(User.email == email))
+- **Never build SQL with string interpolation of request data.** Use bound parameters.
+  ```js
+  // Bad — SQL injection risk
+  await pool.query(`select * from users where email = '${email}'`);
+  // Good
+  await pool.query("select * from users where email = $1", [email]);
   ```
-- Prefer the ORM over raw SQL. Raw SQL only for complex aggregations.
+- Table and column names in a query come only from the descriptors, never from a
+  request. That is the one place interpolation is allowed.
+- Reads filter live rows with `deleted_at is null` unless the route says otherwise.
 - Paginate any query that can return a large result set — never fetch unbounded rows.
+  List routes use `limit` and `offset`. Grouped counts are capped at 100 groups.
+- Reuse the helpers in `backend/src/masterDataSchema.js` before writing new SQL by hand.
 
 ## Migrations
-- **Never edit an existing migration.** Once committed, it is immutable.
-- Generate migrations with the framework's autogenerate command.
-- Review generated migrations before committing — autogenerate sometimes misses things.
-- Destructive changes (column removal, table drop) require a two-phase migration:
+- Files live in `backend/migrations/`, numbered `NNNN_short_name.sql`, in order.
+- **Never edit an existing migration.** Once committed, it is immutable. Add a new one.
+- Write the SQL by hand and keep it small. Say in the header comment why it exists.
+- Apply a migration to the live database before the backend deploy that reads it, and
+  only with the owner's yes (CLAUDE.md §21). A migration that adds a required column
+  needs a backfill in the same file.
+- Check the migration against a copy of the data when it changes existing rows.
+- Destructive changes (column removal, table drop) are two-phase:
   1. Phase 1: deprecate (stop writing to the column, deploy)
   2. Phase 2: remove (second migration, deploy after confirming no reads remain)
+- Never put a password or key in a migration. Use a placeholder and set the real value
+  on the host.
 
-## Indexes
+## Indexes and constraints
 - Add an index on any column used in a `WHERE` clause in a hot query.
-- Add an index on foreign keys — most ORMs do NOT do this automatically.
+- Add an index on foreign keys. Postgres does not do this for you.
+- Lists are filtered to live rows, so index live rows only:
+  `create index ix_<table>_<column> on <table> (<column>) where deleted_at is null`.
+- Uniqueness applies to live rows only, so deleting a row frees its value:
+  `create unique index ux_<table>_<column>_live on <table> (<column>) where deleted_at is null`.
+  Put the column name in the index name. The API reads it to say which field clashed.
 - Composite indexes: highest-cardinality column first.
-- Name indexes explicitly: `ix_<table>_<column>`.
+- Range rules go in a `check` constraint, as well as in the API.
+- Text search uses `pg_trgm` (migration 0024).
 
 ## Naming Conventions
 | Object | Convention | Example |
 |---|---|---|
-| Table | snake_case plural | `conversation_messages` |
+| Table | snake_case plural | `project_assignments` |
 | Column | snake_case | `created_at` |
-| Index | `ix_<table>_<col>` | `ix_messages_session_id` |
-| Foreign key | `fk_<table>_<ref_table>` | `fk_messages_sessions` |
-| Primary key | `pk_<table>` | `pk_messages` |
+| Index | `ix_<table>_<col>` | `ix_resources_name` |
+| Unique index | `ux_<table>_<col>_live` for live rows. Older ones use `ix_` | `ux_departments_floor_number_live` |
+| Foreign key | `fk_<table>_<ref_table>` | `fk_teams_departments` |
+| Check constraint | `ck_<table>_<col>_<rule>` | `ck_departments_floor_number_range` |
+| Trigger | `trg_<table>_<what>` | `trg_practices_updated_at` |
 
 ## Transactions
 - Keep transactions short. Never hold one open across a network call.
-- Use an explicit atomic-block context manager for operations that must be atomic.
-- On failure, let exceptions propagate — the ORM rolls back automatically on context exit.
+- Use one client from the pool for the whole transaction: `begin`, the statements,
+  then `commit`. Roll back and release the client in a `finally` path.
+- A write that must not race (for example a total that has to stay at or under 100)
+  checks and writes in one transaction under `pg_advisory_xact_lock`. Add a partial
+  unique index as a backstop.
+- On failure, let the error reach the central error handler. Map known Postgres codes
+  (23505 unique, 23503 foreign key) to a 422 there. Do not return raw database errors.
+
+## Access
+- The backend connects as the `backend_app` role, not the `postgres` superuser.
+  Migration 0003 sets default privileges, so new tables in `public` are readable and
+  writable by the role without a grant of their own.
+- `DATABASE_SSL_CA` turns on certificate verification (CLAUDE.md §20).
