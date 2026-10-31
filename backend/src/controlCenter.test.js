@@ -6,8 +6,8 @@ const month = "2026-10"; // 31 days
 
 const base = {
   departments: [
-    { code: "DEPT-002", name: "Design Services" },
-    { code: "DEPT-099", name: "Empty Department" },
+    { code: "DEPT-002", name: "Design Services", floorNumber: 10 },
+    { code: "DEPT-099", name: "Empty Department", floorNumber: 11 },
   ],
   teams: [
     { code: "TEAM-001", name: "Alpha", departmentCode: "DEPT-002" },
@@ -185,4 +185,17 @@ test("a person allocated over 100% across teams has 0% available, never negative
     month,
   });
   assert.equal(detail.seats[0].availablePercentage, 0);
+});
+
+test("departments are listed top floor first, by their floor number, not by code", () => {
+  const result = buildControlCenter({
+    ...base,
+    departments: [
+      { code: "DEPT-001", name: "Ground", floorNumber: 1 },
+      { code: "DEPT-009", name: "Penthouse", floorNumber: 13 },
+      { code: "DEPT-005", name: "Middle", floorNumber: 6 },
+    ],
+    teams: [],
+  });
+  assert.deepEqual(result.departments.map((d) => [d.floorNumber, d.name]), [[13, "Penthouse"], [6, "Middle"], [1, "Ground"]]);
 });

@@ -16,13 +16,15 @@ function groupByCompetency(teams) {
   return groups;
 }
 
-function FactoryFloor({ name, level, teams, onOpenTeam }) {
+function FactoryFloor({ name, level, order, teams, onOpenTeam }) {
   return (
-    <li className={styles.floor} style={{ '--level': level }}>
+    <li className={styles.floor} style={{ '--order': order }}>
       <div className={styles.floorSign}>
-        <span className={styles.floorNumber} aria-hidden="true">
-          F{level}
-        </span>
+        {Number.isInteger(level) && (
+          <span className={styles.floorNumber} aria-hidden="true">
+            F{level}
+          </span>
+        )}
         <h3 className={styles.floorName}>{name}</h3>
         <span className={styles.floorCount}>{teams.length} {teams.length === 1 ? 'team' : 'teams'}</span>
         <span className={styles.conveyor} aria-hidden="true" />
@@ -49,7 +51,8 @@ function FactoryFloor({ name, level, teams, onOpenTeam }) {
 
 FactoryFloor.propTypes = {
   name: PropTypes.string.isRequired,
-  level: PropTypes.number.isRequired,
+  level: PropTypes.number,
+  order: PropTypes.number.isRequired,
   teams: PropTypes.arrayOf(teamShape).isRequired,
   onOpenTeam: PropTypes.func.isRequired,
 };

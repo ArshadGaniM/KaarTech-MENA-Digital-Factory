@@ -31,6 +31,40 @@ describe('RecordFormModal', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading form…');
   });
 
+  it('renders a whole-number field with a step of 1 and its minimum', () => {
+    useEntityRelationships.mockReturnValue({
+      data: [
+        {
+          route: 'departments',
+          identity: { type: 'auto-generated' },
+          fields: [
+            { key: 'name', type: 'string', required: true },
+            { key: 'floorNumber', type: 'number', required: true, integer: true, min: 1, max: 1000 },
+          ],
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <RecordFormModal
+        route="departments"
+        singularLabel="Department"
+        labelByKey={{ name: 'Department Name', floorNumber: 'Floor Number' }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />
+    );
+
+    const floor = screen.getByLabelText(/Floor Number/);
+    expect(floor).toHaveAttribute('type', 'number');
+    expect(floor).toHaveAttribute('step', '1');
+    expect(floor).toHaveAttribute('min', '1');
+    expect(floor).toHaveAttribute('max', '1000');
+    expect(floor).toBeRequired();
+  });
+
   it('shows an alert if the field descriptor fails to load', () => {
     useEntityRelationships.mockReturnValue({ data: null, isLoading: false, error: new Error('Backend down') });
 

@@ -55,7 +55,7 @@ Per-table fields, as of this writing:
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `competencies` (optional, comma-separated competency names up to 500 characters, e.g. `MM, SRM` — each must match an existing, non-deleted `competencies.name`, otherwise a 422 names the unknown ones) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
-| `departments` | `name` (required), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
+| `departments` | `name` (required), `floorNumber` (required, whole number from 1 to 1000, unique among live departments: 1 is the ground floor of the Control Center building and higher numbers are higher up; a number already in use is a 422 naming `floorNumber`, and so is restoring a deleted department whose floor was taken meanwhile), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** FK-validated against `practices` at the app layer; can be set/changed later via PATCH. The DB column is still typed `uuid`, so a non-UUID value is rejected with a 422 `validation_error`, not a raw 500 — see below) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
@@ -129,7 +129,7 @@ page. Code in `src/controlCenter.js` and `src/controlCenterRouter.js`.
 
 | Route | Returns |
 |---|---|
-| `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, teams: [...] }] } }`. Each team carries its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by main competency, then code. |
+| `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, floorNumber, teams: [...] }] } }`, top floor first (highest `floorNumber`), one entry per live department. Each team carries its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by main competency, then code. |
 | `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. 404 `team_not_found` for an unknown code. |
 | `GET /v1/control-center/stream` | Server-sent events. Sends `retry: 5000`, then one `event: changed` (`data: {}`) per burst of writes to the tables below, and a `: keep-alive` comment every 25 s. |
 
@@ -147,6 +147,8 @@ Hour rules, all measured in the selected month:
   fall inside any of the team's project assignments (overlaps count once).
 - `status`: `unstaffed` (no allocated hours), `full` (utilized equals
   allocated), `unused` (nothing utilized), otherwise `partial`.
+
+An open team popup refetches its team every time the page refreshes, so it follows the same changes. It keeps showing its last data while the refetch runs, and says so when a refresh fails instead of claiming to be live.
 
 The stream route is unauthenticated, so at most 100 streams may be open at
 once. Past that it answers 503 `too_many_streams`. The snapshot and team
@@ -286,9 +288,10 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
 | `0020_add_resource_deployment_allocation.sql` | `resource_deployment.allocation_percentage numeric(5,2) not null` with a `ck_resource_deployment_allocation_percentage` check (above 0, up to 100). Existing rows backfilled to 100; the default is dropped afterwards so new rows must state a percentage. |
 | `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule. The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
-| `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `public` schema, because the backend's role cannot use the `extensions` schema), used by the list routes' fuzzy `?q=` search. |
 | `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
 | `0023_control_center_notify.sql` | `notify_control_center_changed()` plus a statement-level `trg_control_center_notify` trigger on `departments`, `teams`, `positions`, `competencies`, `resource_deployment`, `project_assignments`, `projects` and `resources`. Each insert, update or delete sends one `NOTIFY control_center_changed`, which the backend turns into the Control Center stream's `changed` event. Not applied automatically. |
+| `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `public` schema, because the backend's role cannot use the `extensions` schema), used by the list routes' fuzzy `?q=` search. |
+| `0025_add_department_floor_number.sql` | `departments.floor_number integer not null` with `ck_departments_floor_number_range` (1 to 1000) and the partial unique index `ux_departments_floor_number_live` (live rows only, so deleting a department frees its floor; the name carries the column so the API's unique-violation handler can name the field). Backfilled for the thirteen departments as laid out by the owner, any other row parked at 101 and up. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):
