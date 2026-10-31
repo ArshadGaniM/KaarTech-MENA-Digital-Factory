@@ -26,6 +26,7 @@ test("GET /v1/resources/summary groups live rows and returns their total", async
   let sql;
   let params;
   t.mock.method(pool, "query", async (text, values) => {
+    if (text.startsWith("select count(*)")) return { rows: [{ total: 11 }] };
     sql = text;
     params = values;
     return { rows: [{ value: "Offshore", count: 7 }, { value: "Onsite", count: 3 }, { value: null, count: 1 }] };
@@ -48,6 +49,7 @@ test("GET /v1/resources/summary binds filter values as parameters, never into th
   let sql;
   let params;
   t.mock.method(pool, "query", async (text, values) => {
+    if (text.startsWith("select count(*)")) return { rows: [{ total: 0 }] };
     sql = text;
     params = values;
     return { rows: [] };
@@ -124,4 +126,44 @@ test("GET /v1/resources/summary is not captured by the /:id route", async (t) =>
   const res = await fetch(`${baseUrl}/v1/resources/summary?groupBy=designation`);
 
   assert.equal(res.status, 200);
+});
+
+test("GET /v1/resources/summary reports the real total even when the groups are cut off at 100", async (t) => {
+  t.mock.method(pool, "query", async (text) => {
+    if (text.startsWith("select count(*)")) return { rows: [{ total: 5000 }] };
+    return { rows: Array.from({ length: 100 }, (_, i) => ({ value: `Role ${i}`, count: 10 })) };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resources/summary?groupBy=designation`);
+  const body = await res.json();
+
+  assert.equal(body.data.length, 100);
+  assert.equal(body.total, 5000);
+});
+
+test("GET /v1/resources/summary counts with the same filters as the groups", async (t) => {
+  const seen = [];
+  t.mock.method(pool, "query", async (text, values) => {
+    seen.push({ text, values });
+    return { rows: text.startsWith("select count(*)") ? [{ total: 1 }] : [] };
+  });
+
+  await fetch(`${baseUrl}/v1/resources/summary?groupBy=designation&locationType=Offshore`);
+
+  const count = seen.find((q) => q.text.startsWith("select count(*)"));
+  assert.match(count.text, /resources\.deleted_at is null and resources\.location_type = \$1/);
+  assert.deepEqual(count.values, ["Offshore"]);
+});
+
+test("GET /v1/resources/summary rejects a filter value containing a NUL byte with 422, not a 500", async (t) => {
+  let called = false;
+  t.mock.method(pool, "query", async () => {
+    called = true;
+    return { rows: [] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resources/summary?groupBy=designation&locationType=Off%00shore`);
+
+  assert.equal(res.status, 422);
+  assert.equal(called, false);
 });

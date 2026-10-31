@@ -255,10 +255,11 @@ export async function fetchGroupSummary(route, groupBy, filters = {}) {
   if (!valid) {
     throw new Error(`${route} summary returned a malformed response.`);
   }
-  return {
-    groups: groups.map(({ value, count }) => ({ value: value ?? null, count })),
-    total: groups.reduce((sum, group) => sum + group.count, 0),
-  };
+  const mapped = groups.map(({ value, count }) => ({ value: value ?? null, count }));
+  // The backend counts every matching row. Summing the groups would
+  // understate it when the group list was cut off.
+  const total = Number.isFinite(payload.total) && payload.total >= 0 ? payload.total : mapped.reduce((sum, group) => sum + group.count, 0);
+  return { groups: mapped, total };
 }
 
 // Pages through the backend's own max page size until every row has been

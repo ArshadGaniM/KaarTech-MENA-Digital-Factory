@@ -186,7 +186,7 @@ export function createMasterDataRouter(table) {
       const values = [];
       for (const [key, value] of Object.entries(filters)) {
         const filterField = groupableFields.find((f) => f.key === key);
-        if (!filterField || typeof value !== "string") {
+        if (!filterField || typeof value !== "string" || value.includes("\0")) {
           throw validationError({ [key]: `${key} is not a valid filter. Use one of: ${groupableKeys || "(none)"}.` });
         }
         values.push(value);
@@ -194,17 +194,23 @@ export function createMasterDataRouter(table) {
       }
 
       const groupColumn = `${tableName}.${groupField.column}`;
-      const result = await pool.query(
-        `select ${groupColumn} as value, count(*)::int as count
-         from ${tableName}
-         where ${conditions.join(" and ")}
-         group by ${groupColumn}
-         order by count desc, ${groupColumn} asc nulls last
-         limit ${MAX_GROUPS}`,
-        values
-      );
-      const total = result.rows.reduce((sum, row) => sum + row.count, 0);
-      res.json({ data: result.rows, total });
+      const where = conditions.join(" and ");
+      // `total` is counted separately, not summed from the groups: a field
+      // with more than MAX_GROUPS distinct values is cut off at MAX_GROUPS
+      // rows, and summing those would understate it.
+      const [groups, count] = await Promise.all([
+        pool.query(
+          `select ${groupColumn} as value, count(*)::int as count
+           from ${tableName}
+           where ${where}
+           group by ${groupColumn}
+           order by count desc, ${groupColumn} asc nulls last
+           limit ${MAX_GROUPS}`,
+          values
+        ),
+        pool.query(`select count(*)::int as total from ${tableName} where ${where}`, values),
+      ]);
+      res.json({ data: groups.rows, total: count.rows[0].total });
     } catch (err) {
       next(err);
     }
