@@ -227,7 +227,9 @@ export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {
   if (total === null) {
     throw new Error(`${route} returned a malformed response: invalid total "${payload.total}".`);
   }
-  return { rows: payload.data, total };
+  // Absent on a backend that predates activeTotal; callers must not treat it as zero or fall back to total.
+  const activeTotal = Number.isFinite(payload.activeTotal) && payload.activeTotal >= 0 ? payload.activeTotal : undefined;
+  return { rows: payload.data, total, activeTotal };
 }
 
 // Pages through the backend's own max page size until every row has been

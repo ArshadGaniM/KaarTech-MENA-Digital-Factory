@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from './App';
-import { NAV_ITEMS } from './lib/navigation';
+import { NAV_ITEMS, DASHBOARD_HASH } from './lib/navigation';
 
 // App's app-shell branch mounts MasterDataTable, which fetches over the
 // network via useMasterDataTable; stub fetch so this routing-boundary test
@@ -11,7 +11,7 @@ beforeEach(() => {
     'fetch',
     vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [] }),
+      json: () => Promise.resolve({ data: [], total: 0, activeTotal: 0 }),
     })
   );
 });
@@ -31,12 +31,12 @@ describe('App', () => {
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
-  it('landing on NAV_ITEMS[0].hash — the same value Header\'s "Dashboard" link and Hero\'s "Enter the Application" CTA use — resolves to the Dashboard section', () => {
-    window.location.hash = NAV_ITEMS[0].hash;
+  it('landing on the Dashboard hash — the same value Header\'s "Dashboard" link uses — resolves to the Dashboard section', async () => {
+    window.location.hash = DASHBOARD_HASH;
     render(<App />);
 
-    expect(screen.getByRole('button', { name: NAV_ITEMS[0].label })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 
   it('renders the marketing tree (Header + Footer) with AppShell absent for a non-app-shell hash', () => {
