@@ -38,7 +38,7 @@ just "does an artifact with an acceptable verdict exist somewhere."
 
 - The auto-PR workflow merges a push when `tasks/last-gate-report.md` and at least one other file changed in that push. A merge of `origin/main` into a feature branch can bring in another session's gate report, so the push looks fresh before this branch's gate has run. PR 47 (https://github.com/ArshadGaniM/KaarTech-MENA-Digital-Factory/pull/47) was merged this way while its gate was still running.
 - While a gate is running, do not push a merge of `main` that changes the report file. Run the gate on the merged code, and push the new gate report last.
-- Merge `main` with a real merge and resolve conflicts by hand. `git merge origin/main --strategy=ours` (CLAUDE.md §9.3 Step 0) keeps the branch's files and ignores main's changes, so a later squash of the branch reverts work that landed on `main` in the meantime. Use it only when the branch already holds everything on `main` that should stay. Whether Step 0 itself should change is the owner's call.
+- Merge `main` with a real merge and resolve conflicts by hand. `git merge origin/main --strategy=ours` keeps the branch's files and ignores main's changes, so a later squash of the branch reverts work that landed on `main` in the meantime. CLAUDE.md §9.3 Step 0 now prescribes a real merge, and the workflow only counts a push's own commits as a gate run (`scripts/gate-fresh.sh`), so a merge of `main` can no longer trigger the auto-merge early.
 
 ## Deploy order when a migration adds a required column
 
@@ -53,3 +53,15 @@ just "does an artifact with an acceptable verdict exist somewhere."
 
 - A Playwright `fullPage` capture briefly resizes the page. Bars with a `transition: width` were caught partway and looked nearly empty, while the page itself measured correct. Check `getBoundingClientRect()` and take a normal viewport capture before calling it a CSS bug.
 
+
+### Check platform facts against the live account before writing them down
+CLAUDE.md said no deployment platform existed and no backend was built while both were live. Section 21 now holds IDs read from the Vercel and Render accounts. When a doc states a fact about hosting, read it from the platform, not from memory, and search the other files that repeat it (rule files, hook comments, .env.example).
+
+### A test outside `src/*.test.js` never runs
+The backend `npm test` glob is `src/*.test.js`. A first copy of the team-members test sat in `src/routes/` and was silently skipped. After adding a test file, check that the full suite count went up, and keep tests directly in `src/`.
+
+### A hook that keeps the last result while loading must forget it after a failure
+`useKeyedResource` keeps the previous result on screen while new filters load, so a chart does not blank. A failed fetch must then drop that result, and keep dropping it through the retry. Dropping it only while the error was set let the first filter's numbers come back under a third filter's chip as soon as a retry cleared the error. Two reviewers found it in the same round. Remember the failure in state, only ever write state from a callback that checks its request is still the current one (a slow answer for an old filter must not flip it), and test the sequences: load A, fail B, retry or pick C, and a late answer for B after C failed.
+
+### Validate the raw query string, and build the error object from pairs
+Express's default query parser silently removes a `__proto__` key, turns `a[b]=c` into an object and a repeated key into an array, so a validator that reads `req.query` can pass a request it should reject, and what it sees changes with the parser setting. Read the raw query string with `URLSearchParams`, collect `[key, message]` pairs, and build the 422 details with `Object.fromEntries`, because assigning to a key named `__proto__` on a plain object is also silently dropped. Test it under the `extended`, `simple` and `false` parser settings.

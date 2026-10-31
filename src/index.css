@@ -23,6 +23,10 @@
   --color-chart-2: var(--color-primary);
   --color-chart-3: #8a8f98;
   --color-chart-4: #d98a96;
+  --color-allocation-full: var(--color-status-full-ink);
+  --color-allocation-partial: var(--color-status-partial-ink);
+  --color-allocation-none: var(--color-status-unstaffed-ink);
+  --color-allocation-over: var(--color-accent);
 
   --font-sans: 'Poppins', system-ui, Roboto, sans-serif;
   --space-1: 8px;

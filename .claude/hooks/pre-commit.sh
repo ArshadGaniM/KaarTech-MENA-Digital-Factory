@@ -36,7 +36,7 @@ else
   echo "No staged frontend files to lint — skipping."
 fi
 
-# 3. Lint staged backend files (no-op until a backend exists)
+# 3. Lint staged Python files (the backend is JavaScript, linted in step 2)
 STAGED_BACKEND=$(git diff --cached --name-only --diff-filter=ACM \
   | grep -E '\.py$' \
   | grep -Ev "$IS_VENDORED" \

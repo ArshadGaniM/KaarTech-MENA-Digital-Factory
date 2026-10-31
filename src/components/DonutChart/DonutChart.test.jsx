@@ -81,4 +81,37 @@ describe('DonutChart', () => {
     expect(screen.getByText('No data yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
+
+  it('ignores a colorVar that is not a plain CSS variable name', () => {
+    const { container } = render(
+      <DonutChart
+        segments={[{ key: 'a', label: 'A', count: 1, colorVar: 'red; background: url(x)' }]}
+        onSelect={() => {}}
+        centerLabel="resources"
+      />
+    );
+
+    const slice = [...container.querySelectorAll('circle')].find((circle) => circle.querySelector('title'));
+    expect(slice.style.stroke).toBe('');
+    expect(container.querySelector('li button > span[aria-hidden="true"]').getAttribute('style')).toBeNull();
+  });
+
+  it('draws a segment in its own colour token when it names one, and the legend swatch matches', () => {
+    const { container } = render(
+      <DonutChart
+        segments={[
+          { key: 'a', label: 'A', count: 1, colorVar: '--color-allocation-full' },
+          { key: 'b', label: 'B', count: 1 },
+        ]}
+        onSelect={() => {}}
+        centerLabel="resources"
+      />
+    );
+
+    const slices = [...container.querySelectorAll('circle')].filter((circle) => circle.querySelector('title'));
+    expect(slices[0].style.stroke).toBe('var(--color-allocation-full)');
+    expect(slices[1].style.stroke).toBe('');
+    const swatches = container.querySelectorAll('li button > span[aria-hidden="true"]');
+    expect(swatches[0].style.background).toBe('var(--color-allocation-full)');
+  });
 });

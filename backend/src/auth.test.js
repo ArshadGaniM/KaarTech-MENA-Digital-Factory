@@ -34,3 +34,19 @@ test("allows a matching header value", () => {
   requireInternalApiKey(fakeReq("secret"), {}, (err) => { calledWithNoArgs = err === undefined; });
   assert.equal(calledWithNoArgs, true);
 });
+
+test("rejects an empty header when the server key is also empty", () => {
+  process.env.INTERNAL_API_KEY = "";
+  let calledWith;
+  requireInternalApiKey(fakeReq(""), {}, (err) => { calledWith = err; });
+  assert.equal(calledWith.status, 401);
+});
+
+test("rejects a header that is a prefix of the key, and one that extends it", () => {
+  process.env.INTERNAL_API_KEY = "secret";
+  for (const provided of ["secre", "secret-and-more"]) {
+    let calledWith;
+    requireInternalApiKey(fakeReq(provided), {}, (err) => { calledWith = err; });
+    assert.equal(calledWith.status, 401, provided);
+  }
+});

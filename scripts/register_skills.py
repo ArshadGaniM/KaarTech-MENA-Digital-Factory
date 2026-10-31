@@ -3,9 +3,8 @@
 skill registry. See CLAUDE.md §14 for category inference rules and the
 category-keyword table.
 
-No backend exists yet in this project, so this writes to
-.claude/skills/registry.json instead of a live DB. Swap `upsert` for a real
-DB call once a backend exists.
+Writes to .claude/skills/registry.json. The Express backend has no skills
+table, so there is no live DB to call (see CLAUDE.md §14).
 
 Usage:
     python scripts/register_skills.py --skills-dir .claude/skills --registry .claude/github-repos.json
