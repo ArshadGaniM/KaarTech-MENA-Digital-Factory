@@ -54,6 +54,10 @@ export const PLAN_MONTHS = deepFreeze([
 
 export const PLAN_WEEK_COUNT = 65;
 
+// Week 1 begins on this date (the owner, 31 October 2026). A week is 7 days, so
+// every other week's dates follow from it (src/lib/projectPlanCalendar.js).
+export const PLAN_START_DATE = '2026-07-01';
+
 export const PLAN_OWNER = deepFreeze({ label: 'BU / Operations / Sales Director', poc: 6 });
 
 export const PLAN_GROUPS = deepFreeze([

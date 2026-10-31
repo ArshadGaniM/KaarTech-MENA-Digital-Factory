@@ -8,6 +8,7 @@ import { buildEntityRelationships } from "./entityRelationships.js";
 import { parseAllowedOrigins } from "./corsOrigins.js";
 import { createControlCenterRouter } from "./controlCenterRouter.js";
 import { createAllocationRouter } from "./allocationRouter.js";
+import { createProjectPlanRouter } from "./projectPlanRouter.js";
 import { createChangeFeed } from "./changeFeed.js";
 
 const app = express();
@@ -39,6 +40,7 @@ for (const signal of ["SIGTERM", "SIGINT"]) {
 }
 app.use("/v1/control-center", createControlCenterRouter({ changeFeed }));
 app.use("/v1/allocation", createAllocationRouter());
+app.use("/v1/project-plan", createProjectPlanRouter());
 
 for (const table of MASTER_DATA_TABLES) {
   app.use(`/v1/${table.route}`, createMasterDataRouter(table));

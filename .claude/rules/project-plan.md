@@ -19,3 +19,8 @@ and the month headings.
   editing the plan.
 - Suggestions for showing the plan better go in the conversation, never into
   the plan data.
+- The start date of Week 1 (1 July 2026, given by the owner on 31 October 2026)
+  is part of the locked plan. Calendar dates shown in the view are derived from
+  it and are never stored.
+- Actual progress (start and end week, percent complete) is stored apart from
+  the plan, in `project_plan_actuals`, and is the only part the app edits.

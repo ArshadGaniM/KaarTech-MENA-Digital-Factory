@@ -68,3 +68,6 @@ Express's default query parser silently removes a `__proto__` key, turns `a[b]=c
 
 ### The project plan is the owner's, and it is locked
 The Project Plan section shows the owner's plan sheet. The owner said it must never change in wording, names, descriptions or dates unless they explicitly confirm, more than once. It is kept in `src/data/projectPlan.js`, frozen, with a hash lock test, and `.claude/rules/project-plan.md` states the rule. Do not fix a spelling in it (the sheet says "Measruing"), and do not edit it to match progress: track actuals beside it.
+
+### Week 1 of the project plan starts on 1 July 2026
+The owner gave this on 31 October 2026 and asked for it to be used. It is stored as `PLAN_START_DATE` in the locked plan file (hash updated in the same change) and every calendar date in the Project Plan section is worked out from it, in UTC, with 7-day weeks. The sheet's month headings are kept as the owner wrote them even where a week's calendar dates fall in the neighbouring month.

@@ -176,6 +176,7 @@
 }
 
 .weekCell {
+  position: relative;
   min-width: 22px;
   width: 22px;
   padding: 0;
@@ -218,4 +219,134 @@ td.yetToStart,
 .swatch.yetToStart {
   background: var(--color-plan-pending);
   color: var(--color-plan-pending-ink);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filter[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+}
+
+.todayNote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-accent-dark);
+  font-size: 13px;
+}
+
+.swatchShade {
+  background: linear-gradient(90deg, rgb(0 0 0 / 28%) 50%, var(--color-plan-pending) 50%);
+}
+
+.swatchActual {
+  background: var(--color-primary);
+}
+
+.swatchToday {
+  background: var(--color-bg);
+  border: 2px solid var(--color-accent);
+}
+
+.shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgb(0 0 0 / 28%);
+  pointer-events: none;
+}
+
+.actualBar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 6px;
+  background: var(--color-primary);
+}
+
+.table td.today {
+  box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
+}
+
+.table th.todayHead {
+  background: var(--color-accent);
+  outline: 2px solid var(--color-bg);
+}
+
+.table tr.behind td.colSl {
+  box-shadow: inset 4px 0 0 var(--color-accent);
+}
+
+.table th.colActual {
+  position: sticky;
+  right: 64px;
+  min-width: 150px;
+  width: 150px;
+}
+
+.table td.colActual {
+  position: sticky;
+  right: 64px;
+  z-index: 1;
+  min-width: 150px;
+  width: 150px;
+  text-align: center;
+}
+
+.actualText {
+  display: block;
+  font-weight: 600;
+}
+
+.behindBadge {
+  display: inline-block;
+  margin: 2px 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-status-unused);
+  color: var(--color-status-unused-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.actualButton {
+  display: block;
+  margin: 2px auto 0;
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 11px;
+  cursor: pointer;
 }
