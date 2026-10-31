@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
 // columns drives what MasterDataTable renders — kept in display order,
 // separate from the backend's field list since this is presentation-only

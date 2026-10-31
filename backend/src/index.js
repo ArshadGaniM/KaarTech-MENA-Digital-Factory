@@ -6,6 +6,8 @@ import { createMasterDataRouter } from "./masterDataRouter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 import { buildEntityRelationships } from "./entityRelationships.js";
 import { parseAllowedOrigins } from "./corsOrigins.js";
+import { createControlCenterRouter } from "./controlCenterRouter.js";
+import { createChangeFeed } from "./changeFeed.js";
 
 const app = express();
 
@@ -25,6 +27,16 @@ app.use("/v1/team-members", teamMembersRouter);
 app.get("/v1/schema/entity-relationships", (req, res) => {
   res.json({ data: buildEntityRelationships(MASTER_DATA_TABLES) });
 });
+
+const changeFeed = createChangeFeed();
+changeFeed.start();
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.on(signal, () => {
+    changeFeed.stop();
+    process.exit(0);
+  });
+}
+app.use("/v1/control-center", createControlCenterRouter({ changeFeed }));
 
 for (const table of MASTER_DATA_TABLES) {
   app.use(`/v1/${table.route}`, createMasterDataRouter(table));

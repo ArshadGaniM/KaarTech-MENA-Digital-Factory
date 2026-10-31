@@ -27,3 +27,9 @@ the review step itself was wrong. Any check gating an irreversible or
 hard-to-reverse action (like auto-merging to `main`) needs an explicit
 freshness/recency condition tied to the specific event being gated, not
 just "does an artifact with an acceptable verdict exist somewhere."
+
+## Control Center hours: confirm the definitions before building the calculation
+
+- The owner's hour concepts were stated loosely twice and I built from my own reading both times. The agreed rules: available = seats x 160 (Consultant and Lead Consultant only, never Module Lead), allocated = filled seats x 160 scaled by allocation percentage, utilized = allocated scaled by the share of the selected month covered by project assignments.
+- Card colors: green when utilized equals allocated, yellow when partly utilized, light red when none is, grey when nobody is deployed.
+- When a metric has several similar-sounding terms, restate each one with a worked example and get a yes before writing code.

@@ -1,36 +1,46 @@
-# Gate Report — FEAT-23: Restore the Dashboard, activeTotal and Control Center
+# Gate Report: Control Center factory view with live hours
 
 **Verdict: WARN** (zero FAIL, zero Critical, security PASS clean)
 
-**Branch:** `claude/dreamy-knuth-76pnsa` → `main`
-**Scope:** `git diff origin/main..HEAD`. PR #40 was squashed from a branch cut before the Dashboard (#35) and Control Center (#36, #39) existed, so it deleted both and removed `activeTotal` from the master-data list routes. This change rebuilds them on current `main` and leaves #40's resource-deployment allocation and #42's position competencies as merged. The Dashboard no longer falls back to `total` when `activeTotal` is missing.
-**Checks after the fixes below:** frontend 178/178 tests, backend 232/232 tests, `vite build` clean, no new lint warnings in changed files.
+**Branch:** `claude/sleepy-hopper-bpow3i` to `main`
+**Scope:** `git diff origin/main..HEAD`. The Control Center page: department floors, team cards (members, available, allocated and utilized hours, status color), a month picker, a team popup, and live updates. New backend routes `/v1/control-center`, `/teams/:code` and `/stream`, a change feed, and migration 0023 (not applied). CORS now allows no other site when `FRONTEND_URL` is unset in production.
+**Checks run after the fixes below:** frontend 221/221 tests, backend 271/271 tests, `vite build` clean, no lint warnings in changed files.
 
-**Merge note:** the auto-PR workflow merged the earlier restore commits as #37 before this gate finished. The gate ran on that same code plus the three fixes below, which ship in this PR (#43). The Render backend was redeployed from `b9c8ce6` so `activeTotal` is live.
-
-## Agent results
+## Agent results (round 2, after round 1 fixes)
 
 | Agent | Verdict | Summary |
 |---|---|---|
-| code-reviewer | PASS | #40 and #42 intact. Only the list-route count query and response line change in the backend. |
-| security-auditor | PASS | Static SQL, escaped React output, no secrets, no new dependencies. Info only. |
-| debugger | PASS | Ran both suites and the build. No regressions between the restored code and newer main code. |
-| test-writer | PASS | About 90% of changed branches covered. |
-| refactorer | WARN | Duplicated soft-delete check and loading/error blocks. Mostly pre-existing, logged below. |
-| doc-writer | WARN | One real gap, fixed in this push. |
-| silent-failure-hunter | WARN | One real gap, fixed in this push. |
-| pr-test-analyzer | WARN | Brittleness notes, logged below. |
+| code-reviewer | WARN | No Critical. Popup does not live-refresh, no focus trap, global stream cap. |
+| security-auditor | PASS | Round 1 findings fixed. Stream cap, shared queries, optional certificate verification, pinned search_path. |
+| debugger | PASS | Fixes verified against the code. Both suites and the build run. |
+| test-writer | PASS | About 95% backend and 90% or more frontend of changed lines. |
+| refactorer | WARN | Optional cleanups, two done (status line, status class helper). |
+| doc-writer | WARN | Routes, month option, stream cap, migration and env variable all documented. |
+| silent-failure-hunter | PASS | Failed month switch no longer shows the old month. |
+| pr-test-analyzer | PASS | Round 1 test gaps closed. |
 
-Subagent verification rule (CLAUDE.md §8): no agent made a negative file-existence claim that needed a cross-check. The test-quality and test-coverage agents cited line numbers that do not exist in short files (HALLUCINATED line numbers), so their findings were treated as leads and re-checked against the real files. The doc agent's `backend/README.md:41` claim was confirmed by direct read (manual cross-check, CONFIRMED).
+Round 1 returned FAIL from security (unauthenticated stream with no cap, full-table queries on every request, unverified database TLS) and from docs (new routes, migration and variable undocumented). All were fixed. Subagent verification rule (CLAUDE.md §8): the docs gaps were confirmed by a direct read of the README before fixing. Agents ran on `sonnet` because the `deep` and `fast` model aliases in their definitions do not exist here.
 
 ## Fixed in this push
 
-- **Failure cause never shown (silent-failure-hunter, CONFIRMED).** The Dashboard banner names failed tables but dropped the error. `useTableCounts` now logs each cause to the console. One new test.
-- **Wrong blame for a bad `activeTotal` (silent-failure-hunter, Info).** The message now says "did not report a valid activeTotal" and "may need updating", since a malformed value is folded into missing.
-- **Endpoint contract incomplete (doc-writer, CONFIRMED).** The `GET /v1/<table>` row in `backend/README.md` now states `total` and `activeTotal`.
+- A failed month switch hides the old month's numbers and the page says "Not live". Error and stale data are tied to their month.
+- The stream is capped at 100 connections (503 above), with one shared heartbeat and clean shutdown.
+- Table rows are shared between requests for a second and dropped on any change. A failed load is never kept.
+- `DATABASE_SSL_CA` turns on certificate verification for all database connections. Unset keeps the old behaviour.
+- The change feed ends its client on stop, uses TCP keep-alive, announces a change after a reconnect and logs when disabled.
+- With `FRONTEND_URL` unset and `NODE_ENV=production`, CORS allows no other origin. The live API was checked and has `FRONTEND_URL` set, so production behaviour is unchanged.
+- The stream heartbeat timer no longer keeps the process alive on shutdown (debugger WARN).
+- Tests for month boundaries, the stream cap, caching, reconnects, month switching and the new components.
 
-## Remaining checklist (non-blocking)
+## Open (not blocking)
 
+- [ ] Migration `0023_control_center_notify.sql` is NOT applied. Until it is, live updates arrive through the 30 second refresh instead of instantly.
+- [ ] The open team popup loads once and does not refresh while open. It has no focus trap.
+- [ ] The stream and read routes are unauthenticated and the 100-stream cap is global, not per client.
+- [ ] Without `DATABASE_SSL_CA`, database TLS is still unverified (unchanged default).
+- [ ] The ten department codes are a fixed list in `factoryLayout.js`.
+- [ ] The backend defaults to the UTC month and the page to the local month. The page always sends the month.
+- [ ] Frontend and backend deploy separately. The page shows an error until the backend redeploy finishes.
 Tests: backend 227, mcp-server 53, frontend 145, build OK.
 
 | Agent | Finding | Fix |
