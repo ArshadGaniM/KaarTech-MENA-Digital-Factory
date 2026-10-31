@@ -25,7 +25,7 @@ if [ -z "$before" ] || [ "$before" = "$zero" ] || ! git cat-file -e "${before}^{
   exit 0
 fi
 
-git fetch --quiet origin main 2>/dev/null || true
+git fetch --quiet origin main || { echo false; exit 0; }
 if ! git rev-parse --verify --quiet "$base_ref" >/dev/null; then
   echo false
   exit 0

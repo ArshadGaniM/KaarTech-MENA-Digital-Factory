@@ -29,6 +29,9 @@ jobs:
 
       - name: Prepare gate report body
         id: gate
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           if [ -f tasks/last-gate-report.md ]; then
             cp tasks/last-gate-report.md /tmp/pr_body.md
@@ -56,7 +59,7 @@ jobs:
             # This is a heuristic, not a cryptographic guarantee: it stops
             # the accidents that were observed without claiming to stop a
             # determined actor, which suits this single-maintainer repo.
-            fresh=$(bash scripts/gate-fresh.sh "${{ github.event.before }}" "${{ github.sha }}")
+            fresh=$(bash scripts/gate-fresh.sh "$BEFORE_SHA" "$HEAD_SHA")
             echo "fresh=${fresh}" >> "$GITHUB_OUTPUT"
           else
             echo "No gate report yet — run the /gate protocol before merging." > /tmp/pr_body.md
@@ -74,23 +77,25 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           # `gh pr view` matches a PR by branch name regardless of state, so
           # once a branch's PR has merged/closed, a later push to the same
           # branch name would silently edit that dead PR instead of opening
           # a new one — checking `state == OPEN` is what makes this safe to
           # re-run after a branch has been restarted post-merge.
-          state=$(gh pr view "${{ github.ref_name }}" --json state --jq .state 2>/dev/null || echo "NONE")
+          state=$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || echo "NONE")
           if [ "$state" = "OPEN" ]; then
-            gh pr edit "${{ github.ref_name }}" --body-file /tmp/pr_body.md
+            gh pr edit "$BRANCH" --body-file /tmp/pr_body.md
           else
-            gh pr create --base main --head "${{ github.ref_name }}" \
-              --title "${{ github.ref_name }}" --body-file /tmp/pr_body.md
+            gh pr create --base main --head "$BRANCH" \
+              --title "$BRANCH" --body-file /tmp/pr_body.md
           fi
 
       - name: Auto-merge on fresh non-BLOCKED gate report
         if: steps.gate.outputs.has_report == 'true' && steps.gate.outputs.blocked == 'false' && steps.gate.outputs.fresh == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
         run: |
-          gh pr merge "${{ github.ref_name }}" --squash --auto || true
+          gh pr merge "$BRANCH" --squash --auto || true

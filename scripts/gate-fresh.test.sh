@@ -95,5 +95,44 @@ mid=$(git rev-parse HEAD)
 commit_file tasks/last-gate-report.md "# Gate" "docs: gate report"
 expect "a later report-only push is not fresh even if code came earlier" false "$mid" "$(git rev-parse HEAD)"
 
+# 9. An empty before is never fresh.
+new_repo
+commit_file src/a.js code "feat: a"
+commit_file tasks/last-gate-report.md "# Gate" "docs: gate report"
+expect "an empty before is not fresh" false "" "$(git rev-parse HEAD)"
+
+# 10. An empty range (before equals sha) is never fresh.
+new_repo
+commit_file src/a.js code "feat: a"
+commit_file tasks/last-gate-report.md "# Gate" "docs: gate report"
+head=$(git rev-parse HEAD)
+expect "an empty range is not fresh" false "$head" "$head"
+
+# 11. An unresolvable base ref fails closed.
+new_repo
+before=$(git rev-parse HEAD)
+commit_file src/a.js code "feat: a"
+commit_file tasks/last-gate-report.md "# Gate" "docs: gate report"
+got=$(cd "$work/clone" && GATE_BASE_REF=origin/nope bash "$script" "$before" "$(git rev-parse HEAD)")
+if [ "$got" = false ]; then echo "ok   - a missing base ref is not fresh"; else echo "FAIL - a missing base ref (got $got)"; failures=$((failures + 1)); fi
+
+# 12. Report and code in a single commit is fresh.
+new_repo
+before=$(git rev-parse HEAD)
+mkdir -p src tasks
+echo code > src/a.js
+echo "# Gate" > tasks/last-gate-report.md
+git add src tasks
+git_quiet commit -m "feat: a with report"
+expect "report and code in one commit is fresh" true "$before" "$(git rev-parse HEAD)"
+
+# 13. A fetch failure fails closed.
+new_repo
+before=$(git rev-parse HEAD)
+commit_file src/a.js code "feat: a"
+commit_file tasks/last-gate-report.md "# Gate" "docs: gate report"
+git remote set-url origin "$work/missing.git"
+expect "a failed fetch is not fresh" false "$before" "$(git rev-parse HEAD)"
+
 if [ "$failures" -ne 0 ]; then echo "$failures failed"; exit 1; fi
 echo "all passed"
