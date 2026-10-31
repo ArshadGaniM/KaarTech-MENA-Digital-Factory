@@ -26,7 +26,7 @@ async function start(options = {}) {
   const feed = new EventEmitter();
   const changeFeed = { onChange: (fn) => (feed.on("changed", fn), () => feed.off("changed", fn)) };
   const app = express();
-  app.use("/v1/control-center", createControlCenterRouter({ query: fakeQuery, changeFeed, now: () => "2026-10-30", ...options }));
+  app.use("/v1/control-center", createControlCenterRouter({ query: fakeQuery, changeFeed, now: () => "2026-10", ...options }));
   app.use((err, req, res, _next) => res.status(err.status || 500).json({ error: { code: err.code || "internal_error" } }));
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, resolve));
@@ -36,6 +36,7 @@ async function start(options = {}) {
 test("GET /v1/control-center returns the departments with their teams' hours", async () => {
   const { server, baseUrl } = await start();
   const body = await (await fetch(`${baseUrl}/v1/control-center`)).json();
+  server.closeAllConnections();
   server.close();
   assert.equal(body.data.departments[0].teams[0].availableHours, 160);
   assert.equal(body.data.departments[0].teams[0].memberCount, 1);
@@ -45,6 +46,7 @@ test("GET /v1/control-center/teams/:code returns the seats, and 404 for an unkno
   const { server, baseUrl } = await start();
   const ok = await (await fetch(`${baseUrl}/v1/control-center/teams/TEAM-001`)).json();
   const missing = await fetch(`${baseUrl}/v1/control-center/teams/NOPE`);
+  server.closeAllConnections();
   server.close();
   assert.equal(ok.data.seats[0].employeeName, "Lead Person");
   assert.equal(ok.data.department.name, "Design Services");
@@ -52,10 +54,22 @@ test("GET /v1/control-center/teams/:code returns the seats, and 404 for an unkno
   assert.equal((await missing.json()).error.code, "team_not_found");
 });
 
+test("an invalid month is a 422 and a valid one is accepted", async () => {
+  const { server, baseUrl } = await start();
+  const bad = await fetch(`${baseUrl}/v1/control-center?month=2026-13`);
+  const good = await (await fetch(`${baseUrl}/v1/control-center?month=2026-11`)).json();
+  server.closeAllConnections();
+  server.closeAllConnections();
+  server.close();
+  assert.equal(bad.status, 422);
+  assert.equal(good.data.month, "2026-11");
+});
+
 test("a failing query is a 500 with no SQL detail", async () => {
   const { server, baseUrl } = await start({ query: () => Promise.reject(new Error("select * from secret")) });
   const res = await fetch(`${baseUrl}/v1/control-center`);
   const text = await res.text();
+  server.closeAllConnections();
   server.close();
   assert.equal(res.status, 500);
   assert.ok(!text.includes("secret"));
@@ -63,16 +77,27 @@ test("a failing query is a 500 with no SQL detail", async () => {
 
 test("GET /stream sends a 'changed' event when the change feed fires, and stops listening on close", async () => {
   const { server, feed, baseUrl } = await start();
-  const controller = new AbortController();
-  const res = await fetch(`${baseUrl}/v1/control-center/stream`, { signal: controller.signal });
-  assert.equal(res.headers.get("content-type"), "text/event-stream");
-  const reader = res.body.getReader();
-  await reader.read(); // retry hint
-  feed.emit("changed");
-  const { value } = await reader.read();
-  assert.match(new TextDecoder().decode(value), /event: changed/);
-  controller.abort();
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  assert.equal(feed.listenerCount("changed"), 0);
-  server.close();
+  const req = http.get(`${baseUrl}/v1/control-center/stream`);
+  try {
+    const res = await new Promise((resolve) => req.on("response", resolve));
+    assert.match(res.headers["content-type"], /^text\/event-stream/);
+
+    const received = new Promise((resolve) => {
+      let text = "";
+      res.on("data", (chunk) => {
+        text += chunk;
+        if (text.includes("event: changed")) resolve(text);
+      });
+    });
+    feed.emit("changed");
+    assert.match(await received, /event: changed/);
+
+    req.destroy();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(feed.listenerCount("changed"), 0);
+  } finally {
+    req.destroy();
+    server.closeAllConnections();
+    server.close();
+  }
 });

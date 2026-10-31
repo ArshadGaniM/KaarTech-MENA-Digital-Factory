@@ -1,32 +1,40 @@
-// Control Center read model: departments, their teams, and each team's hours.
+// Control Center read model: departments, their teams, and each team's hours
+// for one calendar month ("YYYY-MM").
 //
 // Rules (agreed with the owner):
-//  - A team's members are the people deployed to its Consultant and Lead
-//    Consultant positions. Module Lead positions are not counted.
-//  - Each member is worth 160 hours a month, scaled by the allocation
-//    percentage of their deployment to that team's position.
-//  - Allocated hours are the available hours scaled by the share of the
-//    current month covered by the team's project assignments.
+//  - A seat is a Consultant or Lead Consultant position. Module Lead
+//    positions are not counted.
+//  - Available hours: seats x 160.
+//  - Allocated hours: for each seat with someone deployed, 160 scaled by the
+//    deployment's allocation percentage (a seat never exceeds 160).
+//  - Utilized hours: the allocated hours scaled by the share of the month
+//    covered by the team's project assignments.
 export const HOURS_PER_PERSON = 160;
 const COUNTED_POSITIONS = new Set(["Consultant", "Lead Consultant"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-const toUtcDay = (isoDate) => Date.UTC(...isoDate.split("-").map((part, i) => Number(part) - (i === 1 ? 1 : 0)));
+const toUtcDay = (isoDate) => {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+};
 const round1 = (n) => Math.round(n * 10) / 10;
 
-export function monthWindow(today) {
-  const [year, month] = today.split("-").map(Number);
-  const start = Date.UTC(year, month - 1, 1);
-  const end = Date.UTC(year, month, 0);
+export const isValidMonth = (month) => typeof month === "string" && MONTH_PATTERN.test(month);
+
+export function monthWindow(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const start = Date.UTC(year, monthNumber - 1, 1);
+  const end = Date.UTC(year, monthNumber, 0);
   return { start, end, days: (end - start) / DAY_MS + 1 };
 }
 
 // Days of the month covered by at least one assignment (overlaps counted once).
-function coveredDays(assignments, month) {
+function coveredDays(assignments, window) {
   const covered = new Set();
   for (const a of assignments) {
-    const from = Math.max(toUtcDay(a.start), month.start);
-    const to = Math.min(toUtcDay(a.end), month.end);
+    const from = Math.max(toUtcDay(a.start), window.start);
+    const to = Math.min(toUtcDay(a.end), window.end);
     for (let day = from; day <= to; day += DAY_MS) covered.add(day);
   }
   return covered.size;
@@ -39,7 +47,7 @@ function splitCompetencies(text) {
     .filter(Boolean);
 }
 
-function primaryCompetency(positions) {
+function competenciesOf(positions) {
   const counts = new Map();
   for (const position of positions) {
     for (const name of splitCompetencies(position.competencies)) counts.set(name, (counts.get(name) ?? 0) + 1);
@@ -48,11 +56,13 @@ function primaryCompetency(positions) {
   return { primary: ranked[0]?.[0] ?? null, all: ranked.map(([name]) => name) };
 }
 
-// "full": every available hour is allocated. "open": hours are still
-// available. "empty": nobody is deployed, so there are no hours at all.
-function statusOf(availableHours, allocatedHours) {
-  if (availableHours === 0) return "empty";
-  return allocatedHours >= availableHours ? "full" : "open";
+// "unstaffed": no allocated hours. "full": every allocated hour is utilized.
+// "unused": none is. "partial": some are.
+function statusOf(allocatedHours, utilizedHours) {
+  if (allocatedHours === 0) return "unstaffed";
+  if (utilizedHours >= allocatedHours) return "full";
+  if (utilizedHours === 0) return "unused";
+  return "partial";
 }
 
 function indexBy(rows, key) {
@@ -65,8 +75,55 @@ function indexBy(rows, key) {
   return index;
 }
 
-export function buildControlCenter({ departments, teams, positions, deployments, assignments, today }) {
-  const month = monthWindow(today);
+// The hour figures of one team, shared by the floor cards and the popup.
+function teamHours({ teamPositions, deploymentsByPosition, teamAssignments, window }) {
+  const seats = teamPositions.filter((p) => COUNTED_POSITIONS.has(p.name));
+  const members = new Set();
+  let allocated = 0;
+  let filledSeats = 0;
+  for (const seat of seats) {
+    const occupants = deploymentsByPosition.get(seat.code) ?? [];
+    if (occupants.length === 0) continue;
+    filledSeats += 1;
+    let seatHours = 0;
+    for (const d of occupants) {
+      members.add(d.employeeId);
+      seatHours += (HOURS_PER_PERSON * d.allocationPercentage) / 100;
+    }
+    allocated += Math.min(HOURS_PER_PERSON, seatHours);
+  }
+  const available = seats.length * HOURS_PER_PERSON;
+  const covered = coveredDays(teamAssignments, window);
+  const utilized = allocated * (covered / window.days);
+  const allocatedHours = round1(allocated);
+  const utilizedHours = round1(utilized);
+  return {
+    memberCount: members.size,
+    seatCount: seats.length,
+    vacantSeatCount: seats.length - filledSeats,
+    availableHours: round1(available),
+    allocatedHours,
+    utilizedHours,
+    vacantHours: round1(available - allocated),
+    utilizationPercent: allocatedHours === 0 ? 0 : Math.round((utilized / allocated) * 100),
+    monthCoveragePercent: Math.round((covered / window.days) * 100),
+    status: statusOf(allocatedHours, utilizedHours),
+  };
+}
+
+// Teams with no competency go last (localeCompare would sort a placeholder
+// symbol before the letters).
+function byCompetencyThenCode(a, b) {
+  if (a.primaryCompetency !== b.primaryCompetency) {
+    if (a.primaryCompetency === null) return 1;
+    if (b.primaryCompetency === null) return -1;
+    return a.primaryCompetency.localeCompare(b.primaryCompetency);
+  }
+  return a.code.localeCompare(b.code);
+}
+
+export function buildControlCenter({ departments, teams, positions, deployments, assignments, month }) {
+  const window = monthWindow(month);
   const positionsByTeam = indexBy(positions, "teamCode");
   const deploymentsByPosition = indexBy(deployments, "positionCode");
   const assignmentsByTeam = indexBy(assignments, "teamCode");
@@ -74,54 +131,39 @@ export function buildControlCenter({ departments, teams, positions, deployments,
 
   const buildTeam = (team) => {
     const teamPositions = positionsByTeam.get(team.code) ?? [];
-    const seats = teamPositions.filter((p) => COUNTED_POSITIONS.has(p.name));
-    const members = new Set();
-    let availableHours = 0;
-    let filledSeats = 0;
-    for (const seat of seats) {
-      const seatDeployments = deploymentsByPosition.get(seat.code) ?? [];
-      if (seatDeployments.length > 0) filledSeats += 1;
-      for (const d of seatDeployments) {
-        members.add(d.employeeId);
-        availableHours += (HOURS_PER_PERSON * d.allocationPercentage) / 100;
-      }
-    }
-    const teamAssignments = assignmentsByTeam.get(team.code) ?? [];
-    const allocatedHours = availableHours * (coveredDays(teamAssignments, month) / month.days);
-    const competencies = primaryCompetency(teamPositions);
+    const competencies = competenciesOf(teamPositions);
     return {
       code: team.code,
       name: team.name,
       primaryCompetency: competencies.primary,
       competencies: competencies.all,
-      memberCount: members.size,
-      seatCount: seats.length,
-      vacantSeatCount: seats.length - filledSeats,
-      availableHours: round1(availableHours),
-      allocatedHours: round1(allocatedHours),
-      utilizationPercent: availableHours === 0 ? 0 : Math.round((allocatedHours / availableHours) * 100),
-      status: statusOf(round1(availableHours), round1(allocatedHours)),
+      ...teamHours({
+        teamPositions,
+        deploymentsByPosition,
+        teamAssignments: assignmentsByTeam.get(team.code) ?? [],
+        window,
+      }),
     };
   };
 
   return {
     hoursPerPerson: HOURS_PER_PERSON,
-    month: { start: new Date(month.start).toISOString().slice(0, 10), end: new Date(month.end).toISOString().slice(0, 10) },
+    month,
     departments: departments.map((department) => ({
       code: department.code,
       name: department.name,
       teams: (teamsByDepartment.get(department.code) ?? [])
         .map(buildTeam)
         // Grouped by competency so teams of one skill sit together.
-        .sort((a, b) => (a.primaryCompetency ?? "~").localeCompare(b.primaryCompetency ?? "~") || a.code.localeCompare(b.code)),
+        .sort(byCompetencyThenCode),
     })),
   };
 }
 
 // Everything the popup shows for one team: its seats with who sits in them,
 // each person's share in this seat and what they have left overall.
-export function buildTeamDetail({ team, department, positions, deployments, allDeployments, assignments, today }) {
-  const month = monthWindow(today);
+export function buildTeamDetail({ team, department, positions, deployments, allDeployments, assignments, month }) {
+  const window = monthWindow(month);
   const totalByEmployee = new Map();
   for (const d of allDeployments) {
     totalByEmployee.set(d.employeeId, (totalByEmployee.get(d.employeeId) ?? 0) + d.allocationPercentage);
@@ -132,7 +174,9 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
     const counted = COUNTED_POSITIONS.has(position.name);
     const occupants = deploymentsByPosition.get(position.code) ?? [];
     const base = { positionCode: position.code, positionName: position.name, counted };
-    if (occupants.length === 0) return [{ ...base, employeeId: null, employeeName: null, allocationPercentage: null, availablePercentage: null }];
+    if (occupants.length === 0) {
+      return [{ ...base, employeeId: null, employeeName: null, allocationPercentage: null, availablePercentage: null }];
+    }
     return occupants.map((d) => ({
       ...base,
       employeeId: d.employeeId,
@@ -142,14 +186,15 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
     }));
   });
 
-  const covered = coveredDays(assignments, month);
   return {
     code: team.code,
     name: team.name,
     department: { code: department?.code ?? team.departmentCode, name: department?.name ?? null },
+    month,
+    competencies: competenciesOf(positions).all,
     seats,
     projects: assignments.map((a) => ({ projectId: a.projectId, projectName: a.projectName, start: a.start, end: a.end })),
-    monthCoveragePercent: Math.round((covered / month.days) * 100),
+    ...teamHours({ teamPositions: positions, deploymentsByPosition, teamAssignments: assignments, window }),
   };
 }
 

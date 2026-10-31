@@ -1,19 +1,28 @@
 import { Router } from "express";
 import { pool } from "./db.js";
-import { notFound } from "./errors.js";
-import { buildControlCenter, buildTeamDetail, loadControlCenterRows } from "./controlCenter.js";
+import { notFound, validationError } from "./errors.js";
+import { buildControlCenter, buildTeamDetail, isValidMonth, loadControlCenterRows } from "./controlCenter.js";
 
 const HEARTBEAT_MS = 25_000;
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const currentMonth = () => new Date().toISOString().slice(0, 7);
 
 // Read-only, like every GET in this API. `changeFeed` supplies the "changed"
 // events the stream relays to open pages.
-export function createControlCenterRouter({ query = (...args) => pool.query(...args), changeFeed, now = todayIso } = {}) {
+export function createControlCenterRouter({ query = (...args) => pool.query(...args), changeFeed, now = currentMonth } = {}) {
   const router = Router();
+
+  // ?month=YYYY-MM picks the month the hours are measured in; it defaults
+  // to the current one.
+  const monthOf = (req) => {
+    const month = req.query.month ?? now();
+    if (!isValidMonth(month)) throw validationError({ month: "month must look like 2026-10." });
+    return month;
+  };
 
   router.get("/", async (req, res, next) => {
     try {
-      res.json({ data: buildControlCenter({ ...(await loadControlCenterRows(query)), today: now() }) });
+      const month = monthOf(req);
+      res.json({ data: buildControlCenter({ ...(await loadControlCenterRows(query)), month }) });
     } catch (err) {
       next(err);
     }
@@ -35,6 +44,7 @@ export function createControlCenterRouter({ query = (...args) => pool.query(...a
 
   router.get("/teams/:code", async (req, res, next) => {
     try {
+      const month = monthOf(req);
       const rows = await loadControlCenterRows(query);
       const team = rows.teams.find((t) => t.code === req.params.code);
       if (!team) throw notFound("team", req.params.code);
@@ -48,7 +58,7 @@ export function createControlCenterRouter({ query = (...args) => pool.query(...a
           deployments: rows.deployments.filter((d) => positionCodes.has(d.positionCode)),
           allDeployments: rows.deployments,
           assignments: rows.assignments.filter((a) => a.teamCode === team.code),
-          today: now(),
+          month,
         }),
       });
     } catch (err) {

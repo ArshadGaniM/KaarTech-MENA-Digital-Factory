@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildControlCenter, buildTeamDetail, monthWindow, HOURS_PER_PERSON } from "./controlCenter.js";
+import { buildControlCenter, buildTeamDetail, isValidMonth, monthWindow, HOURS_PER_PERSON } from "./controlCenter.js";
 
-const today = "2026-10-30"; // October: 31 days
+const month = "2026-10"; // 31 days
 
 const base = {
   departments: [
@@ -27,50 +27,68 @@ const base = {
     { employeeId: 3, employeeName: "Split Person", positionCode: "POS-5", allocationPercentage: 25 },
   ],
   assignments: [],
-  today,
+  month,
 };
 
 const teamOf = (result, code) => result.departments.flatMap((d) => d.teams).find((t) => t.code === code);
 
-test("monthWindow covers the whole calendar month", () => {
-  assert.equal(monthWindow("2026-02-10").days, 28);
-  assert.equal(monthWindow("2026-10-30").days, 31);
+test("month helpers", () => {
+  assert.equal(monthWindow("2026-02").days, 28);
+  assert.equal(monthWindow("2026-10").days, 31);
+  assert.ok(isValidMonth("2026-10"));
+  for (const bad of ["2026-13", "2026-1", "10-2026", "", undefined, "2026-10-01"]) assert.ok(!isValidMonth(bad), String(bad));
 });
 
-test("members count Consultants and Lead Consultants, never the Module Lead", () => {
+test("members and seats count Consultants and Lead Consultants, never the Module Lead", () => {
   const team = teamOf(buildControlCenter(base), "TEAM-001");
   assert.equal(team.memberCount, 2);
   assert.equal(team.seatCount, 3);
   assert.equal(team.vacantSeatCount, 1);
 });
 
-test("available hours are 160 per person scaled by their allocation in the team", () => {
-  const team = teamOf(buildControlCenter(base), "TEAM-001");
-  assert.equal(team.availableHours, HOURS_PER_PERSON * 1 + (HOURS_PER_PERSON * 50) / 100);
-  const beta = teamOf(buildControlCenter(base), "TEAM-002");
-  assert.equal(beta.availableHours, 40);
+test("available hours are the seats times 160, filled or not", () => {
+  assert.equal(teamOf(buildControlCenter(base), "TEAM-001").availableHours, 3 * HOURS_PER_PERSON);
+  assert.equal(teamOf(buildControlCenter(base), "TEAM-002").availableHours, HOURS_PER_PERSON);
 });
 
-test("a team with no assignment this month has no allocated hours and is open", () => {
+test("allocated hours are the filled seats at 160 scaled by allocation percentage", () => {
   const team = teamOf(buildControlCenter(base), "TEAM-001");
-  assert.equal(team.allocatedHours, 0);
+  assert.equal(team.allocatedHours, 160 + 80); // 100% lead + 50% consultant, one seat empty
+  assert.equal(team.vacantHours, 240);
+  assert.equal(teamOf(buildControlCenter(base), "TEAM-002").allocatedHours, 40);
+});
+
+test("a seat never contributes more than 160 hours even with two people in it", () => {
+  const result = buildControlCenter({
+    ...base,
+    deployments: [
+      { employeeId: 2, employeeName: "A", positionCode: "POS-2", allocationPercentage: 100 },
+      { employeeId: 9, employeeName: "B", positionCode: "POS-2", allocationPercentage: 60 },
+    ],
+  });
+  assert.equal(teamOf(result, "TEAM-001").allocatedHours, 160);
+  assert.equal(teamOf(result, "TEAM-001").memberCount, 2);
+});
+
+test("no assignment in the month: nothing utilized, so the card is 'unused'", () => {
+  const team = teamOf(buildControlCenter(base), "TEAM-001");
+  assert.equal(team.utilizedHours, 0);
   assert.equal(team.utilizationPercent, 0);
-  assert.equal(team.status, "open");
+  assert.equal(team.status, "unused");
 });
 
-test("allocated hours are pro-rated by the days of the month an assignment covers", () => {
+test("utilized hours are the allocated hours scaled by the days of the month an assignment covers", () => {
   const result = buildControlCenter({
     ...base,
     assignments: [{ teamCode: "TEAM-001", projectId: "P1", start: "2026-09-20", end: "2026-10-10" }],
   });
   const team = teamOf(result, "TEAM-001");
-  // Oct 1-10 = 10 of 31 days
-  assert.equal(team.allocatedHours, Math.round(((240 * 10) / 31) * 10) / 10);
+  assert.equal(team.utilizedHours, Math.round(((240 * 10) / 31) * 10) / 10); // Oct 1-10
   assert.equal(team.utilizationPercent, Math.round((10 / 31) * 100));
-  assert.equal(team.status, "open");
+  assert.equal(team.status, "partial");
 });
 
-test("overlapping assignments count each day once, and a full month is 'full'", () => {
+test("overlapping assignments count each day once, and a fully covered month is 'full'", () => {
   const result = buildControlCenter({
     ...base,
     assignments: [
@@ -79,26 +97,31 @@ test("overlapping assignments count each day once, and a full month is 'full'", 
     ],
   });
   const team = teamOf(result, "TEAM-001");
-  assert.equal(team.allocatedHours, team.availableHours);
-  assert.equal(team.utilizationPercent, 100);
+  assert.equal(team.utilizedHours, team.allocatedHours);
   assert.equal(team.status, "full");
 });
 
-test("a team nobody is deployed to is 'empty', not 'open'", () => {
+test("the same data reads differently in another month", () => {
+  const assignments = [{ teamCode: "TEAM-001", projectId: "P1", start: "2026-11-01", end: "2026-11-30" }];
+  assert.equal(teamOf(buildControlCenter({ ...base, assignments, month: "2026-10" }), "TEAM-001").status, "unused");
+  assert.equal(teamOf(buildControlCenter({ ...base, assignments, month: "2026-11" }), "TEAM-001").status, "full");
+});
+
+test("a team nobody is deployed to is 'unstaffed', not 'unused'", () => {
   const result = buildControlCenter({ ...base, deployments: [] });
-  assert.equal(teamOf(result, "TEAM-001").status, "empty");
+  assert.equal(teamOf(result, "TEAM-001").status, "unstaffed");
   assert.equal(teamOf(result, "TEAM-001").utilizationPercent, 0);
 });
 
-test("assignments of other teams and teams without positions do not break the totals", () => {
+test("other teams' assignments and teams without positions do not affect a team", () => {
   const result = buildControlCenter({
     ...base,
     teams: [...base.teams, { code: "TEAM-003", name: "Gamma", departmentCode: "DEPT-002" }],
     assignments: [{ teamCode: "TEAM-002", projectId: "P9", start: "2026-10-01", end: "2026-10-31" }],
   });
-  assert.equal(teamOf(result, "TEAM-001").allocatedHours, 0);
+  assert.equal(teamOf(result, "TEAM-001").utilizedHours, 0);
   assert.equal(teamOf(result, "TEAM-003").seatCount, 0);
-  assert.equal(teamOf(result, "TEAM-003").status, "empty");
+  assert.equal(teamOf(result, "TEAM-003").status, "unstaffed");
 });
 
 test("teams are grouped by main competency, then code; a department can have no teams", () => {
@@ -118,16 +141,16 @@ test("team detail lists every seat, marks vacant ones, and shows what each perso
     positions: base.positions.filter((p) => p.teamCode === "TEAM-001"),
     deployments: base.deployments.filter((d) => ["POS-1", "POS-2", "POS-3"].includes(d.positionCode)),
     allDeployments: base.deployments,
-    assignments: [],
-    today,
+    assignments: [{ teamCode: "TEAM-001", projectId: "P1", projectName: "Rollout", start: "2026-10-01", end: "2026-10-31" }],
+    month,
   });
   assert.equal(detail.department.name, "Design Services");
+  assert.equal(detail.status, "full");
+  assert.equal(detail.projects[0].projectName, "Rollout");
   const split = detail.seats.find((s) => s.employeeId === 3);
   assert.equal(split.allocationPercentage, 50);
   assert.equal(split.availablePercentage, 25); // 100 - (50 + 25 across two teams)
-  const moduleLead = detail.seats.find((s) => s.positionCode === "POS-1");
-  assert.equal(moduleLead.counted, false);
+  assert.equal(detail.seats.find((s) => s.positionCode === "POS-1").counted, false);
   const vacant = detail.seats.find((s) => s.positionCode === "POS-4");
   assert.deepEqual([vacant.employeeId, vacant.allocationPercentage, vacant.availablePercentage], [null, null, null]);
-  assert.equal(detail.monthCoveragePercent, 0);
 });
