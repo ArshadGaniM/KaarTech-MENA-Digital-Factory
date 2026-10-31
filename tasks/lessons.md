@@ -56,3 +56,6 @@ just "does an artifact with an acceptable verdict exist somewhere."
 
 ### Check platform facts against the live account before writing them down
 CLAUDE.md said no deployment platform existed and no backend was built while both were live. Section 21 now holds IDs read from the Vercel and Render accounts. When a doc states a fact about hosting, read it from the platform, not from memory, and search the other files that repeat it (rule files, hook comments, .env.example).
+
+### A test outside `src/*.test.js` never runs
+The backend `npm test` glob is `src/*.test.js`. A first copy of the team-members test sat in `src/routes/` and was silently skipped. After adding a test file, check that the full suite count went up, and keep tests directly in `src/`.

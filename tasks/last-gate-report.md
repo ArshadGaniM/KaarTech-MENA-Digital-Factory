@@ -1,38 +1,36 @@
-# Gate Report: database and API rules rewritten for the real backend
+# Gate Report: key check on team-members writes
 
-Verdict: ⚠️ WARN (no FAIL on this diff, no Critical). One older security gap in the live API is listed below. It is not part of this diff.
+Verdict: ⚠️ WARN (no FAIL, no Critical, security PASS on the second audit)
 
-Scope: `.claude/rules/database.md`, `.claude/rules/api.md` (rewritten for Express, `pg` and Postgres), `backend/README.md` (four wording fixes), `CLAUDE.md` (§2, §7.4 stage 4.16, §14), `.claude/agents/dev-team/language-framework-specialist.md`, and the docstrings of `scripts/register_agent.py` and `scripts/register_skills.py`. No executable code changed. An AST comparison of both scripts with docstrings removed shows them identical to `main`.
+Scope: `backend/src/routes/teamMembers.js`, `backend/src/auth.js`, `backend/src/index.js`, `backend/src/auth.test.js`, the new `backend/src/teamMembers.route.test.js`, `backend/README.md` and `.claude/rules/api.md`.
+Checks: backend 322 of 322 tests pass. Without the guard, 6 of the new tests fail.
 
 What changed:
-- The rules describe what the backend does: plain SQL migrations, soft delete, live-row indexes, bound parameters, advisory-lock transactions, `ApiError`, descriptor-driven routes, the shared write key, the stream cap, and a testing section for `node:test`.
-- Stage 4.16 now checks promises, awaits, PropTypes and module boundaries, not Python habits.
-- §14 says the registration scripts write local JSON files and never call the backend.
-- The README no longer says writes go only through the MCP server, and no longer says "ORM".
+- POST, PATCH and DELETE on `/v1/team-members` now need the `x-internal-api-key` header, like every other write route. GET stays open. Before this, anyone could create, edit or permanently delete team members. Nothing in the frontend or the MCP server calls these routes, so no client breaks.
+- The key comparison is constant-time. Both values are hashed with SHA-256 and compared with `timingSafeEqual`, and a header that is not a string is rejected.
+- The backend logs a warning at startup when `INTERNAL_API_KEY` is unset. Before, every write answered 401 with nothing in the logs.
+- `api.md` and the README now say all writes need the key. The "known gap" note is gone.
+
+Deploy: the Render API needs a redeploy after this merges. `INTERNAL_API_KEY` is already set there.
 
 ## Agent results
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | WARN | Four wrong claims in the rules: team-members auth, where errors are mapped, malformed ids, soft-deleted reads. All corrected. |
-| security-auditor | PASS | No secrets. SQL, auth, CORS and migration-password wording is no weaker than before. |
-| debugger | PASS | Scripts parse, only docstrings changed, tables and fences well formed, references resolve. |
-| test-writer | PASS | No behaviour changed. |
-| refactorer | WARN | README contradicted the rules on who sends the write key and on grants. Fixed. Duplicated statements left, they agree with each other. |
-| doc-writer | WARN | `ck_` naming caveat, team-members exception and unset-key 401 added. |
-| silent-failure-hunter | WARN | Postgres errors are mapped in `mapWriteError`, not the central handler. Fixed. |
-| pr-test-analyzer | PASS | Claimed stale "forward-looking" banners and a stale §0 line. HALLUCINATED → manual: PASS (grep finds neither). Its testing-section suggestion was taken. |
+| code-reviewer | PASS | Guard runs after body parsing and before validation and queries. Docs match the code. |
+| security-auditor | WARN, then PASS | First run: every write route is guarded, but the key comparison used `!==`. Fixed with `timingSafeEqual`. Re-audit: no bypass or throw path, the warning leaks nothing. |
+| debugger | PASS | Full suite passes, no leaked handles, mocks restored. |
+| test-writer | PASS | Changed lines 100% covered. Added tests for 422 and for PATCH on a missing member. |
+| refactorer | WARN | The auth tests repeat part of `registerAuthGateTests`. Kept, because the helper builds master-data servers and does not cover wrong keys. |
+| doc-writer | WARN | The old report listed the gap as open. This report replaces it. |
+| silent-failure-hunter | WARN | Unset server key was unlogged. Fixed with the startup warning. |
+| pr-test-analyzer | PASS | Tests assert status, code and that no query ran. |
 
-## Older gap found by the review (not in this diff)
-
-- [ ] **`/v1/team-members` writes need no key.** `backend/src/routes/teamMembers.js` has POST, PATCH and DELETE with no `requireInternalApiKey`, and DELETE removes the row for good. Nothing in the frontend or the MCP server calls these routes. The rules now name it as a known gap. Fixing it changes live behaviour, so it needs the owner's decision: add the key check, or remove the writes.
+Subagent file-existence claims: none that needed a cross-check.
 
 ## Open WARN items
 
-- [ ] `GET /:id` and `DELETE /:id` with a malformed id return a logged 500. PATCH and restore return 422 under the key `value`. Documented in `api.md`.
-- [ ] `backend/src/errors.js` falls back to the field name `value` without logging the constraint. A rollback failure in `withAllocationLock` is swallowed without a log.
-- [ ] A check violation (23514) is not mapped and returns a 500.
-- [ ] `mapWriteError` is local to the master-data router.
-- [ ] If `INTERNAL_API_KEY` is unset on the server, every write returns the same 401 as a wrong key, with no server log.
-- [ ] CORS, `DATABASE_SSL_CA` and the stream cap are described in several files. They agree.
-- [ ] The two registration scripts have no tests.
+- [ ] A client built without `VITE_INTERNAL_API_KEY` sends an empty key and gets a plain 401 (frontend and MCP client).
+- [ ] `GET /:id` on team members has no test, and `DELETE`/`GET` with a malformed id return a logged 500.
+- [ ] The shared key is still visible in the frontend bundle. Real login is the fix (CLAUDE.md §20).
+- [ ] A whitespace-only `INTERNAL_API_KEY` counts as set.
