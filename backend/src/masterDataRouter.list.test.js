@@ -53,7 +53,7 @@ test("GET /v1/practices?q= binds the term and filters the rows and the count on 
   const list = seen.find((q) => q.sql.startsWith("select practices.*"));
   assert.deepEqual(list.params, ["Digital", 5, 10]);
   assert.match(list.sql, /position\(lower\(\$1\) in lower\(concat_ws/);
-  assert.match(list.sql, /extensions\.word_similarity\(\$1/);
+  assert.match(list.sql, /public\.word_similarity\(\$1/);
   assert.match(list.sql, /limit \$2 offset \$3/);
   const count = seen.find((q) => q.sql.startsWith("select count(*)"));
   assert.deepEqual(count.params, ["Digital"]);
