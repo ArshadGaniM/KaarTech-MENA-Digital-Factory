@@ -38,7 +38,7 @@ just "does an artifact with an acceptable verdict exist somewhere."
 
 - The auto-PR workflow merges a push when `tasks/last-gate-report.md` and at least one other file changed in that push. A merge of `origin/main` into a feature branch can bring in another session's gate report, so the push looks fresh before this branch's gate has run. PR 47 (https://github.com/ArshadGaniM/KaarTech-MENA-Digital-Factory/pull/47) was merged this way while its gate was still running.
 - While a gate is running, do not push a merge of `main` that changes the report file. Run the gate on the merged code, and push the new gate report last.
-- Merge `main` with a real merge and resolve conflicts by hand. `git merge origin/main --strategy=ours` (CLAUDE.md §9.3 Step 0) keeps the branch's files and ignores main's changes, so a later squash of the branch reverts work that landed on `main` in the meantime. Use it only when the branch already holds everything on `main` that should stay. Whether Step 0 itself should change is the owner's call.
+- Merge `main` with a real merge and resolve conflicts by hand. `git merge origin/main --strategy=ours` keeps the branch's files and ignores main's changes, so a later squash of the branch reverts work that landed on `main` in the meantime. CLAUDE.md §9.3 Step 0 now prescribes a real merge, and the workflow only counts a push's own commits as a gate run (`scripts/gate-fresh.sh`), so a merge of `main` can no longer trigger the auto-merge early.
 
 ## Deploy order when a migration adds a required column
 

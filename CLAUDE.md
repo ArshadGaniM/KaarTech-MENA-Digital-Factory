@@ -459,15 +459,22 @@ Whenever the user says "Merge to Main" (case-insensitive):
 
 > **Source branch is dynamic.** Capture it once: `CURRENT_BRANCH=$(git branch --show-current)`
 
-**Step 0 — Squash-divergence repair (mandatory).**
+**Step 0 — Bring the branch up to date with main (mandatory, real merge).**
 ```bash
 git fetch origin
 if ! git merge-base --is-ancestor origin/main HEAD; then
-  git merge origin/main --strategy=ours \
-    -m "merge: keep ${CURRENT_BRANCH} aligned with main (squash-divergence repair)"
+  git merge origin/main -m "merge: bring ${CURRENT_BRANCH} up to date with main"
 fi
 ```
-Symptom if skipped: the auto-PR workflow's merge call returns `HTTP 405 "Pull Request has merge conflicts"`.
+Resolve any conflicts by hand and keep both sides' intended changes. If the
+conflict is in `tasks/last-gate-report.md`, keep this branch's version. Then
+rerun the tests. Never use `--strategy=ours` or `-X ours` here: it keeps the
+branch's files and ignores main's changes, so the squash merge of the branch
+reverts work other sessions landed on `main` (this deleted the Dashboard and
+the Control Center once, see `tasks/lessons.md`). Other sessions merge to `main`
+often, so repeat this step right before pushing the final gate report.
+Symptom if skipped: the auto-PR workflow's merge call returns
+`HTTP 405 "Pull Request has merge conflicts"`.
 
 **Step 1 — Run `/gate` (mandatory, no skipping).** Spawn all gate agents (§9.4) on
 `git diff origin/main..HEAD`. Compile the master report. No focused-verification
@@ -487,7 +494,12 @@ Report the PR URL and gate verdict.
 
 **Step 5 — Auto-merge happens in the workflow, not in Claude.** The auto-PR workflow
 squash-merges only when the push contains a fresh `tasks/last-gate-report.md` whose
-verdict is not BLOCKED.
+verdict is not BLOCKED. "Fresh" is decided by `scripts/gate-fresh.sh`: the push's own
+commits (not merge commits, not commits already on `main`) must change the report and
+at least one other file. The first push of a new branch, a force-push whose old tip is missing, and any failed
+check are never fresh. Merging `main` into the branch never counts, so the final push
+must be a commit of the branch's own that contains the new report. Push the gate
+report last, after the gate has run on the merged code.
 
 **This phrase ("Merge to Main") is the ONLY trigger for the gate-and-merge flow.
 Never push directly to `main`.**
