@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import PropTypes from 'prop-types';
 import BarList from '../BarList';
 import DonutChart from '../DonutChart';
-import { FilterSummary, InsightCard, InsightPanel } from '../Insights';
+import { FilterSummary, InsightCard, InsightNote, InsightPanel } from '../Insights';
+import { useCrossFilters } from '../../hooks/useCrossFilters';
 import { useGroupSummary } from '../../hooks/useGroupSummary';
 import { formatCount } from '../../lib/formatCount';
-import styles from './ResourceInsights.module.css';
 
 const TOP_DESIGNATIONS = 8;
 const NOT_SET_KEY = '__not-set';
@@ -19,15 +18,11 @@ const labelOf = (value) => value ?? 'Not set';
 // location donut to it. Each chart is filtered by the other's pick but
 // never by its own, so every slice stays visible and can be switched.
 function ResourceInsights({ refreshKey, onNavigate }) {
-  const [filters, setFilters] = useState(NO_FILTERS);
+  const { filters, toggle, clear, clearAll, retries, retry } = useCrossFilters(NO_FILTERS);
   // Both only ever increase, so their sum changes on every retry or refresh.
-  const [retries, setRetries] = useState(0);
-  const retry = () => setRetries((count) => count + 1);
   const byLocation = useGroupSummary('resources', 'locationType', { designation: filters.designation }, refreshKey + retries);
   const byDesignation = useGroupSummary('resources', 'designation', { locationType: filters.locationType }, refreshKey + retries);
 
-  const toggle = (field, value) => setFilters((current) => ({ ...current, [field]: current[field] === value ? null : value }));
-  const clear = (field) => setFilters((current) => ({ ...current, [field]: null }));
   const chips = Object.entries(filters)
     .filter(([, value]) => value !== null)
     .map(([field, value]) => ({ key: field, label: value, onRemove: () => clear(field) }));
@@ -61,7 +56,7 @@ function ResourceInsights({ refreshKey, onNavigate }) {
       title="Resources"
       linkLabel="Open Resources table"
       onLink={() => onNavigate('resources')}
-      summary={<FilterSummary matchingText={matchingText} chips={chips} onClearAll={() => setFilters(NO_FILTERS)} />}
+      summary={<FilterSummary matchingText={matchingText} chips={chips} onClearAll={clearAll} />}
     >
       <InsightCard
         title="Onsite and offshore"
@@ -93,7 +88,7 @@ function ResourceInsights({ refreshKey, onNavigate }) {
         onRetry={retry}
       >
         {shown.length === 0 ? (
-          <p className={styles.muted}>No resources match.</p>
+          <InsightNote>No resources match.</InsightNote>
         ) : (
           <BarList
             max={maxCount}

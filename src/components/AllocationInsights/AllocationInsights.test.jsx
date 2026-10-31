@@ -121,12 +121,33 @@ describe('AllocationInsights', () => {
     expect(screen.getByText('No deployments match.')).toBeInTheDocument();
   });
 
-  it('cannot pick an allocation that nobody is in', () => {
-    renderPanel({});
-    useAllocationSummary.mockReturnValue(done({ buckets: buckets({ full: 3 }), positions: [] }));
+  it('cannot pick an allocation that nobody is in', async () => {
+    const user = userEvent.setup();
+    useAllocationSummary.mockReturnValue(done({ buckets: buckets({ full: 98, none: 2658 }), positions: [{ value: 'Consultant', count: 98 }] }));
     renderPanel();
 
-    expect(screen.getAllByRole('button', { name: /Partly allocated 0/ }).at(-1)).toBeDisabled();
+    const partly = screen.getByRole('button', { name: /^Partly allocated/ });
+    expect(partly).toBeDisabled();
+    await user.click(partly);
+
+    expect(useAllocationSummary).not.toHaveBeenCalledWith({ bucket: 'partial', position: null }, 0);
+    expect(screen.queryByRole('button', { name: /Remove filter/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps a picked allocation enabled even when its count drops to zero, so it can be un-picked', async () => {
+    const user = userEvent.setup();
+    useAllocationSummary.mockImplementation((filters) =>
+      done({ buckets: buckets({ full: 98, partial: filters.position ? 0 : 5 }), positions: [{ value: 'Consultant', count: 98 }] })
+    );
+    renderPanel();
+
+    await user.click(screen.getByRole('button', { name: /^Partly allocated/ }));
+    await user.click(screen.getByRole('button', { name: /^Consultant/ }));
+
+    const partly = screen.getByRole('button', { name: /^Partly allocated 0/ });
+    expect(partly).toBeEnabled();
+    await user.click(partly);
+    expect(screen.queryByRole('button', { name: 'Remove filter Partly allocated' })).not.toBeInTheDocument();
   });
 
   it('shows only the top ten positions', () => {
@@ -138,6 +159,32 @@ describe('AllocationInsights', () => {
 
     const card = screen.getByRole('heading', { name: 'Positions people are deployed to' }).parentElement;
     expect(within(card).getAllByRole('button')).toHaveLength(10);
+    expect(within(card).getByText('Showing the top 10 of 14 positions.')).toBeInTheDocument();
+  });
+
+  it('says there may be more when the backend sent its full 50 positions', () => {
+    useAllocationSummary.mockReturnValue(
+      done({ buckets: buckets({ full: 1 }), positions: Array.from({ length: 50 }, (_, i) => ({ value: `Position ${i + 1}`, count: 50 - i })) })
+    );
+
+    renderPanel();
+
+    expect(screen.getByText('Showing the top 10 of 50+ positions.')).toBeInTheDocument();
+  });
+
+  it('shows no cut-off note when every position fits', () => {
+    renderPanel();
+
+    expect(screen.queryByText(/Showing the top/)).not.toBeInTheDocument();
+  });
+
+  it('hides data that belongs to other filters when its fetch fails, instead of labelling it with the new filter', () => {
+    useAllocationSummary.mockReturnValue({ data: null, isLoading: false, error: new Error('boom') });
+
+    renderPanel();
+
+    expect(screen.queryByRole('button', { name: /Fully allocated/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('alert')).toHaveLength(2);
   });
 
   it('passes the refresh key through, and bumps it on Try again', async () => {

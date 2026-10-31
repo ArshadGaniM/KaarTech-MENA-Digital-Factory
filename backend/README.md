@@ -151,8 +151,10 @@ Soft-deleted resources and deployments are left out everywhere.
 Each side is narrowed by the other's pick, never by its own: `?position=`
 narrows `buckets` to resources deployed to that position name, and
 `?bucket=` narrows `positions` to resources in that bucket. Any other query
-key, an unknown `bucket`, or an empty or over-255-character `position` is a
-422 `validation_error`. Values are bound parameters.
+key, an unknown `bucket`, or a `position` that is empty, longer than 255
+characters or contains a NUL byte is a 422 `validation_error`. Values are
+bound parameters. A deployment whose position is soft-deleted still counts
+toward its resource's bucket, but that position's name is never listed.
 
 ### `/v1/control-center`
 

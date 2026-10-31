@@ -12,8 +12,8 @@ removing it. Records added/modified/deleted here are visible in the
 frontend's dashboard, where each master-data table is its own sidebar
 section (e.g. `#resources`, `#delivery-centers`) — the sidebar also has
 three non-table sections: `#control-center` (the factory building, one floor per
-department with its teams), `#dashboard` (live record counts per table plus resource
-charts you can filter, with a Refresh button) and `#entity-relationship`. They read directly from the backend and do not go
+department with its teams), `#dashboard` (live record counts per table plus resource and
+allocation charts you can filter, with a Refresh button) and `#entity-relationship`. They read directly from the backend and do not go
 through this MCP server.
 
 ## Setup

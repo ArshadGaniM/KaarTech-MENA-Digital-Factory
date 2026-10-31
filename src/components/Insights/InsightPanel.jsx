@@ -1,8 +1,6 @@
 import PropTypes from 'prop-types';
 import styles from './Insights.module.css';
 
-// The frame shared by the Dashboard's chart sections: a heading, a link to
-// the matching table, the filter summary, and a row of cards.
 function InsightPanel({ id, title, linkLabel, onLink, summary, children }) {
   return (
     <section aria-labelledby={id} className={styles.insights}>

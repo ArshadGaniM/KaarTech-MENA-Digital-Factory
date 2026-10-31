@@ -97,6 +97,14 @@ test("GET /v1/allocation/summary binds the position as a parameter, never into t
   assert.deepEqual(calls.find((c) => c.sql.includes("select pe.bucket")).params, [hostile]);
 });
 
+test("GET /v1/allocation/summary never shows the name of a soft-deleted position", async () => {
+  reset();
+
+  await fetch(`${baseUrl}/v1/allocation/summary`);
+
+  for (const call of calls) assert.match(call.sql, /join positions p on p\.code = rd\.position_code and p\.deleted_at is null/);
+});
+
 test("GET /v1/allocation/summary counts only live resources and live deployments", async () => {
   reset();
 

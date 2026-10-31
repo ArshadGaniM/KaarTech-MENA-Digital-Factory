@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FilterSummary, InsightCard, InsightPanel } from '.';
+import { FilterSummary, InsightCard, InsightNote, InsightPanel } from '.';
 
 describe('InsightPanel', () => {
   it('names the section by its heading, shows the summary and the cards, and links to the table', async () => {
@@ -100,5 +100,13 @@ describe('InsightCard', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('boom');
     expect(screen.getByText('the old chart')).toBeInTheDocument();
+  });
+});
+
+describe('InsightNote', () => {
+  it('shows its message as plain text', () => {
+    render(<InsightNote>No resources match.</InsightNote>);
+
+    expect(screen.getByText('No resources match.')).toBeInTheDocument();
   });
 });

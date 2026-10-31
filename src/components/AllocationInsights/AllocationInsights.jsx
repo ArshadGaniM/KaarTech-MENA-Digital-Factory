@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import PropTypes from 'prop-types';
 import BarList from '../BarList';
 import DonutChart from '../DonutChart';
-import { FilterSummary, InsightCard, InsightPanel } from '../Insights';
+import { FilterSummary, InsightCard, InsightNote, InsightPanel } from '../Insights';
 import { useAllocationSummary } from '../../hooks/useAllocationSummary';
+import { useCrossFilters } from '../../hooks/useCrossFilters';
+import { ALLOCATION_MAX_POSITIONS } from '../../lib/allocationApi';
 import { formatCount } from '../../lib/formatCount';
-import styles from './AllocationInsights.module.css';
 
 const TOP_POSITIONS = 10;
 const NO_FILTERS = { bucket: null, position: null };
@@ -22,17 +22,14 @@ const BUCKET_INFO = {
   over: { label: 'Over-allocated', colorVar: '--color-allocation-over' },
 };
 
-// Same cross-filter idea as ResourceInsights: the donut is narrowed by the
-// position picked and the position bars by the allocation picked, never by
-// their own pick, so every slice and bar stays visible and can be switched.
+// The donut is narrowed by the position picked and the position bars by the
+// allocation picked, never by their own pick, so every slice and bar stays
+// visible and can be switched.
 function AllocationInsights({ refreshKey, onNavigate }) {
-  const [filters, setFilters] = useState(NO_FILTERS);
+  const { filters, toggle, clear, clearAll, retries, retry } = useCrossFilters(NO_FILTERS);
   // Both only ever increase, so their sum changes on every retry or refresh.
-  const [retries, setRetries] = useState(0);
   const { data, isLoading, error } = useAllocationSummary(filters, refreshKey + retries);
 
-  const toggle = (field, value) => setFilters((current) => ({ ...current, [field]: current[field] === value ? null : value }));
-  const clear = (field) => setFilters((current) => ({ ...current, [field]: null }));
   const chips = [
     ...(filters.bucket !== null ? [{ key: 'bucket', label: BUCKET_INFO[filters.bucket].label, onRemove: () => clear('bucket') }] : []),
     ...(filters.position !== null ? [{ key: 'position', label: filters.position, onRemove: () => clear('position') }] : []),
@@ -59,9 +56,10 @@ function AllocationInsights({ refreshKey, onNavigate }) {
       colorVar: BUCKET_INFO[bucket.key].colorVar,
       selectable: bucket.count > 0 || filters.bucket === bucket.key,
     }));
-  const positions = (data?.positions ?? []).slice(0, TOP_POSITIONS);
+  const allPositions = data?.positions ?? [];
+  const positions = allPositions.slice(0, TOP_POSITIONS);
+  const positionCount = allPositions.length >= ALLOCATION_MAX_POSITIONS ? `${ALLOCATION_MAX_POSITIONS}+` : allPositions.length;
   const maxCount = Math.max(1, ...positions.map((position) => position.count));
-  const retry = () => setRetries((count) => count + 1);
 
   return (
     <InsightPanel
@@ -69,7 +67,7 @@ function AllocationInsights({ refreshKey, onNavigate }) {
       title="Allocation"
       linkLabel="Open Resource Deployment table"
       onLink={() => onNavigate('resource-deployment')}
-      summary={<FilterSummary matchingText={matchingText} chips={chips} onClearAll={() => setFilters(NO_FILTERS)} />}
+      summary={<FilterSummary matchingText={matchingText} chips={chips} onClearAll={clearAll} />}
     >
       <InsightCard
         title="How fully people are deployed"
@@ -91,20 +89,25 @@ function AllocationInsights({ refreshKey, onNavigate }) {
         onRetry={retry}
       >
         {positions.length === 0 ? (
-          <p className={styles.muted}>
+          <InsightNote>
             {filters.bucket === 'none' ? 'People who are not deployed have no position.' : 'No deployments match.'}
-          </p>
+          </InsightNote>
         ) : (
-          <BarList
-            max={maxCount}
-            rows={positions.map((position) => ({
-              key: position.value,
-              label: position.value,
-              count: position.count,
-              pressed: filters.position === position.value,
-              onClick: () => toggle('position', position.value),
-            }))}
-          />
+          <>
+            <BarList
+              max={maxCount}
+              rows={positions.map((position) => ({
+                key: position.value,
+                label: position.value,
+                count: position.count,
+                pressed: filters.position === position.value,
+                onClick: () => toggle('position', position.value),
+              }))}
+            />
+            {allPositions.length > TOP_POSITIONS && (
+              <InsightNote>{`Showing the top ${TOP_POSITIONS} of ${positionCount} positions.`}</InsightNote>
+            )}
+          </>
         )}
       </InsightCard>
     </InsightPanel>

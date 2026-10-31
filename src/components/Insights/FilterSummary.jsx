@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import styles from './Insights.module.css';
 
-// "N match", one removable chip per active filter, and Clear filters.
 function FilterSummary({ matchingText, chips, onClearAll }) {
   return (
     <div className={styles.filterRow}>

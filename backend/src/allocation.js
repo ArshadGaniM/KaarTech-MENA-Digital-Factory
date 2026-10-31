@@ -5,12 +5,15 @@
 //   none     no live deployment at all
 //   over     above 100, which the allocation rule should make impossible and
 //            which is reported only so a broken rule cannot hide
-// Soft-deleted resources and deployments are left out everywhere.
+// Soft-deleted resources and deployments are left out everywhere. A
+// soft-deleted position's name is never shown: a resource whose only live
+// deployment points at one still counts in its bucket (its total allocation
+// is unchanged) but appears under no position.
 export const BUCKETS = ["full", "partial", "none", "over"];
 
 const MAX_POSITIONS = 50;
 
-// `placed` is one row per resource and position name. A resource deployed
+// `placed` is one row per resource and live position name. A resource deployed
 // twice to positions with the same name counts once for that name.
 const PEOPLE = `
   with totals as (
@@ -32,7 +35,7 @@ const PEOPLE = `
   placed as (
     select distinct rd.employee_id, p.name as position
       from resource_deployment rd
-      join positions p on p.code = rd.position_code
+      join positions p on p.code = rd.position_code and p.deleted_at is null
      where rd.deleted_at is null
   )`;
 

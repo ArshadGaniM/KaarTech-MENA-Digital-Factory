@@ -3,6 +3,9 @@ import { BACKEND_URL } from './masterDataApi';
 // The four ways a resource's total deployment can fall, in display order.
 export const ALLOCATION_BUCKETS = ['full', 'partial', 'none', 'over'];
 
+// The most position names the backend sends. A list this long may have been cut off.
+export const ALLOCATION_MAX_POSITIONS = 50;
+
 // People per allocation bucket and per position (GET /v1/allocation/summary).
 // Each side is already filtered by the other's pick: `bucket` narrows the
 // positions, `position` narrows the buckets. A filter left null is not sent.

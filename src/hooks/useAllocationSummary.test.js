@@ -54,7 +54,10 @@ describe('useAllocationSummary', () => {
     rerender({ filters: { bucket: 'full', position: null } });
     await waitFor(() => expect(result.current.data.key).toContain('full'));
 
-    expect(renders.filter((r) => r.wanted === 'full' && r.fetchedFor && !r.fetchedFor.includes('full') && !r.loading)).toEqual([]);
+    const staleRenders = renders.filter((r) => r.wanted === 'full' && r.fetchedFor && !r.fetchedFor.includes('full'));
+    // The old result was on screen for at least one render, and every such render said loading.
+    expect(staleRenders.length).toBeGreaterThan(0);
+    expect(staleRenders.every((r) => r.loading)).toBe(true);
   });
 
   it('surfaces a failure as error', async () => {
