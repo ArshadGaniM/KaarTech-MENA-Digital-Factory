@@ -3,7 +3,7 @@ import { MASTER_DATA_TABLES } from './masterDataApi';
 // Single registry both AppShell and Sidebar read from. Control Center and
 // Dashboard come first and have no master-data table behind them; each
 // master-data table is one entry carrying the route/columns MasterDataTable
-// needs; Entity Relationship (FEAT-12) and Project Plan (FEAT-27) come last. Tests destructure this
+// needs; Entity Relationship (FEAT-12) comes last. Tests destructure this
 // list by position, so reordering it means updating them. `kind` is what
 // AppShell branches on to decide which component to render.
 export const DASHBOARD_HASH = '#dashboard';
@@ -35,7 +35,6 @@ export const NAV_ITEMS = [
     columns: null,
     kind: 'entity-relationship',
   },
-  { id: 'project-plan', label: 'Project Plan', hash: '#project-plan', route: null, columns: null, kind: 'project-plan' },
 ];
 
 // Hashes that mean "render AppShell instead of the marketing page",

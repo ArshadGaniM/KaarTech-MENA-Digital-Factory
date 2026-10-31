@@ -18,4 +18,10 @@ describe('Header', () => {
       '#our-delivery-centers'
     );
   });
+
+  it('links "Project Plan" to the portal section', () => {
+    render(<Header />);
+
+    expect(screen.getByRole('link', { name: 'Project Plan' })).toHaveAttribute('href', '#project-plan');
+  });
 });

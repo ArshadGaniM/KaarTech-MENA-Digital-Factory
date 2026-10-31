@@ -173,4 +173,14 @@ describe('ProjectPlan', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('The actual progress could not be loaded: Backend unreachable');
     expect(screen.getAllByText('Establish SOP Document')).toHaveLength(3);
   });
+
+  it('offers no way to record an actual when read-only, but still shows the recorded ones', async () => {
+    fetchPlanActuals.mockResolvedValue({
+      '2a': { activityKey: '2a', actualStartWeek: 14, actualEndWeek: 18, actualPoc: 100 },
+    });
+    render(<ProjectPlan today={TODAY} readOnly />);
+
+    await waitFor(() => expect(screen.getAllByTitle('Actual: Week 14 to Week 18')).toHaveLength(5));
+    expect(screen.queryByRole('button', { name: /actual/i })).not.toBeInTheDocument();
+  });
 });

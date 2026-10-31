@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import App from './App';
 import { NAV_ITEMS, DASHBOARD_HASH } from './lib/navigation';
 
@@ -18,6 +19,7 @@ beforeEach(() => {
 
 afterEach(() => {
   window.location.hash = '';
+  window.sessionStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -53,5 +55,41 @@ describe('App', () => {
 
     expect(screen.getByRole('link', { name: 'Talk to Us' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
+  });
+
+  describe('portal password screen', () => {
+    it('shows the header and hero but hides the sections below behind a password screen', () => {
+      window.location.hash = '';
+      render(<App />);
+
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+      expect(screen.getByLabelText('Password')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Project Plan' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    });
+
+    it('opens the sections, including the Project Plan, after the right password and stays open for the tab', async () => {
+      const user = userEvent.setup();
+      window.location.hash = '';
+      const { unmount } = render(<App />);
+
+      await user.type(screen.getByLabelText('Password'), 'Meena UOCC');
+      await user.click(screen.getByRole('button', { name: 'Open the portal' }));
+
+      expect(await screen.findByRole('heading', { name: 'Project Plan' })).toBeInTheDocument();
+      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+
+      unmount();
+      render(<App />);
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Project Plan' })).toBeInTheDocument());
+    });
+
+    it('is not asked again inside the application', () => {
+      window.location.hash = NAV_ITEMS[0].hash;
+      render(<App />);
+
+      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    });
   });
 });

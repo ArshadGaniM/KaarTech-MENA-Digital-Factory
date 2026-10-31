@@ -78,7 +78,7 @@ WeekCells.propTypes = {
   currentWeek: PropTypes.number.isRequired,
 };
 
-function ProjectPlan({ today = new Date() }) {
+function ProjectPlan({ today = new Date(), readOnly = false }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [filter, setFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
@@ -129,9 +129,11 @@ function ProjectPlan({ today = new Date() }) {
         <td className={styles.colActual}>
           <span className={styles.actualText}>{actual ? `${actual.actualPoc}%` : 'No actual'}</span>
           {behind && <span className={styles.behindBadge}>Behind plan</span>}
-          <button type="button" className={styles.actualButton} onClick={() => setEditing({ row, key })}>
-            {actual ? 'Edit actual' : 'Record actual'}
-          </button>
+          {!readOnly && (
+            <button type="button" className={styles.actualButton} onClick={() => setEditing({ row, key })}>
+              {actual ? 'Edit actual' : 'Record actual'}
+            </button>
+          )}
         </td>
         <td className={`${styles.poc} ${pocClass(poc)}`} title={actual ? 'Actual percent complete' : 'Percent complete on the plan sheet'}>
           {poc}%
@@ -241,6 +243,7 @@ function ProjectPlan({ today = new Date() }) {
 
 ProjectPlan.propTypes = {
   today: PropTypes.instanceOf(Date),
+  readOnly: PropTypes.bool,
 };
 
 export default ProjectPlan;
