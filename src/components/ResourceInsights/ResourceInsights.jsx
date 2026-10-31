@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import BarList from '../BarList';
 import DonutChart from '../DonutChart';
+import { FilterSummary, InsightCard, InsightPanel } from '../Insights';
 import { useGroupSummary } from '../../hooks/useGroupSummary';
 import { formatCount } from '../../lib/formatCount';
 import styles from './ResourceInsights.module.css';
@@ -20,38 +22,30 @@ function ResourceInsights({ refreshKey, onNavigate }) {
   const [filters, setFilters] = useState(NO_FILTERS);
   // Both only ever increase, so their sum changes on every retry or refresh.
   const [retries, setRetries] = useState(0);
+  const retry = () => setRetries((count) => count + 1);
   const byLocation = useGroupSummary('resources', 'locationType', { designation: filters.designation }, refreshKey + retries);
   const byDesignation = useGroupSummary('resources', 'designation', { locationType: filters.locationType }, refreshKey + retries);
-  const errorNote = (message) => (
-    <div className={styles.errorRow}>
-      <p className={styles.error} role="alert">
-        {message}
-      </p>
-      <button type="button" className={styles.link} onClick={() => setRetries((count) => count + 1)}>
-        Try again
-      </button>
-    </div>
-  );
 
   const toggle = (field, value) => setFilters((current) => ({ ...current, [field]: current[field] === value ? null : value }));
   const clear = (field) => setFilters((current) => ({ ...current, [field]: null }));
-  const hasFilters = filters.locationType !== null || filters.designation !== null;
+  const chips = Object.entries(filters)
+    .filter(([, value]) => value !== null)
+    .map(([field, value]) => ({ key: field, label: value, onRemove: () => clear(field) }));
 
   // The hooks keep the previous result while a new one loads, so the match
   // count is only worked out once both charts have settled on the current
   // filters. Reading it earlier would show the last filter's number.
   const chartFailed = Boolean(byLocation.error || byDesignation.error);
   const settled = [byLocation, byDesignation].every((chart) => chart.data && !chart.isLoading && !chart.error);
-  let matching = null;
-  if (settled) {
-    matching =
+  let matchingText = 'Loading…';
+  if (chartFailed) matchingText = 'Match count unavailable';
+  else if (settled) {
+    const matching =
       filters.locationType !== null
         ? (byLocation.data.groups.find((group) => group.value === filters.locationType)?.count ?? 0)
         : byLocation.data.total;
+    matchingText = `${formatCount(matching)} resources match`;
   }
-  let matchingText = 'Loading…';
-  if (chartFailed) matchingText = 'Match count unavailable';
-  else if (matching !== null) matchingText = `${formatCount(matching)} resources match`;
 
   const designations = byDesignation.data?.groups ?? [];
   const shown = designations.slice(0, TOP_DESIGNATIONS);
@@ -62,95 +56,62 @@ function ResourceInsights({ refreshKey, onNavigate }) {
   const maxCount = Math.max(1, ...shown.map((group) => group.count));
 
   return (
-    <section aria-labelledby="resource-insights" className={styles.insights}>
-      <div className={styles.header}>
-        <h2 id="resource-insights" className={styles.title}>
-          Resources
-        </h2>
-        <button type="button" className={styles.link} onClick={() => onNavigate('resources')}>
-          Open Resources table
-        </button>
-      </div>
+    <InsightPanel
+      id="resource-insights"
+      title="Resources"
+      linkLabel="Open Resources table"
+      onLink={() => onNavigate('resources')}
+      summary={<FilterSummary matchingText={matchingText} chips={chips} onClearAll={() => setFilters(NO_FILTERS)} />}
+    >
+      <InsightCard
+        title="Onsite and offshore"
+        error={byLocation.error}
+        errorLabel="Could not load the location split"
+        hasData={byLocation.data !== null}
+        onRetry={retry}
+      >
+        {byLocation.data && (
+          <DonutChart
+            segments={byLocation.data.groups.map((group) => ({
+              key: keyOf(group.value),
+              label: labelOf(group.value),
+              count: group.count,
+              selectable: group.value !== null,
+            }))}
+            selectedKey={filters.locationType}
+            onSelect={(key) => toggle('locationType', key)}
+            centerLabel="resources"
+          />
+        )}
+      </InsightCard>
 
-      <div className={styles.filterRow}>
-        <p className={styles.matching} role="status" aria-live="polite">
-          {matchingText}
-        </p>
-        {filters.locationType !== null && (
-          <button type="button" className={styles.chip} onClick={() => clear('locationType')}>
-            {`Remove filter ${filters.locationType}`}
-          </button>
-        )}
-        {filters.designation !== null && (
-          <button type="button" className={styles.chip} onClick={() => clear('designation')}>
-            {`Remove filter ${filters.designation}`}
-          </button>
-        )}
-        {hasFilters && (
-          <button type="button" className={styles.clear} onClick={() => setFilters(NO_FILTERS)}>
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      <div className={styles.cards}>
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Onsite and offshore</h3>
-          {byLocation.error && errorNote(`Could not load the location split: ${byLocation.error.message}`)}
-          {byLocation.data === null ? (
-            !byLocation.error && <p className={styles.muted}>Loading…</p>
-          ) : (
-            <DonutChart
-              segments={byLocation.data.groups.map((group) => ({
+      <InsightCard
+        title="Top designations"
+        error={byDesignation.error}
+        errorLabel="Could not load the designations"
+        hasData={byDesignation.data !== null}
+        onRetry={retry}
+      >
+        {shown.length === 0 ? (
+          <p className={styles.muted}>No resources match.</p>
+        ) : (
+          <BarList
+            max={maxCount}
+            rows={[
+              ...shown.map((group) => ({
                 key: keyOf(group.value),
                 label: labelOf(group.value),
                 count: group.count,
-                selectable: group.value !== null,
-              }))}
-              selectedKey={filters.locationType}
-              onSelect={(key) => toggle('locationType', key)}
-              centerLabel="resources"
-            />
-          )}
-        </div>
-
-        <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Top designations</h3>
-          {byDesignation.error && errorNote(`Could not load the designations: ${byDesignation.error.message}`)}
-          {byDesignation.data === null ? (
-            !byDesignation.error && <p className={styles.muted}>Loading…</p>
-          ) : shown.length === 0 ? (
-            <p className={styles.muted}>No resources match.</p>
-          ) : (
-            <ul className={styles.bars}>
-              {shown.map((group) => (
-                <li key={keyOf(group.value)}>
-                  <button
-                    type="button"
-                    className={styles.barRow}
-                    aria-pressed={filters.designation === group.value}
-                    disabled={group.value === null}
-                    onClick={() => toggle('designation', group.value)}
-                  >
-                    <span className={styles.barLabel}>{labelOf(group.value)}</span>{' '}
-                    <span className={styles.barTrack} aria-hidden="true">
-                      <span className={styles.barFill} style={{ width: `${(group.count / maxCount) * 100}%` }} />
-                    </span>{' '}
-                    <span className={styles.barValue}>{formatCount(group.count)}</span>
-                  </button>
-                </li>
-              ))}
-              {otherCount > 0 && (
-                <li className={styles.otherRow}>
-                  <span className={styles.barLabel}>Other designations</span>
-                  <span className={styles.barValue}>{formatCount(otherCount)}</span>
-                </li>
-              )}
-            </ul>
-          )}
-        </div>
-      </div>
-    </section>
+                pressed: filters.designation === group.value,
+                disabled: group.value === null,
+                onClick: () => toggle('designation', group.value),
+              })),
+              ...(otherCount > 0 ? [{ key: '__other', label: 'Other designations', count: otherCount }] : []),
+            ]}
+          />
+        )}
+      </InsightCard>
+    </InsightPanel>
   );
 }
 

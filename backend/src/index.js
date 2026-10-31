@@ -7,6 +7,7 @@ import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 import { buildEntityRelationships } from "./entityRelationships.js";
 import { parseAllowedOrigins } from "./corsOrigins.js";
 import { createControlCenterRouter } from "./controlCenterRouter.js";
+import { createAllocationRouter } from "./allocationRouter.js";
 import { createChangeFeed } from "./changeFeed.js";
 
 const app = express();
@@ -37,6 +38,7 @@ for (const signal of ["SIGTERM", "SIGINT"]) {
   });
 }
 app.use("/v1/control-center", createControlCenterRouter({ changeFeed }));
+app.use("/v1/allocation", createAllocationRouter());
 
 for (const table of MASTER_DATA_TABLES) {
   app.use(`/v1/${table.route}`, createMasterDataRouter(table));

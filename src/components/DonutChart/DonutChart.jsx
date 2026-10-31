@@ -42,7 +42,7 @@ function DonutChart({ segments, selectedKey = null, onSelect, centerLabel }) {
             className={`${styles.slice} ${colourOf(arc.index)} ${dimmed(arc.key) ? styles.dimmed : ''} ${arc.selectable === false ? '' : styles.clickable}`}
             strokeDasharray={`${arc.share} ${100 - arc.share}`}
             strokeDashoffset={arc.offset}
-            style={{ animationDelay: `${arc.index * 120}ms` }}
+            style={{ animationDelay: `${arc.index * 120}ms`, ...(arc.colorVar && { stroke: `var(${arc.colorVar})` }) }}
             onClick={arc.selectable === false ? undefined : () => onSelect(arc.key)}
           >
             <title>{`${arc.label}: ${formatCount(arc.count)} (${Math.round(arc.share)}%)`}</title>
@@ -65,7 +65,11 @@ function DonutChart({ segments, selectedKey = null, onSelect, centerLabel }) {
               disabled={arc.selectable === false}
               onClick={() => onSelect(arc.key)}
             >
-              <span className={`${styles.swatch} ${colourOf(arc.index)}`} aria-hidden="true" />
+              <span
+                className={`${styles.swatch} ${colourOf(arc.index)}`}
+                style={arc.colorVar ? { background: `var(${arc.colorVar})` } : undefined}
+                aria-hidden="true"
+              />
               <span className={styles.legendLabel}>{arc.label}</span>{' '}
               <span className={styles.legendValue}>
                 {formatCount(arc.count)} ({Math.round(arc.share)}%)
@@ -85,6 +89,7 @@ DonutChart.propTypes = {
       label: PropTypes.string.isRequired,
       count: PropTypes.number.isRequired,
       selectable: PropTypes.bool,
+      colorVar: PropTypes.string,
     })
   ).isRequired,
   selectedKey: PropTypes.string,
