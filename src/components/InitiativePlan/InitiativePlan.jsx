@@ -7,19 +7,19 @@ import {
   PLAN_START_DATE,
   PLAN_WEEK_COUNT,
   STATUS,
-} from '../../data/projectPlan';
-import { effectivePoc, isBehindPlan, shortDate, weekOf, weekRangeLabel, weekStart } from '../../lib/projectPlanCalendar';
-import { fetchPlanActuals } from '../../lib/projectPlanApi';
+} from '../../data/initiativePlan';
+import { effectivePoc, isBehindPlan, shortDate, weekOf, weekRangeLabel, weekStart } from '../../lib/initiativePlanCalendar';
+import { fetchPlanActuals } from '../../lib/initiativePlanApi';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import ActualDialog from './ActualDialog';
-import styles from './ProjectPlan.module.css';
+import styles from './InitiativePlan.module.css';
 
-// View of the locked project plan (src/data/projectPlan.js): the owner's
+// View of the locked initiative plan (src/data/initiativePlan.js): the owner's
 // activities, statuses, week bars and percentages exactly as supplied, with
 // calendar dates under the weeks, a today marker, percent-complete shading, a
 // status filter, a behind-plan flag, and the recorded actual progress drawn as
 // a bar under each planned bar. Nothing here edits the plan; actuals are kept
-// separately (backend /v1/project-plan/actuals).
+// separately (backend /v1/initiative-plan/actuals).
 
 const WEEKS = Array.from({ length: PLAN_WEEK_COUNT }, (_, index) => index + 1);
 const ALL = 'All';
@@ -78,7 +78,7 @@ WeekCells.propTypes = {
   currentWeek: PropTypes.number.isRequired,
 };
 
-function ProjectPlan({ today = new Date(), readOnly = false }) {
+function InitiativePlan({ today = new Date(), readOnly = false }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [filter, setFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
@@ -241,9 +241,9 @@ function ProjectPlan({ today = new Date(), readOnly = false }) {
   );
 }
 
-ProjectPlan.propTypes = {
+InitiativePlan.propTypes = {
   today: PropTypes.instanceOf(Date),
   readOnly: PropTypes.bool,
 };
 
-export default ProjectPlan;
+export default InitiativePlan;

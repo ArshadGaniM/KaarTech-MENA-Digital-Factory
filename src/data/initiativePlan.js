@@ -1,8 +1,8 @@
-// The project plan, transcribed from the owner's plan sheet. LOCKED: never
+// The initiative plan, transcribed from the owner's plan sheet. LOCKED: never
 // change a word, a status, a week or a percentage here on your own. Any change
 // needs the owner's explicit, repeated confirmation, and the locked copy in
-// projectPlan.lock.test.js must be updated in the same change
-// (.claude/rules/project-plan.md). Spellings are exactly as on the sheet,
+// initiativePlan.lock.test.js must be updated in the same change
+// (.claude/rules/initiative-plan.md). Spellings are exactly as on the sheet,
 // including "Measruing".
 //
 // Weeks are the sheet's own week numbers (Week 1 to Week 65); the sheet gives
@@ -55,7 +55,7 @@ export const PLAN_MONTHS = deepFreeze([
 export const PLAN_WEEK_COUNT = 65;
 
 // Week 1 begins on this date (the owner, 31 October 2026). A week is 7 days, so
-// every other week's dates follow from it (src/lib/projectPlanCalendar.js).
+// every other week's dates follow from it (src/lib/initiativePlanCalendar.js).
 export const PLAN_START_DATE = '2026-07-01';
 
 export const PLAN_OWNER = deepFreeze({ label: 'BU / Operations / Sales Director', poc: 6 });

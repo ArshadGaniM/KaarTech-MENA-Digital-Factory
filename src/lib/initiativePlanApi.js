@@ -1,6 +1,6 @@
 import { BACKEND_URL } from './masterDataApi';
 
-// Actual progress against the locked project plan (backend /v1/project-plan).
+// Actual progress against the locked initiative plan (backend /v1/initiative-plan).
 // Reads are open; writes carry the same shared key as the other write routes.
 
 const writeHeaders = () => ({
@@ -17,7 +17,7 @@ async function failure(res, fallback) {
 
 // { "1a": { activityKey, actualStartWeek, actualEndWeek, actualPoc, ... }, ... }
 export async function fetchPlanActuals() {
-  const res = await fetch(`${BACKEND_URL}/v1/project-plan/actuals`);
+  const res = await fetch(`${BACKEND_URL}/v1/initiative-plan/actuals`);
   if (!res.ok) throw await failure(res, 'Failed to load the actual progress');
   const payload = await res.json().catch(() => null);
   if (!Array.isArray(payload?.data)) throw new Error('The actual progress returned a malformed response.');
@@ -25,7 +25,7 @@ export async function fetchPlanActuals() {
 }
 
 export async function savePlanActual(activityKey, { actualStartWeek, actualEndWeek, actualPoc }) {
-  const res = await fetch(`${BACKEND_URL}/v1/project-plan/actuals/${encodeURIComponent(activityKey)}`, {
+  const res = await fetch(`${BACKEND_URL}/v1/initiative-plan/actuals/${encodeURIComponent(activityKey)}`, {
     method: 'PUT',
     headers: writeHeaders(),
     body: JSON.stringify({ actualStartWeek, actualEndWeek, actualPoc }),
@@ -37,7 +37,7 @@ export async function savePlanActual(activityKey, { actualStartWeek, actualEndWe
 }
 
 export async function clearPlanActual(activityKey) {
-  const res = await fetch(`${BACKEND_URL}/v1/project-plan/actuals/${encodeURIComponent(activityKey)}`, {
+  const res = await fetch(`${BACKEND_URL}/v1/initiative-plan/actuals/${encodeURIComponent(activityKey)}`, {
     method: 'DELETE',
     headers: writeHeaders(),
   });

@@ -1,7 +1,7 @@
-# Project Plan Rules — the plan is locked
+# Initiative Plan Rules — the plan is locked
 
-The Project Plan section (`src/data/projectPlan.js`, shown by
-`src/components/ProjectPlan/`) holds the owner's own plan, transcribed exactly
+The Initiative Plan section (`src/data/initiativePlan.js`, shown by
+`src/components/InitiativePlan/`) holds the owner's own plan, transcribed exactly
 from their sheet: the activities and their wording (including the sheet's
 spellings, such as "Measruing"), the statuses, the week bars, the percentages
 and the month headings.
@@ -12,8 +12,8 @@ and the month headings.
 - A change is made only after the owner has **explicitly and repeatedly**
   confirmed it (a first request is not enough: restate exactly what will change
   and ask again). Dates and weeks are covered by this too.
-- When a confirmed change is made, update `projectPlan.js` and the locked hash
-  in `src/data/projectPlan.lock.test.js` in the same change, and record the
+- When a confirmed change is made, update `initiativePlan.js` and the locked hash
+  in `src/data/initiativePlan.lock.test.js` in the same change, and record the
   owner's confirmation in `tasks/lessons.md`.
 - Actual progress is tracked **beside** the plan (plan versus actual), never by
   editing the plan.
@@ -23,4 +23,4 @@ and the month headings.
   is part of the locked plan. Calendar dates shown in the view are derived from
   it and are never stored.
 - Actual progress (start and end week, percent complete) is stored apart from
-  the plan, in `project_plan_actuals`, and is the only part the app edits.
+  the plan, in `initiative_plan_actuals`, and is the only part the app edits.

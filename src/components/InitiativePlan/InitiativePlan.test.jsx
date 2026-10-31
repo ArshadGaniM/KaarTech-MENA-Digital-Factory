@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ProjectPlan from './ProjectPlan';
-import { PLAN_GROUPS, PLAN_OWNER, PLAN_WEEK_COUNT } from '../../data/projectPlan';
-import { fetchPlanActuals, savePlanActual, clearPlanActual } from '../../lib/projectPlanApi';
+import InitiativePlan from './InitiativePlan';
+import { PLAN_GROUPS, PLAN_OWNER, PLAN_WEEK_COUNT } from '../../data/initiativePlan';
+import { fetchPlanActuals, savePlanActual, clearPlanActual } from '../../lib/initiativePlanApi';
 
-vi.mock('../../lib/projectPlanApi');
+vi.mock('../../lib/initiativePlanApi');
 
 const TODAY = new Date(2026, 9, 31); // Week 18
 
@@ -14,9 +14,9 @@ beforeEach(() => {
   fetchPlanActuals.mockResolvedValue({});
 });
 
-describe('ProjectPlan', () => {
+describe('InitiativePlan', () => {
   it('shows every group and activity exactly as in the locked plan', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     PLAN_GROUPS.forEach((group) => {
       expect(screen.getByRole('button', { name: new RegExp(group.activity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeInTheDocument();
@@ -26,14 +26,14 @@ describe('ProjectPlan', () => {
   });
 
   it('shows the owner banner and its overall percentage', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     expect(screen.getByText(PLAN_OWNER.label)).toBeInTheDocument();
     expect(screen.getByText(`${PLAN_OWNER.poc}%`)).toBeInTheDocument();
   });
 
   it('has a month band and a column for each of the 65 weeks', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     // July and Aug/Sep appear twice because the sheet runs for more than a year.
     expect(screen.getAllByRole('columnheader', { name: 'July' })).toHaveLength(2);
@@ -44,7 +44,7 @@ describe('ProjectPlan', () => {
   });
 
   it('shades exactly the weeks of an activity\'s bar', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     const row = screen.getAllByText('Identify resources for the ODC from the existing account pools')[0].closest('tr');
     const shaded = within(row).getAllByTitle(/Completed: Week 1 to Week 4/);
@@ -52,7 +52,7 @@ describe('ProjectPlan', () => {
   });
 
   it('lists the three status colours in a legend', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     const legend = screen.getByRole('list', { name: 'Colour key' });
     expect(within(legend).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
@@ -67,7 +67,7 @@ describe('ProjectPlan', () => {
 
   it('collapses and expands a group without changing the plan', async () => {
     const user = userEvent.setup();
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
     const toggle = screen.getByRole('button', { name: /Managed Services Project/ });
     expect(screen.getAllByText('Establish SOP Document')).toHaveLength(3);
 
@@ -83,21 +83,21 @@ describe('ProjectPlan', () => {
   });
 
   it('marks today\'s week and says where today is', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Today is in Week 18 (28 Oct 2026 to 3 Nov 2026).');
     expect(screen.getByTitle('28 Oct 2026 to 3 Nov 2026')).toBeInTheDocument();
   });
 
   it('says the plan starts on 1 July 2026 when today is before it', () => {
-    render(<ProjectPlan today={new Date(2026, 5, 1)} />);
+    render(<InitiativePlan today={new Date(2026, 5, 1)} />);
 
     expect(screen.getByRole('status')).toHaveTextContent('The plan starts on 1 Jul 2026.');
     expect(screen.getByRole('status')).toHaveTextContent('Nothing is behind plan.');
   });
 
   it('flags the rows that are behind plan in Week 18', () => {
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     // 2.0a (planned Weeks 14 to 17, 0%) and 2.0d (planned from Week 16, not started) are behind.
     expect(screen.getByRole('status')).toHaveTextContent(/rows? (is|are) behind plan/);
@@ -106,7 +106,7 @@ describe('ProjectPlan', () => {
 
   it('filters the activities by status and keeps the groups', async () => {
     const user = userEvent.setup();
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     await user.click(screen.getByRole('button', { name: 'Completed' }));
 
@@ -124,7 +124,7 @@ describe('ProjectPlan', () => {
     fetchPlanActuals.mockResolvedValue({
       '2a': { activityKey: '2a', actualStartWeek: 14, actualEndWeek: 18, actualPoc: 100 },
     });
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     const row = screen.getAllByText('Identify resources for the ODC from the existing account pools')[1].closest('tr');
     await waitFor(() => expect(within(row).getAllByTitle('Actual: Week 14 to Week 18')).toHaveLength(5));
@@ -137,7 +137,7 @@ describe('ProjectPlan', () => {
     savePlanActual.mockResolvedValue({});
     clearPlanActual.mockResolvedValue();
     fetchPlanActuals.mockResolvedValueOnce({}).mockResolvedValue({ '1e': { activityKey: '1e', actualStartWeek: 9, actualEndWeek: null, actualPoc: 30 } });
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     const row = screen.getAllByText('Adopt the existing projects and run them under the revised structure')[0].closest('tr');
     await user.click(within(row).getByRole('button', { name: 'Record actual' }));
@@ -157,7 +157,7 @@ describe('ProjectPlan', () => {
   it('shows the backend\'s reason in the dialog when a save is refused', async () => {
     const user = userEvent.setup();
     savePlanActual.mockRejectedValue(Object.assign(new Error('Request failed validation.'), { details: { actualPoc: 'actualPoc must be a whole number from 0 to 100.' } }));
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     await user.click(screen.getAllByRole('button', { name: 'Record actual' })[0]);
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -168,7 +168,7 @@ describe('ProjectPlan', () => {
 
   it('says so when the actual progress cannot be loaded, and still shows the plan', async () => {
     fetchPlanActuals.mockRejectedValue(new Error('Backend unreachable'));
-    render(<ProjectPlan today={TODAY} />);
+    render(<InitiativePlan today={TODAY} />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The actual progress could not be loaded: Backend unreachable');
     expect(screen.getAllByText('Establish SOP Document')).toHaveLength(3);
@@ -178,7 +178,7 @@ describe('ProjectPlan', () => {
     fetchPlanActuals.mockResolvedValue({
       '2a': { activityKey: '2a', actualStartWeek: 14, actualEndWeek: 18, actualPoc: 100 },
     });
-    render(<ProjectPlan today={TODAY} readOnly />);
+    render(<InitiativePlan today={TODAY} readOnly />);
 
     await waitFor(() => expect(screen.getAllByTitle('Actual: Week 14 to Week 18')).toHaveLength(5));
     expect(screen.queryByRole('button', { name: /actual/i })).not.toBeInTheDocument();

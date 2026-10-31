@@ -4,7 +4,7 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import ServicesSection from './components/ServicesSection';
 import DeliveryCenters from './components/DeliveryCenters';
-import ProjectPlanSection from './components/ProjectPlanSection';
+import InitiativePlanSection from './components/InitiativePlanSection';
 import PortalGate from './components/PortalGate';
 import Footer from './components/Footer';
 import AppShell from './components/AppShell';
@@ -37,7 +37,7 @@ function Portal({ hash }) {
           <>
             <ServicesSection />
             <DeliveryCenters />
-            <ProjectPlanSection />
+            <InitiativePlanSection />
           </>
         ) : (
           <PortalGate onUnlock={unlock} />

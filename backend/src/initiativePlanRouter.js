@@ -2,9 +2,9 @@ import { Router } from "express";
 import { pool } from "./db.js";
 import { notFound, validationError } from "./errors.js";
 import { requireInternalApiKey } from "./auth.js";
-import { PROJECT_PLAN_KEYS, PROJECT_PLAN_WEEKS } from "./projectPlanKeys.js";
+import { INITIATIVE_PLAN_KEYS, INITIATIVE_PLAN_WEEKS } from "./initiativePlanKeys.js";
 
-// Actual progress against the locked project plan (FEAT-28). The plan is not
+// Actual progress against the locked initiative plan (FEAT-28). The plan is not
 // stored or served here: it lives, read-only, in the frontend. This route only
 // records what actually happened, one row per plan activity, so the Project
 // Plan section can draw the actual bar under the planned one. Reads are open
@@ -13,7 +13,7 @@ import { PROJECT_PLAN_KEYS, PROJECT_PLAN_WEEKS } from "./projectPlanKeys.js";
 const DEFAULT_ACTOR = "Arshad Gani";
 const MAX_ACTOR_LENGTH = 255;
 
-const isWeek = (value) => Number.isInteger(value) && value >= 1 && value <= PROJECT_PLAN_WEEKS;
+const isWeek = (value) => Number.isInteger(value) && value >= 1 && value <= INITIATIVE_PLAN_WEEKS;
 
 function toResponse(row) {
   return {
@@ -32,8 +32,8 @@ function parseBody(body) {
   const start = source.actualStartWeek ?? null;
   const end = source.actualEndWeek ?? null;
 
-  if (start !== null && !isWeek(start)) problems.push(["actualStartWeek", `actualStartWeek must be a whole week from 1 to ${PROJECT_PLAN_WEEKS}, or null.`]);
-  if (end !== null && !isWeek(end)) problems.push(["actualEndWeek", `actualEndWeek must be a whole week from 1 to ${PROJECT_PLAN_WEEKS}, or null.`]);
+  if (start !== null && !isWeek(start)) problems.push(["actualStartWeek", `actualStartWeek must be a whole week from 1 to ${INITIATIVE_PLAN_WEEKS}, or null.`]);
+  if (end !== null && !isWeek(end)) problems.push(["actualEndWeek", `actualEndWeek must be a whole week from 1 to ${INITIATIVE_PLAN_WEEKS}, or null.`]);
   if (isWeek(end) && start === null) problems.push(["actualStartWeek", "actualStartWeek is required when actualEndWeek is given."]);
   else if (isWeek(start) && isWeek(end) && end < start) problems.push(["actualEndWeek", "actualEndWeek cannot be before actualStartWeek."]);
   if (!Number.isInteger(source.actualPoc) || source.actualPoc < 0 || source.actualPoc > 100) {
@@ -52,17 +52,17 @@ function parseBody(body) {
 }
 
 function assertKnownKey(key) {
-  if (!PROJECT_PLAN_KEYS.includes(key)) throw notFound("project_plan_activity", key);
+  if (!INITIATIVE_PLAN_KEYS.includes(key)) throw notFound("initiative_plan_activity", key);
 }
 
-export function createProjectPlanRouter({ query = (sql, params) => pool.query(sql, params) } = {}) {
+export function createInitiativePlanRouter({ query = (sql, params) => pool.query(sql, params) } = {}) {
   const router = Router();
 
   router.get("/actuals", async (req, res, next) => {
     try {
       const result = await query(
         `select activity_key, actual_start_week, actual_end_week, actual_poc, updated_by, updated_at
-         from project_plan_actuals order by activity_key`,
+         from initiative_plan_actuals order by activity_key`,
         []
       );
       res.json({ data: result.rows.map(toResponse) });
@@ -76,7 +76,7 @@ export function createProjectPlanRouter({ query = (sql, params) => pool.query(sq
       assertKnownKey(req.params.key);
       const { start, end, poc, actor } = parseBody(req.body);
       const result = await query(
-        `insert into project_plan_actuals (activity_key, actual_start_week, actual_end_week, actual_poc, created_by, updated_by)
+        `insert into initiative_plan_actuals (activity_key, actual_start_week, actual_end_week, actual_poc, created_by, updated_by)
          values ($1, $2, $3, $4, $5, $5)
          on conflict (activity_key) do update
            set actual_start_week = $2, actual_end_week = $3, actual_poc = $4, updated_by = $5, updated_at = now()
@@ -92,8 +92,8 @@ export function createProjectPlanRouter({ query = (sql, params) => pool.query(sq
   router.delete("/actuals/:key", requireInternalApiKey, async (req, res, next) => {
     try {
       assertKnownKey(req.params.key);
-      const result = await query("delete from project_plan_actuals where activity_key = $1 returning activity_key", [req.params.key]);
-      if (result.rows.length === 0) throw notFound("project_plan_actual", req.params.key);
+      const result = await query("delete from initiative_plan_actuals where activity_key = $1 returning activity_key", [req.params.key]);
+      if (result.rows.length === 0) throw notFound("initiative_plan_actual", req.params.key);
       res.status(204).send();
     } catch (err) {
       next(err);

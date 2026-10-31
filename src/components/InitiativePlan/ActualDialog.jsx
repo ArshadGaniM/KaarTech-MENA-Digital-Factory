@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { PLAN_WEEK_COUNT } from '../../data/projectPlan';
-import { savePlanActual, clearPlanActual } from '../../lib/projectPlanApi';
+import { PLAN_WEEK_COUNT } from '../../data/initiativePlan';
+import { savePlanActual, clearPlanActual } from '../../lib/initiativePlanApi';
 import styles from './ActualDialog.module.css';
 
 // Records (or clears) the actual progress of one plan activity. The plan itself

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { STATUS } from '../data/projectPlan';
-import { effectivePoc, isBehindPlan, shortDate, weekEnd, weekOf, weekRangeLabel, weekStart } from './projectPlanCalendar';
+import { STATUS } from '../data/initiativePlan';
+import { effectivePoc, isBehindPlan, shortDate, weekEnd, weekOf, weekRangeLabel, weekStart } from './initiativePlanCalendar';
 
-describe('project plan calendar (Week 1 starts 1 July 2026)', () => {
+describe('initiative plan calendar (Week 1 starts 1 July 2026)', () => {
   it('starts Week 1 on 1 July 2026 and each week 7 days after the last', () => {
     expect(shortDate(weekStart(1))).toBe('1 Jul');
     expect(shortDate(weekStart(2))).toBe('8 Jul');

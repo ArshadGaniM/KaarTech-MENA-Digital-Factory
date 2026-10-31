@@ -1,6 +1,6 @@
-import { PLAN_START_DATE, STATUS } from '../data/projectPlan';
+import { PLAN_START_DATE, STATUS } from '../data/initiativePlan';
 
-// Calendar maths for the locked project plan. Week 1 begins on PLAN_START_DATE
+// Calendar maths for the locked initiative plan. Week 1 begins on PLAN_START_DATE
 // and every week is 7 days. All dates are treated as UTC calendar days so the
 // viewer's time zone can never move a week.
 

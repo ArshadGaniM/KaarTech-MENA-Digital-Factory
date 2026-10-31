@@ -2,8 +2,8 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import express from "express";
-import { createProjectPlanRouter } from "./projectPlanRouter.js";
-import { PROJECT_PLAN_KEYS } from "./projectPlanKeys.js";
+import { createInitiativePlanRouter } from "./initiativePlanRouter.js";
+import { INITIATIVE_PLAN_KEYS } from "./initiativePlanKeys.js";
 
 // The query function is injected, so these prove routing, auth, validation,
 // the response shape and that values only travel as bound parameters. They do
@@ -20,8 +20,8 @@ before(async () => {
   const app = express();
   app.use(express.json());
   app.use(
-    "/v1/project-plan",
-    createProjectPlanRouter({
+    "/v1/initiative-plan",
+    createInitiativePlanRouter({
       query: async (sql, params) => {
         calls.push({ sql, params });
         return answer(sql, params);
@@ -45,16 +45,16 @@ const row = (overrides = {}) => ({
 });
 
 test("the key list has the 3 groups and their 27 activities, in the plan's own Sl. No", () => {
-  assert.equal(PROJECT_PLAN_KEYS.length, 30);
-  assert.deepEqual(PROJECT_PLAN_KEYS.slice(0, 3), ["1.0", "1a", "1b"]);
-  assert.equal(PROJECT_PLAN_KEYS.at(-1), "3i");
+  assert.equal(INITIATIVE_PLAN_KEYS.length, 30);
+  assert.deepEqual(INITIATIVE_PLAN_KEYS.slice(0, 3), ["1.0", "1a", "1b"]);
+  assert.equal(INITIATIVE_PLAN_KEYS.at(-1), "3i");
 });
 
 test("GET /actuals lists the recorded actuals and needs no key", async () => {
   calls = [];
   answer = () => ({ rows: [row()] });
 
-  const res = await fetch(`${baseUrl}/v1/project-plan/actuals`);
+  const res = await fetch(`${baseUrl}/v1/initiative-plan/actuals`);
 
   assert.equal(res.status, 200);
   assert.deepEqual((await res.json()).data, [
@@ -64,7 +64,7 @@ test("GET /actuals lists the recorded actuals and needs no key", async () => {
 
 test("PUT /actuals/:key without the key is 401 and runs no query", async () => {
   calls = [];
-  const res = await fetch(`${baseUrl}/v1/project-plan/actuals/1a`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actualPoc: 10 }) });
+  const res = await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actualPoc: 10 }) });
 
   assert.equal(res.status, 401);
   assert.equal(calls.length, 0);
@@ -74,7 +74,7 @@ test("PUT /actuals/:key upserts with bound parameters and returns the row", asyn
   calls = [];
   answer = () => ({ rows: [row({ activity_key: "2b", actual_start_week: 18, actual_end_week: null, actual_poc: 40 })] });
 
-  const res = await fetch(`${baseUrl}/v1/project-plan/actuals/2b`, {
+  const res = await fetch(`${baseUrl}/v1/initiative-plan/actuals/2b`, {
     method: "PUT", headers: HEADERS, body: JSON.stringify({ actualStartWeek: 18, actualEndWeek: null, actualPoc: 40, updatedBy: "  Aisha  " }),
   });
 
@@ -99,7 +99,7 @@ test("PUT rejects bad weeks, order and percentages with a 422 and never queries"
   ];
   for (const body of bad) {
     calls = [];
-    const res = await fetch(`${baseUrl}/v1/project-plan/actuals/1a`, { method: "PUT", headers: HEADERS, body: JSON.stringify(body) });
+    const res = await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "PUT", headers: HEADERS, body: JSON.stringify(body) });
     assert.equal(res.status, 422, JSON.stringify(body));
     assert.equal(calls.length, 0);
   }
@@ -108,7 +108,7 @@ test("PUT rejects bad weeks, order and percentages with a 422 and never queries"
 test("an activity that is not in the plan is 404 for PUT and DELETE, and the key is never run as SQL", async () => {
   calls = [];
   for (const method of ["PUT", "DELETE"]) {
-    const res = await fetch(`${baseUrl}/v1/project-plan/actuals/${encodeURIComponent("9z'; drop table x;--")}`, { method, headers: HEADERS, body: method === "PUT" ? JSON.stringify({ actualPoc: 1 }) : undefined });
+    const res = await fetch(`${baseUrl}/v1/initiative-plan/actuals/${encodeURIComponent("9z'; drop table x;--")}`, { method, headers: HEADERS, body: method === "PUT" ? JSON.stringify({ actualPoc: 1 }) : undefined });
     assert.equal(res.status, 404, method);
   }
   assert.equal(calls.length, 0);
@@ -117,8 +117,8 @@ test("an activity that is not in the plan is 404 for PUT and DELETE, and the key
 test("DELETE /actuals/:key clears an actual (204) and is 404 when none was recorded", async () => {
   calls = [];
   answer = () => ({ rows: [{ activity_key: "1a" }] });
-  assert.equal((await fetch(`${baseUrl}/v1/project-plan/actuals/1a`, { method: "DELETE", headers: HEADERS })).status, 204);
+  assert.equal((await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "DELETE", headers: HEADERS })).status, 204);
 
   answer = () => ({ rows: [] });
-  assert.equal((await fetch(`${baseUrl}/v1/project-plan/actuals/1a`, { method: "DELETE", headers: HEADERS })).status, 404);
+  assert.equal((await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "DELETE", headers: HEADERS })).status, 404);
 });

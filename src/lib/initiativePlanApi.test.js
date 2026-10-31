@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearPlanActual, fetchPlanActuals, savePlanActual } from './projectPlanApi';
+import { clearPlanActual, fetchPlanActuals, savePlanActual } from './initiativePlanApi';
 
-describe('projectPlanApi', () => {
+describe('initiativePlanApi', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
   afterEach(() => vi.unstubAllGlobals());
 
@@ -9,7 +9,7 @@ describe('projectPlanApi', () => {
     fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ activityKey: '1a', actualPoc: 100 }] }) });
 
     expect(await fetchPlanActuals()).toEqual({ '1a': { activityKey: '1a', actualPoc: 100 } });
-    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/project-plan\/actuals$/));
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/initiative-plan\/actuals$/));
   });
 
   it('rejects a malformed list and a failed load', async () => {
@@ -26,7 +26,7 @@ describe('projectPlanApi', () => {
     await savePlanActual('2b', { actualStartWeek: 18, actualEndWeek: null, actualPoc: 40 });
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/\/v1\/project-plan\/actuals\/2b$/),
+      expect.stringMatching(/\/v1\/initiative-plan\/actuals\/2b$/),
       expect.objectContaining({
         method: 'PUT',
         headers: expect.objectContaining({ 'x-internal-api-key': expect.any(String) }),
