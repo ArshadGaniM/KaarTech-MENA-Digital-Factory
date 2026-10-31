@@ -756,6 +756,7 @@ test("searchSql searches the id, code, every field, lookup columns and audit nam
     assert.ok(where.includes(part), part);
   }
   assert.match(where, /char_length\(\$1\) >= 4/);
+  assert.match(where, /\$1 !~ '\[0-9\]'/);
   assert.match(rank, /word_similarity\(\$1/);
 });
 
