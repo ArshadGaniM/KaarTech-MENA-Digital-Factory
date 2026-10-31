@@ -1,7 +1,6 @@
 # API Rules — REST Design
 
-> Forward-looking: no backend exists in this project yet. Apply these the moment
-> one is introduced.
+> Applies to the Express backend in `backend/`.
 
 ## URL Structure
 - **Plural nouns for resources**: `/messages`, `/sessions`, `/users`

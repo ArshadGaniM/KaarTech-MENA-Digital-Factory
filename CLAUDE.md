@@ -23,12 +23,13 @@ yet defined — see §23. Current stack:
 - **Frontend:** React 19 + Vite 8, JavaScript (ES modules), CSS Modules-ready
 - **Linting:** oxlint
 - **Package manager:** npm
-- **Backend / database:** not yet built — §10 (API Rules) and §11 (Database Rules)
-  below are the standing conventions to follow **once** a backend is added.
-  Until then they are forward-looking, not currently enforced.
+- **Backend:** Node + Express in `backend/`, serving master-data routes under `/v1`
+  (§10 API Rules apply)
+- **Database:** Postgres on Supabase, migrations in `backend/migrations/` (§11 Database Rules apply)
+- **Hosting:** Vercel (frontend) and Render (backend), see §21
 
-Specific integrations and production infrastructure are not yet defined —
-fill in as they are decided. Everything below this point is
+Further integrations are not yet defined — fill in as they are decided.
+Everything below this point is
 the tooling/process layer and applies regardless of feature domain.
 
 ---
@@ -124,8 +125,8 @@ KaarTech-MENA-Digital-Factory/
 │   │   ├── bash-guard.sh              ← PreToolUse hook — blocks destructive Bash commands
 │   │   └── post-edit-format.sh        ← PostToolUse hook — best-effort autoformat on save
 │   ├── rules/
-│   │   ├── api.md                     ← REST design conventions (see §10, forward-looking)
-│   │   ├── database.md                ← model/query/migration conventions (see §11, forward-looking)
+│   │   ├── api.md                     ← REST design conventions (see §10)
+│   │   ├── database.md                ← model/query/migration conventions (see §11)
 │   │   ├── frontend.md                ← component/state/styling conventions (see §12)
 │   │   └── subagent-verification.md   ← sandbox hallucination safety net (see §8)
 │   ├── workflows/
@@ -187,7 +188,7 @@ cp .claude/hooks/pre-commit.sh .git/hooks/pre-commit
 **What it checks (in order):**
 1. Type check (once TypeScript is adopted — currently a no-op for plain JS)
 2. `oxlint` on staged frontend files
-3. Backend linter on staged files (once a backend exists)
+3. Backend linter on staged files
 4. Secret scan on staged diff — blocks if API keys or passwords detected
 
 **Known behaviour:** the linter step skips gracefully if no linter config is present — don't treat that as a bug.
@@ -534,18 +535,18 @@ table, detailed findings, prioritised action-item checklist.
 
 ---
 
-## 10. API Rules (`.claude/rules/api.md`) — REST Design (forward-looking, no backend yet)
+## 10. API Rules (`.claude/rules/api.md`) — REST Design
 
 See `.claude/rules/api.md` for the full convention set: URL structure, request/response
 schemas, HTTP status codes, error shape, validation, pagination, auth, streaming,
-versioning. Apply these the moment a backend is introduced.
+versioning. They apply to everything in `backend/`.
 
 ---
 
-## 11. Database Rules (`.claude/rules/database.md`) — (forward-looking, no database yet)
+## 11. Database Rules (`.claude/rules/database.md`)
 
 See `.claude/rules/database.md` for models, queries, migrations, indexes, naming
-conventions, and transactions. Apply the moment a database is introduced.
+conventions, and transactions. They apply to everything in `backend/migrations/`.
 
 ---
 
@@ -823,12 +824,13 @@ it one directory up.
 
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Once a backend exists | Connection string for the primary datastore |
+| `DATABASE_URL` | Backend, required | Postgres connection string |
+| `DATABASE_SSL_CA` | Backend, optional | Provider CA certificate (PEM). Turns on certificate verification for every database connection |
+| `INTERNAL_API_KEY` | Backend, required for writes | Shared key the frontend sends with writes. Must match `VITE_INTERNAL_API_KEY` |
 | `REDIS_URL` | If used | Cache/session store connection string |
-| `SECRET_KEY` | Once a backend exists | App secret — must not be a placeholder value in production |
 | OAuth client ID/secret pairs | Per integration | One per external service integrated |
 | Encryption keys | Per integration | Document rotation impact explicitly |
-| `BACKEND_URL` / `FRONTEND_URL` | Per integration | Public URLs used to build redirect URIs |
+| `FRONTEND_URL` | Backend, required in production | The one site CORS allows. Unset in production allows none |
 | `VITE_INTERNAL_API_KEY` | Required for the frontend's "Add `<Entity>`" forms (FEAT-14) and "Delete `<Entity>`" popup (FEAT-15) | Must exactly match the backend's `INTERNAL_API_KEY`. **Not a real secret once set** — Vite inlines `VITE_` vars into the built JS bundle, so anyone visiting the site can read it. Accepted only because this app has no user-login system yet (see §0) — revisit the moment real auth exists, at which point writes should go through an authenticated session instead of a shared static key. |
 
 Never hard-code secrets. Add new vars to `.env.example` alongside the actual `.env`.
@@ -899,10 +901,10 @@ still unresolved here — fill in as decided:
       modules come first (resource management? team/org directory? process/
       workflow tracking?), user roles, data model. Business domain itself is
       now known — this is about turning it into a buildable first feature.
-- [ ] Backend framework, database, and hosting choice
-- [ ] API endpoint list, data models, integration specifics
-- [ ] Deployment platform and its MCP tooling
-- [ ] Production URLs, service IDs, workspace IDs
+- [x] Backend framework, database, and hosting choice: Express, Postgres on
+      Supabase, Render and Vercel (§0, §21)
+- [ ] Integration specifics beyond the master-data routes
+- [x] Deployment platform, service IDs and workspace IDs (§21)
 - [ ] Whether the 30-step dev-team pipeline (§7) should run in full for this
       project's scale, or a lighter subset — currently scaffolded but not yet
       exercised end-to-end

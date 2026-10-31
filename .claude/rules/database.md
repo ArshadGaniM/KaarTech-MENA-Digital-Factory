@@ -1,7 +1,6 @@
 # Database Rules
 
-> Forward-looking: no database exists in this project yet. Apply these the moment
-> one is introduced.
+> Applies to the Postgres database and `backend/migrations/`.
 
 ## Models
 - Every model inherits from a common `Base`.
