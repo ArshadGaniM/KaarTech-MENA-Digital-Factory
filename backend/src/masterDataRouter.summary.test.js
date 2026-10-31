@@ -120,7 +120,7 @@ test("GET /v1/resources/summary passes a database failure to the error handler a
 test("GET /v1/resources/summary is not captured by the /:id route", async (t) => {
   t.mock.method(pool, "query", async (text) => {
     if (/where resources\.id = \$1/.test(text)) throw new Error("summary was routed to /:id");
-    return { rows: [] };
+    return { rows: text.startsWith("select count(*)") ? [{ total: 0 }] : [] };
   });
 
   const res = await fetch(`${baseUrl}/v1/resources/summary?groupBy=designation`);
