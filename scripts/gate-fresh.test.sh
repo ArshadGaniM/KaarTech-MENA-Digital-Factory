@@ -55,24 +55,26 @@ expect "code only is not fresh" false "$before" "$(git rev-parse HEAD)"
 # 4. Merging main (which carries another session's report and code) must not count.
 new_repo
 cd "$work/clone"
+commit_file src/mine.js mine "feat: branch work"
 git_quiet checkout main
 commit_file tasks/last-gate-report.md "# Someone else's gate" "docs: other session report"
 commit_file src/other.js other "feat: other session"
 git_quiet push origin main
 git_quiet checkout feature
 before=$(git rev-parse HEAD)
-git_quiet merge main -m "merge: bring in main"
+git_quiet merge --no-ff main -m "merge: bring in main"
 expect "merging main with its report and code is not fresh" false "$before" "$(git rev-parse HEAD)"
 
 # 5. Merge of main plus a genuine report and code commit of the branch's own: fresh.
 new_repo
 cd "$work/clone"
+commit_file src/mine.js mine "feat: branch work"
 git_quiet checkout main
 commit_file tasks/last-gate-report.md "# Someone else's gate" "docs: other session report"
 git_quiet push origin main
 git_quiet checkout feature
 before=$(git rev-parse HEAD)
-git_quiet merge main -m "merge: bring in main"
+git_quiet merge --no-ff main -m "merge: bring in main"
 commit_file src/a.js code "feat: a"
 commit_file tasks/last-gate-report.md "# My gate" "docs: my gate report"
 expect "own report and code after a merge of main is fresh" true "$before" "$(git rev-parse HEAD)"

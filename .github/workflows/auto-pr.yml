@@ -59,7 +59,7 @@ jobs:
             # This is a heuristic, not a cryptographic guarantee: it stops
             # the accidents that were observed without claiming to stop a
             # determined actor, which suits this single-maintainer repo.
-            fresh=$(bash scripts/gate-fresh.sh "$BEFORE_SHA" "$HEAD_SHA")
+            fresh=$(bash scripts/gate-fresh.sh "$BEFORE_SHA" "$HEAD_SHA" || echo false)
             echo "fresh=${fresh}" >> "$GITHUB_OUTPUT"
           else
             echo "No gate report yet — run the /gate protocol before merging." > /tmp/pr_body.md
