@@ -54,8 +54,8 @@ assigned, it stays on Haiku. Where an agent is assigned Sonnet, it stays on
 Sonnet. Any agent that was assigned Opus (or anything above Sonnet) has
 been brought down to Sonnet — see `scripts/register_agent.py`'s
 `MODEL_KEYWORDS` mapping (the concrete tier-to-model resolution) and,
-once agent auto-registration runs per §14 (forward-looking — no backend
-exists yet to register against), `.claude/agents/registry.json` as the
+once agent auto-registration runs per §14 (forward-looking — the backend
+has no agent registry to register against), `.claude/agents/registry.json` as the
 resulting inventory. Opus (or any
 higher-than-Sonnet model) may be used **only** when Sonnet/Haiku
 demonstrably cannot achieve the task, and **only** with the owner's
@@ -134,6 +134,9 @@ KaarTech-MENA-Digital-Factory/
 │   ├── github-repos.json              ← external repo ingestion registry (see §13)
 │   └── skills/                        ← populated by external ingestion + hand-written skills
 │
+├── backend/                           ← Express API, migrations, backend/.env.example
+├── mcp-server/                        ← MCP server (see its README)
+├── src/                               ← React frontend
 ├── scripts/
 │   ├── update-skills.sh               ← weekly external-source sync script
 │   ├── fetch-github-repo.sh           ← one-shot external repo ingestion script
@@ -188,7 +191,7 @@ cp .claude/hooks/pre-commit.sh .git/hooks/pre-commit
 **What it checks (in order):**
 1. Type check (once TypeScript is adopted — currently a no-op for plain JS)
 2. `oxlint` on staged frontend files
-3. Backend linter on staged files
+3. Backend linter on staged files (`ruff` on `*.py` only; backend JavaScript is linted in step 2)
 4. Secret scan on staged diff — blocks if API keys or passwords detected
 
 **Known behaviour:** the linter step skips gracefully if no linter config is present — don't treat that as a bug.
@@ -664,7 +667,7 @@ or the weekly sync.
 | `category` | `development_team` if under `dev-team/`; else `other` |
 | `pipeline_stage` | `null` for all non-pipeline agents |
 
-### Registration (once a backend exists to register against)
+### Registration (once the backend has an agent registry to register against)
 
 ```bash
 python scripts/register_agent.py --file .claude/agents/<slug>/<filename>.md --category other
@@ -827,13 +830,14 @@ it one directory up.
 | `DATABASE_URL` | Backend, required | Postgres connection string |
 | `DATABASE_SSL_CA` | Backend, optional | Provider CA certificate (PEM). Turns on certificate verification for every database connection |
 | `INTERNAL_API_KEY` | Backend, required for writes | Shared key the frontend sends with writes. Must match `VITE_INTERNAL_API_KEY` |
-| `REDIS_URL` | If used | Cache/session store connection string |
+| `PORT` / `NODE_ENV` | Backend | Listen port. `NODE_ENV=production` turns on the fail-closed CORS behaviour |
+| `VITE_BACKEND_URL` | Frontend, required in production | Base URL of the API. Defaults to `http://localhost:3001`, so a deploy without it calls localhost |
 | OAuth client ID/secret pairs | Per integration | One per external service integrated |
 | Encryption keys | Per integration | Document rotation impact explicitly |
-| `FRONTEND_URL` | Backend, required in production | The one site CORS allows. Unset in production allows none |
+| `FRONTEND_URL` | Backend, required in production | Comma-separated list of allowed origins (the Vercel domain and its team alias). Unset in production allows none |
 | `VITE_INTERNAL_API_KEY` | Required for the frontend's "Add `<Entity>`" forms (FEAT-14) and "Delete `<Entity>`" popup (FEAT-15) | Must exactly match the backend's `INTERNAL_API_KEY`. **Not a real secret once set** — Vite inlines `VITE_` vars into the built JS bundle, so anyone visiting the site can read it. Accepted only because this app has no user-login system yet (see §0) — revisit the moment real auth exists, at which point writes should go through an authenticated session instead of a shared static key. |
 
-Never hard-code secrets. Add new vars to `.env.example` alongside the actual `.env`.
+Never hard-code secrets. Add new vars to `.env.example` (frontend) or `backend/.env.example` (backend) alongside the actual `.env`.
 
 ---
 
@@ -857,13 +861,17 @@ and trigger it if missing. The Render account also holds an unrelated service
 
 ### Standard Check (run after every merge to `main`)
 ```
-1. Apply any new migration to the live database first, but only with the owner's yes
-2. Frontend: list Vercel deployments for the project and confirm the newest one is READY
-3. Backend: list Render deploys for the service. If none started for the merge, trigger one
+1. Apply any new migration to the live database before the backend deploys that reads it,
+   but only with the owner's yes. If the owner has not said yes, the check is not complete.
+   Do not call it healthy
+2. Frontend: list Vercel deployments for the project and confirm the deployment for the merge commit is READY
+3. Backend: list Render deploys for the service. Confirm the deploy for the merge commit
+   is `live`, not failed or canceled. If none started for the merge, trigger one
 4. Pull recent error/critical/warning logs for the Render service (last 30 lines)
 5. Read and diagnose every error/warning line
 6. If any ERROR or CRITICAL found → fix the root cause, commit, push
-7. Confirm health: `GET /health` on the API URL returns 200, and a changed route answers on the live API
+7. Confirm health: `GET /health` on the API URL returns 200 and the live deploy is the merge commit's.
+   A 200 alone can come from the previous instance. For a change to a route, call that route (for example `GET /v1/<table>?limit=1`)
 ```
 
 Order matters when a migration adds a required column: migration, then backend, then frontend.
@@ -874,9 +882,6 @@ Order matters when a migration adds a required column: migration, then backend, 
 |---|---|---|
 | Frontend shows an error after a merge that adds a backend route | Vercel finished before Render redeployed | Trigger the Render deploy, poll the live route, then recheck the page |
 | Merge to `main` produced no Render deploy | Auto-deploy did not fire | Trigger a deploy for `srv-dal98lnf3r2c73ff3540` and poll until live |
-
----|---|---|
-| *(fill in as issues are discovered)* | | |
 
 ---
 

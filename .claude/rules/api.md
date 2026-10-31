@@ -90,6 +90,10 @@ Response includes `total`; master-data list routes also include `activeTotal`, w
 - Use dependency-injection style auth checks — never inline in each route.
 - `401` for missing/invalid token, `403` for valid token lacking permissions.
 
+**Documented deviation:** the backend has no login system yet. Writes require the
+shared `INTERNAL_API_KEY`, sent as the `x-internal-api-key` header, and reads are open. Replace this with bearer-token
+auth when real auth exists (CLAUDE.md §20).
+
 ## Streaming Responses
 - Server-sent-events style. Each event: `data: {"delta": "..."}\n\n`.
 - Final event: `data: [DONE]\n\n`.
