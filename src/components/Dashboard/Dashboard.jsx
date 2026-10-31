@@ -16,6 +16,12 @@ function Dashboard({ onNavigate }) {
   const { data, isLoading, error } = useTableCounts(refreshKey);
   // A new timestamp each time fresh counts arrive, not on every render.
   const updatedAt = useMemo(() => (data ? timeFormat.format(new Date()) : null), [data]);
+  const retry = () => setRefreshKey((key) => key + 1);
+  const retryButton = (
+    <button type="button" className={styles.refreshButton} onClick={retry}>
+      Try again
+    </button>
+  );
 
   // Only the very first load replaces the page. A refresh keeps the current
   // numbers on screen until the new ones arrive.
@@ -26,11 +32,14 @@ function Dashboard({ onNavigate }) {
       </p>
     );
   }
-  if (error) {
+  if (error && !data) {
     return (
-      <p className={styles.statusError} role="alert">
-        Could not load the dashboard: {error.message}
-      </p>
+      <div className={styles.failure}>
+        <p className={styles.statusError} role="alert">
+          Could not load the dashboard: {error.message}
+        </p>
+        {retryButton}
+      </div>
     );
   }
 
@@ -38,9 +47,12 @@ function Dashboard({ onNavigate }) {
   const loaded = data.filter((table) => table.error === null);
   if (loaded.length === 0) {
     return (
-      <p className={styles.statusError} role="alert">
-        Could not load counts for any table. Check that the backend is running and up to date.
-      </p>
+      <div className={styles.failure}>
+        <p className={styles.statusError} role="alert">
+          Could not load counts for any table. Check that the backend is running and up to date.
+        </p>
+        {retryButton}
+      </div>
     );
   }
 
@@ -52,6 +64,11 @@ function Dashboard({ onNavigate }) {
 
   return (
     <div className={styles.dashboard}>
+      {error && (
+        <p className={styles.statusError} role="alert">
+          Could not refresh: {error.message}
+        </p>
+      )}
       {failed.length > 0 && (
         <p className={styles.statusError} role="alert">
           Could not load counts for: {failed.map((table) => table.label).join(', ')}.

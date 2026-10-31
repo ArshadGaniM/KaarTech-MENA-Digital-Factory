@@ -55,6 +55,26 @@ describe('useCountUp', () => {
       expect(frames).toHaveLength(0);
     });
 
+    it('cancels the pending frame when the component unmounts', () => {
+      const cancel = vi.fn();
+      vi.stubGlobal('cancelAnimationFrame', cancel);
+      const { unmount } = renderHook(() => useCountUp(100, 1000));
+
+      unmount();
+
+      expect(cancel).toHaveBeenCalled();
+    });
+
+    it('stops animating and returns null when the target goes back to null', () => {
+      const { result, rerender } = renderHook(({ target }) => useCountUp(target, 1000), { initialProps: { target: 100 } });
+      act(() => frames.shift()(1000));
+      expect(result.current).toBe(100);
+
+      rerender({ target: null });
+
+      expect(result.current).toBeNull();
+    });
+
     it('animates from the last shown value when the target changes', () => {
       const { result, rerender } = renderHook(({ target }) => useCountUp(target, 1000), { initialProps: { target: 100 } });
       act(() => frames.shift()(1000));

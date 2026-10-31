@@ -22,20 +22,31 @@ function ResourceInsights({ refreshKey, onNavigate }) {
   const byDesignation = useGroupSummary('resources', 'designation', { locationType: filters.locationType }, refreshKey);
 
   const toggle = (field, value) => setFilters((current) => ({ ...current, [field]: current[field] === value ? null : value }));
+  const clear = (field) => setFilters((current) => ({ ...current, [field]: null }));
   const hasFilters = filters.locationType !== null || filters.designation !== null;
 
+  // The hooks keep the previous result while a new one loads, so the match
+  // count is only worked out once both charts have settled on the current
+  // filters. Reading it earlier would show the last filter's number.
+  const chartFailed = Boolean(byLocation.error || byDesignation.error);
+  const settled = [byLocation, byDesignation].every((chart) => chart.data && !chart.isLoading && !chart.error);
   let matching = null;
-  if (byLocation.data && byDesignation.data) {
-    if (filters.locationType !== null) {
-      matching = byLocation.data.groups.find((group) => group.value === filters.locationType)?.count ?? 0;
-    } else {
-      matching = byLocation.data.total;
-    }
+  if (settled) {
+    matching =
+      filters.locationType !== null
+        ? (byLocation.data.groups.find((group) => group.value === filters.locationType)?.count ?? 0)
+        : byLocation.data.total;
   }
+  let matchingText = 'Loading…';
+  if (chartFailed) matchingText = 'Match count unavailable';
+  else if (matching !== null) matchingText = `${formatCount(matching)} resources match`;
 
   const designations = byDesignation.data?.groups ?? [];
   const shown = designations.slice(0, TOP_DESIGNATIONS);
-  const otherCount = designations.slice(TOP_DESIGNATIONS).reduce((sum, group) => sum + group.count, 0);
+  // From the backend's own total, not the sum of the groups it sent: it
+  // cuts the group list off at 100, and those rows still belong to "Other".
+  const shownCount = shown.reduce((sum, group) => sum + group.count, 0);
+  const otherCount = Math.max(0, (byDesignation.data?.total ?? 0) - shownCount);
   const maxCount = Math.max(1, ...shown.map((group) => group.count));
 
   return (
@@ -51,15 +62,15 @@ function ResourceInsights({ refreshKey, onNavigate }) {
 
       <div className={styles.filterRow}>
         <p className={styles.matching} role="status" aria-live="polite">
-          {matching === null ? 'Loading…' : `${formatCount(matching)} resources match`}
+          {matchingText}
         </p>
         {filters.locationType !== null && (
-          <button type="button" className={styles.chip} onClick={() => toggle('locationType', filters.locationType)}>
+          <button type="button" className={styles.chip} onClick={() => clear('locationType')}>
             {`Remove filter ${filters.locationType}`}
           </button>
         )}
         {filters.designation !== null && (
-          <button type="button" className={styles.chip} onClick={() => toggle('designation', filters.designation)}>
+          <button type="button" className={styles.chip} onClick={() => clear('designation')}>
             {`Remove filter ${filters.designation}`}
           </button>
         )}

@@ -6,8 +6,8 @@ import { useGroupSummary } from '../../hooks/useGroupSummary';
 
 vi.mock('../../hooks/useGroupSummary');
 
-const done = (groups) => ({
-  data: { groups, total: groups.reduce((sum, group) => sum + group.count, 0) },
+const done = (groups, total = groups.reduce((sum, group) => sum + group.count, 0)) => ({
+  data: { groups, total },
   isLoading: false,
   error: null,
 });
@@ -163,6 +163,44 @@ describe('ResourceInsights', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
     expect(screen.getByRole('button', { name: /Role 1/ })).toBeInTheDocument();
+  });
+
+  it('does not show a match count it cannot trust when a chart failed', () => {
+    useGroupSummary.mockImplementation((_route, groupBy) =>
+      groupBy === 'locationType'
+        ? { data: null, isLoading: false, error: new Error('Backend unreachable') }
+        : done(designations(2))
+    );
+
+    renderInsights();
+
+    expect(screen.getByRole('status')).toHaveTextContent('Match count unavailable');
+    expect(screen.getByRole('status')).not.toHaveTextContent('Loading');
+  });
+
+  it('does not show the previous match count while new numbers load', () => {
+    const stale = done([{ value: 'Offshore', count: 700 }, { value: 'Onsite', count: 200 }]);
+    useGroupSummary.mockImplementation((_route, groupBy) =>
+      groupBy === 'locationType' ? { ...stale, isLoading: true } : done(designations(2))
+    );
+
+    renderInsights();
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+    expect(screen.getByRole('status')).not.toHaveTextContent('900');
+  });
+
+  it('counts rows beyond the 100-group cut-off under Other designations', () => {
+    useGroupSummary.mockImplementation((_route, groupBy) =>
+      groupBy === 'locationType'
+        ? done([{ value: 'Offshore', count: 1500 }])
+        : done(designations(10), 1500)
+    );
+
+    renderInsights();
+
+    // 1,500 resources in total, 772 in the eight bars shown.
+    expect(screen.getByText('Other designations').parentElement).toHaveTextContent('728');
   });
 
   it('opens the Resources table from its link', async () => {

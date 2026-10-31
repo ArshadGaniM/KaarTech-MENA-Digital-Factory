@@ -187,4 +187,36 @@ describe('Dashboard', () => {
     expect(screen.getByRole('region', { name: 'Resources' })).toBeInTheDocument();
     expect(useGroupSummary).toHaveBeenCalledWith('resources', 'locationType', expect.any(Object), 0);
   });
+
+  it('offers Try again when the first load fails, and refetches on click', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: null, isLoading: false, error: new Error('Backend unreachable') });
+
+    render(<Dashboard onNavigate={() => {}} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(useTableCounts).toHaveBeenLastCalledWith(1);
+  });
+
+  it('offers Try again when every table failed', () => {
+    const data = counts().map((table) => ({ ...table, count: null, error: new Error('boom') }));
+    useTableCounts.mockReturnValue({ data, isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('keeps the page, its filters and the Refresh button when a refresh fails', () => {
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: new Error('Backend unreachable') });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not refresh: Backend unreachable');
+    expect(screen.getByRole('region', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Resources' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
+  });
 });

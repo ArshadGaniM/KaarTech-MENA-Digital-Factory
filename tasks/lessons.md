@@ -43,3 +43,13 @@ just "does an artifact with an acceptable verdict exist somewhere."
 ## Deploy order when a migration adds a required column
 
 - Apply the migration to the database first, deploy the backend second, and let the frontend follow. Render hosts the API and did not redeploy on every merge to `main` in this project, so trigger the deploy and poll the API until it returns the new field.
+
+## A squash from a stale branch deletes work that is already on main
+
+- PR #40 was built from a branch cut before the Dashboard and Control Center merged, so its squash silently deleted both and removed `activeTotal`. The live Dashboard then counted deleted rows and nobody saw why until a screenshot showed it.
+- Before merging any PR, read its diff stat for deletions of files the PR was never meant to touch. Rebase a long-lived branch onto `main` before the gate, not after.
+
+## Full-page screenshots can catch width transitions mid-way
+
+- A Playwright `fullPage` capture briefly resizes the page. Bars with a `transition: width` were caught partway and looked nearly empty, while the page itself measured correct. Check `getBoundingClientRect()` and take a normal viewport capture before calling it a CSS bug.
+

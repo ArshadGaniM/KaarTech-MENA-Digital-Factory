@@ -45,9 +45,10 @@ describe('DonutChart', () => {
     const onSelect = vi.fn();
     const { container } = render(<DonutChart segments={segments} onSelect={onSelect} centerLabel="resources" />);
 
-    await user.click(container.querySelectorAll('circle')[1]);
+    const slice = [...container.querySelectorAll('circle')].find((circle) => circle.textContent.startsWith('Onsite'));
+    await user.click(slice);
 
-    expect(onSelect).toHaveBeenCalledWith('Offshore');
+    expect(onSelect).toHaveBeenCalledWith('Onsite');
   });
 
   it('marks the selected segment as pressed and no other', () => {
