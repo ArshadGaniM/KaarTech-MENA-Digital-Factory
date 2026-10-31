@@ -1,4 +1,12 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { ApiError } from "./errors.js";
+
+// Hashing first gives both sides the same length, which timingSafeEqual needs,
+// and keeps the comparison time independent of how much of the key matched.
+function sameKey(provided, expected) {
+  const digest = (value) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(provided), digest(expected));
+}
 
 // Minimal write-path guard for the master data routes (security-auditor
 // gate finding: 6 new fully-CRUD tables + an MCP server with write tools
@@ -12,7 +20,7 @@ export function requireInternalApiKey(req, res, next) {
   const expected = process.env.INTERNAL_API_KEY;
   const provided = req.header("x-internal-api-key");
 
-  if (!expected || provided !== expected) {
+  if (!expected || typeof provided !== "string" || !sameKey(provided, expected)) {
     next(new ApiError(401, "unauthorized", "A valid x-internal-api-key header is required for this operation."));
     return;
   }

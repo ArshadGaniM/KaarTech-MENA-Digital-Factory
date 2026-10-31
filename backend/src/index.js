@@ -58,4 +58,7 @@ app.use((err, req, res, _next) => {
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Backend listening on port ${port}`);
+  if (!process.env.INTERNAL_API_KEY) {
+    console.warn("INTERNAL_API_KEY is not set: every write route will answer 401 until it is.");
+  }
 });

@@ -24,9 +24,9 @@ npm run dev
 |---|---|---|---|
 | GET | `/v1/team-members` | — | Paginated (`?limit`, `?offset`) |
 | GET | `/v1/team-members/:id` | — | |
-| POST | `/v1/team-members` | `{ fullName, role?, department?, email?, avatarUrl?, status? }` | |
-| PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
-| DELETE | `/v1/team-members/:id` | — | Hard delete |
+| POST | `/v1/team-members` | `{ fullName, role?, department?, email?, avatarUrl?, status? }` | Needs `x-internal-api-key` |
+| PATCH | `/v1/team-members/:id` | Any subset of the POST fields | Needs `x-internal-api-key` |
+| DELETE | `/v1/team-members/:id` | — | Hard delete. Needs `x-internal-api-key` |
 
 ### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`, `/v1/project-assignments`
 

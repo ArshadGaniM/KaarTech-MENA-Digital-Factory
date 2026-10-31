@@ -113,15 +113,10 @@ Response includes `total`; master-data list routes also include `activeTotal`, w
 **Aggregate routes are not paginated.** `GET /v1/<table>/summary?groupBy=<field>` returns grouped counts, largest first, capped at 100 groups with no `limit` or `offset`. Its `total` still counts every matching row, including groups past the cap.
 
 ## Authentication
-- Reads are open. Master-data writes (POST, PATCH, DELETE, restore) need the shared key in the
-  `x-internal-api-key` header. The check is `requireInternalApiKey` in
+- Reads are open. Every write (POST, PATCH, DELETE, restore), including
+  `/v1/team-members`, needs the shared key in the `x-internal-api-key` header. The check is `requireInternalApiKey` in
   `backend/src/auth.js`, applied per route, never inline in a handler.
 - `401` for a missing or wrong key.
-
-**Known gap:** `/v1/team-members` (`routes/teamMembers.js`) does not use
-`requireInternalApiKey`. Its POST, PATCH and DELETE are open, and DELETE removes the
-row for good. Nothing in the frontend or the MCP server calls it. Do not copy this
-pattern. Put new write routes behind the key.
 
 **Documented deviation:** the backend has no login system, so there are no bearer
 tokens and no `403`. Replace the shared key with bearer-token auth when real auth
