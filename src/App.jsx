@@ -16,7 +16,7 @@ function Portal({ hash }) {
   const [unlocked, setUnlocked] = useState(readPortalUnlocked);
 
   // The sections do not exist until the portal opens, so a link such as
-  // #project-plan has to be scrolled to once they appear.
+  // #initiative-plan has to be scrolled to once they appear.
   useEffect(() => {
     if (unlocked && hash.length > 1) {
       document.getElementById(hash.slice(1))?.scrollIntoView();

@@ -64,11 +64,11 @@ describe('App', () => {
 
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
       expect(screen.getByLabelText('Password')).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: 'Project Plan' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Initiative Plan' })).not.toBeInTheDocument();
       expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
     });
 
-    it('opens the sections, including the Project Plan, after the right password and stays open for the tab', async () => {
+    it('opens the sections, including the Initiative Plan, after the right password and stays open for the tab', async () => {
       const user = userEvent.setup();
       window.location.hash = '';
       const { unmount } = render(<App />);
@@ -76,13 +76,13 @@ describe('App', () => {
       await user.type(screen.getByLabelText('Password'), 'Meena UOCC');
       await user.click(screen.getByRole('button', { name: 'Open the portal' }));
 
-      expect(await screen.findByRole('heading', { name: 'Project Plan' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Initiative Plan' })).toBeInTheDocument();
       expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
 
       unmount();
       render(<App />);
-      await waitFor(() => expect(screen.getByRole('heading', { name: 'Project Plan' })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Initiative Plan' })).toBeInTheDocument());
     });
 
     it('is not asked again inside the application', () => {
