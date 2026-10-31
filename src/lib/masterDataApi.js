@@ -154,6 +154,7 @@ export const MASTER_DATA_TABLES = [
       { key: "name", label: "Position Name" },
       { key: "teamCode", label: "Team Code" },
       { key: "teamName", label: "Team Name" },
+      { key: "competencies", label: "Competencies" },
       ...AUDIT_COLUMNS,
     ],
   },
@@ -226,7 +227,7 @@ export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {
   if (total === null) {
     throw new Error(`${route} returned a malformed response: invalid total "${payload.total}".`);
   }
-  // Absent on a backend that predates activeTotal; callers fall back to total.
+  // Absent on a backend that predates activeTotal; callers must not treat it as zero or fall back to total.
   const activeTotal = Number.isFinite(payload.activeTotal) && payload.activeTotal >= 0 ? payload.activeTotal : undefined;
   return { rows: payload.data, total, activeTotal };
 }

@@ -157,11 +157,16 @@ export function validateBody(table, body, { partial = false } = {}) {
 // is deliberately left unvalidated. Must run after validateBody so a
 // non-number/absent-when-required value has already been rejected with a
 // clear message rather than surfacing as a confusing "no matching row".
+// A comma-separated list field as the names it holds: trimmed, blanks dropped.
+export function splitList(value) {
+  return typeof value === "string" ? value.split(",").map((n) => n.trim()).filter(Boolean) : [];
+}
+
 export async function validateReferences(table, body, { partial = false } = {}) {
   const safeBody = body && typeof body === "object" ? body : {};
 
   const fieldsToCheck = table.fields.filter((field) => {
-    if (!field.references) return false;
+    if (!field.references && !field.listReferences) return false;
     const { mustValidate } = fieldPresenceToValidate(field, safeBody, partial);
     // null only reaches a check for a non-required field being explicitly
     // cleared — validateBody already rejects null on a required field.
@@ -176,6 +181,19 @@ export async function validateReferences(table, body, { partial = false } = {}) 
   const results = await Promise.all(
     fieldsToCheck.map(async (field) => {
       const value = safeBody[field.key];
+      if (field.listReferences) {
+        const { table: refTable, column: refColumn } = field.listReferences;
+        const names = splitList(value);
+        if (names.length === 0) return { field, value, missing: [], empty: true };
+        const result = names.length
+          ? await pool.query(
+              `select ${refColumn} as name from ${refTable} where ${refColumn} = any($1::text[]) and deleted_at is null`,
+              [names]
+            )
+          : { rows: [] };
+        const known = new Set(result.rows.map((row) => row.name));
+        return { field, value, missing: names.filter((name) => !known.has(name)) };
+      }
       const { table: refTable, column: refColumn } = field.references;
       const result = await pool.query(
         `select 1 from ${refTable} where ${refColumn} = $1 and deleted_at is null limit 1`,
@@ -186,8 +204,14 @@ export async function validateReferences(table, body, { partial = false } = {}) 
   );
 
   const details = {};
-  for (const { field, value, found } of results) {
-    if (!found) {
+  for (const { field, value, found, missing, empty } of results) {
+    if (field.listReferences) {
+      if (empty) {
+        details[field.key] = `${field.key} must list at least one name from ${field.listReferences.table}.`;
+      } else if (missing.length > 0) {
+        details[field.key] = `${field.key} must be a comma-separated list of existing ${field.listReferences.table} (no match for: ${missing.join(", ")}).`;
+      }
+    } else if (!found) {
       details[field.key] = `${field.key} must reference an existing ${field.references.table} row (no match for '${value}').`;
     }
   }
@@ -278,4 +302,16 @@ export async function validateAllocation(pool, table, candidate, excludeId = nul
     details[rule.valueKey] = `Allocations for ${rule.groupKey} ${candidate[rule.groupColumn]} cannot exceed ${rule.total}%: ${others}% is already allocated, so at most ${remaining}% remains.`;
   }
   if (Object.keys(details).length > 0) throw validationError(details);
+}
+
+// Rewrites a list field to its canonical form ("MM,SRM, MM" -> "MM, SRM") so
+// the same set is always stored and shown the same way. A value with no names
+// in it is left alone for validateReferences to reject.
+export function normalizeLists(table, body) {
+  if (!body || typeof body !== "object") return;
+  for (const field of table.fields) {
+    if (!field.listReferences || typeof body[field.key] !== "string") continue;
+    const names = [...new Set(splitList(body[field.key]))];
+    if (names.length > 0) body[field.key] = names.join(", ");
+  }
 }

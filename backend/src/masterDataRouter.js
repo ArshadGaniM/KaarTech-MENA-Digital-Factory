@@ -21,6 +21,7 @@ import {
   lookupSelectSql,
   allocationSelectSql,
   validateAllocation,
+  normalizeLists,
 } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
@@ -167,6 +168,7 @@ export function createMasterDataRouter(table) {
 
   router.post("/", requireInternalApiKey, async (req, res, next) => {
     try {
+      normalizeLists(table, req.body);
       validateBody(table, req.body);
       await validateReferences(table, req.body);
       validateCrossFields(table, req.body);
@@ -192,6 +194,7 @@ export function createMasterDataRouter(table) {
 
   router.patch("/:id", requireInternalApiKey, async (req, res, next) => {
     try {
+      normalizeLists(table, req.body);
       validateBody(table, req.body, { partial: true });
       await validateReferences(table, req.body, { partial: true });
       const existing = await pool.query(
@@ -277,7 +280,7 @@ export function createMasterDataRouter(table) {
 
       const referenceBody = {};
       for (const field of fields) {
-        if (field.references && current[field.column] !== null) {
+        if ((field.references || field.listReferences) && current[field.column] !== null) {
           referenceBody[field.key] = current[field.column];
         }
       }
