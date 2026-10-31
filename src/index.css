@@ -19,6 +19,10 @@
   --color-status-unused-ink: #9e0c24;
   --color-status-unstaffed: #ebebee;
   --color-status-unstaffed-ink: #5f6368;
+  --color-chart-1: var(--color-accent);
+  --color-chart-2: var(--color-primary);
+  --color-chart-3: #8a8f98;
+  --color-chart-4: #d98a96;
 
   --font-sans: 'Poppins', system-ui, Roboto, sans-serif;
   --space-1: 8px;

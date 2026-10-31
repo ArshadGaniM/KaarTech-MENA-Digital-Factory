@@ -3,8 +3,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Dashboard from './Dashboard';
 import { useTableCounts } from '../../hooks/useTableCounts';
+import { useGroupSummary } from '../../hooks/useGroupSummary';
 
 vi.mock('../../hooks/useTableCounts');
+vi.mock('../../hooks/useGroupSummary');
 
 const counts = (overrides = {}) => {
   const base = {
@@ -26,6 +28,7 @@ const counts = (overrides = {}) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useGroupSummary.mockReturnValue({ data: { groups: [], total: 0 }, isLoading: false, error: null });
 });
 
 describe('Dashboard', () => {
@@ -144,5 +147,76 @@ describe('Dashboard', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load counts for: Teams.');
     expect(within(screen.getByRole('region', { name: 'Overview' })).getByRole('button', { name: /Teams/ })).toHaveTextContent('—');
     expect(screen.getByRole('region', { name: 'Records by table' })).toHaveTextContent('across 5 tables');
+  });
+
+  it('refetches every count when Refresh is clicked', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+    expect(useTableCounts).toHaveBeenLastCalledWith(0);
+
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    expect(useTableCounts).toHaveBeenLastCalledWith(1);
+  });
+
+  it('keeps the numbers on screen and disables Refresh while a refresh is in flight', () => {
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: true, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled();
+    expect(within(screen.getByRole('region', { name: 'Overview' })).getByRole('button', { name: /Resources/ })).toHaveTextContent('2,756');
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+  });
+
+  it('shows when the numbers were last updated', () => {
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByText(/^Updated \d{1,2}:\d{2}/)).toBeInTheDocument();
+  });
+
+  it('shows the Resources insights panel and passes the refresh key down', () => {
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('region', { name: 'Resources' })).toBeInTheDocument();
+    expect(useGroupSummary).toHaveBeenCalledWith('resources', 'locationType', expect.any(Object), 0);
+  });
+
+  it('offers Try again when the first load fails, and refetches on click', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: null, isLoading: false, error: new Error('Backend unreachable') });
+
+    render(<Dashboard onNavigate={() => {}} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(useTableCounts).toHaveBeenLastCalledWith(1);
+  });
+
+  it('offers Try again when every table failed', () => {
+    const data = counts().map((table) => ({ ...table, count: null, error: new Error('boom') }));
+    useTableCounts.mockReturnValue({ data, isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  it('keeps the page, its filters and the Refresh button when a refresh fails', () => {
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: new Error('Backend unreachable') });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not refresh: Backend unreachable');
+    expect(screen.getByRole('region', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Resources' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
   });
 });

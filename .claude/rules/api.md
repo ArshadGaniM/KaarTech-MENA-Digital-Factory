@@ -84,6 +84,8 @@ GET /sessions/messages?limit=20&offset=0
 ```
 Response includes `total`; master-data list routes also include `activeTotal`, which leaves out soft-deleted rows. Default `limit` is 20, max is 100 — enforced in the route handler.
 
+**Aggregate routes are not paginated.** `GET /v1/<table>/summary?groupBy=<field>` returns grouped counts, largest first, capped at 100 groups with no `limit` or `offset`. Its `total` still counts every matching row, including groups past the cap.
+
 ## Authentication
 - All routes except `/health` and `/auth/*` require a valid bearer token.
 - Use dependency-injection style auth checks — never inline in each route.

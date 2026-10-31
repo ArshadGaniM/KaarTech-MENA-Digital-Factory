@@ -32,6 +32,6 @@ async function fetchTableCounts() {
   });
 }
 
-export function useTableCounts() {
-  return useAsyncResource(fetchTableCounts, []);
+export function useTableCounts(refreshKey = 0) {
+  return useAsyncResource(fetchTableCounts, [refreshKey]);
 }
