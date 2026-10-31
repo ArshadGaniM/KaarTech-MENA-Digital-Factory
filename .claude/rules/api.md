@@ -12,7 +12,9 @@
 - **Verbs only for non-CRUD actions**: `/v1/<table>/:id/restore`.
 - No trailing slashes.
 - A new master-data table gets its routes from its descriptor in
-  `backend/src/masterDataTables.js`. Do not hand-write the five standard routes.
+  `backend/src/masterDataTables.js`. Do not hand-write the standard routes.
+  `/v1/team-members` is the one older hand-written router, with its own schema in
+  `teamMemberSchema.js`.
 
 ```
 GET    /v1/<table>                      → list (limit, offset, q, equality filters)
@@ -47,7 +49,7 @@ POST   /v1/<table>/:id/restore          → undo a soft delete
 | No content (delete) | 204 |
 | Validation error, unknown field, bad id | 422 |
 | Not found | 404 |
-| Missing or wrong internal API key | 401 |
+| Missing or wrong internal API key, or no key set on the server | 401 |
 | State conflict (restore of a live row) | 409 |
 | Too many open streams | 503 |
 | Server error | 500 |

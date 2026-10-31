@@ -12,7 +12,8 @@
   - `created_at` and `updated_at` default to `now()`. A `set_updated_at()` trigger keeps
     `updated_at` current. Reuse that function, do not redefine it.
   - `created_by` and `updated_by` are `text not null`.
-  - `deleted_at` is null for live rows. Deleting sets it. Nothing is hard-deleted.
+  - `deleted_at` is null for live rows. Deleting sets it. Master data is never
+    hard-deleted. The one exception is `/v1/team-members`, an older hand-written route.
 - A new master-data table also needs a descriptor in `backend/src/masterDataTables.js`.
   The routes, validation and docs come from that descriptor.
 
@@ -27,6 +28,8 @@
 - Table and column names in a query come only from the descriptors, never from a
   request. That is the one place interpolation is allowed.
 - Reads filter live rows with `deleted_at is null` unless the route says otherwise.
+  `GET /v1/<table>` and `GET /v1/<table>/:id` return soft-deleted rows too (flagged
+  `markedDeleted: "Yes"`), and `activeTotal` counts live rows only.
 - Paginate any query that can return a large result set — never fetch unbounded rows.
   List routes use `limit` and `offset`. Grouped counts are capped at 100 groups.
 - Reuse the helpers in `backend/src/masterDataSchema.js` before writing new SQL by hand.
@@ -65,7 +68,7 @@
 | Index | `ix_<table>_<col>` | `ix_resources_name` |
 | Unique index | `ux_<table>_<col>_live` for live rows. Older ones use `ix_` | `ux_departments_floor_number_live` |
 | Foreign key | `fk_<table>_<ref_table>` | `fk_teams_departments` |
-| Check constraint | `ck_<table>_<col>_<rule>` | `ck_departments_floor_number_range` |
+| Check constraint | `ck_<table>_<col>_<rule>`. Migrations up to 0006 use `<table>_<col>_length` | `ck_departments_floor_number_range` |
 | Trigger | `trg_<table>_<what>` | `trg_practices_updated_at` |
 
 ## Transactions
