@@ -63,6 +63,7 @@ function ResourceInsights({ refreshKey, onNavigate }) {
         error={byLocation.error}
         errorLabel="Could not load the location split"
         hasData={byLocation.data !== null}
+        isLoading={byLocation.isLoading}
         onRetry={retry}
       >
         {byLocation.data && (
@@ -85,6 +86,7 @@ function ResourceInsights({ refreshKey, onNavigate }) {
         error={byDesignation.error}
         errorLabel="Could not load the designations"
         hasData={byDesignation.data !== null}
+        isLoading={byDesignation.isLoading}
         onRetry={retry}
       >
         {shown.length === 0 ? (

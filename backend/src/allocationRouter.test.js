@@ -127,7 +127,8 @@ test("GET /v1/allocation/summary rejects an unknown bucket, an unknown key, and 
     [`?position=${"a".repeat(256)}`, "position"],
     ["?position=Lead%00Consultant", "position"],
     ["?position=a&position=b", "position"],
-    ["?position[x]=y", "position"],
+    ["?position[x]=y", "position[x]"],
+    ["?bucket[]=full", "bucket[]"],
   ];
   for (const [query, field] of cases) {
     const res = await fetch(`${baseUrl}/v1/allocation/summary${query}`);
@@ -174,29 +175,47 @@ test("GET /v1/allocation/summary treats a bucket with no people as zero and an e
   );
 });
 
-test("GET /v1/allocation/summary rejects a __proto__ key instead of ignoring it, when the query parser keeps that key", async () => {
-  // Express's default parser drops `__proto__` before the router sees it.
-  // The simple parser keeps it, which is the case this guards.
-  const app = express();
-  app.set("query parser", "simple");
-  app.use("/v1/allocation", createAllocationRouter({ query: fakeQuery }));
-  app.use((err, req, res, _next) => {
-    res.status(err.status || 500).json({ error: { code: err.code || "internal_error", message: err.message, details: err.details || {} } });
+// The router reads the raw query string, so none of this depends on how
+// Express parses it. Express's default parser silently removes `__proto__`
+// and the simple one keeps it, and `false` leaves req.query empty.
+for (const parser of ["extended", "simple", false]) {
+  test(`GET /v1/allocation/summary rejects bad filters whatever the query parser is (${parser})`, async () => {
+    const app = express();
+    app.set("query parser", parser);
+    app.use("/v1/allocation", createAllocationRouter({ query: fakeQuery }));
+    app.use((err, req, res, _next) => {
+      res.status(err.status || 500).json({ error: { code: err.code || "internal_error", message: err.message, details: err.details || {} } });
+    });
+    const local = http.createServer(app);
+    await new Promise((resolve) => local.listen(0, resolve));
+    const base = `http://127.0.0.1:${local.address().port}/v1/allocation/summary`;
+    reset();
+
+    try {
+      for (const bad of ["?__proto__=x", "?__proto__[a]=x", "?bucket=nope", "?bucket=full&bucket=none", "?constructor=1", "?position[x]=y"]) {
+        const res = await fetch(base + bad);
+        assert.equal(res.status, 422, `${parser} ${bad}`);
+      }
+      assert.equal(calls.length, 0);
+
+      const ok = await fetch(`${base}?bucket=full&position=Lead%20Consultant`);
+      assert.equal(ok.status, 200, `${parser} valid request`);
+      assert.deepEqual(calls.find((c) => c.sql.includes("select pe.bucket")).params, ["Lead Consultant"]);
+      assert.deepEqual(calls.find((c) => c.sql.includes("select pl.position")).params, ["full"]);
+    } finally {
+      await new Promise((resolve) => local.close(resolve));
+    }
   });
-  const local = http.createServer(app);
-  await new Promise((resolve) => local.listen(0, resolve));
+}
+
+test("GET /v1/allocation/summary reports a __proto__ key as an own key of the details", async () => {
   reset();
 
-  try {
-    const res = await fetch(`http://127.0.0.1:${local.address().port}/v1/allocation/summary?__proto__=x`);
-    const body = await res.json();
+  const res = await fetch(`${baseUrl}/v1/allocation/summary?__proto__=x`);
+  const body = await res.json();
 
-    assert.equal(res.status, 422);
-    assert.ok(Object.hasOwn(body.error.details, "__proto__"));
-    assert.equal(calls.length, 0);
-  } finally {
-    await new Promise((resolve) => local.close(resolve));
-  }
+  assert.equal(res.status, 422);
+  assert.ok(Object.hasOwn(body.error.details, "__proto__"));
 });
 
 test("GET /v1/allocation/summary shortens a very long unknown key in its error", async () => {

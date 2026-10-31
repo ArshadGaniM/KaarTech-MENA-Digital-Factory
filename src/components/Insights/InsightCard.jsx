@@ -5,9 +5,9 @@ import styles from './Insights.module.css';
 // failed refresh has both an error and data: the error shows above the
 // chart and the chart stays. With no data yet, the card shows Loading until
 // the first result or error arrives.
-function InsightCard({ title, error, errorLabel, hasData, onRetry, children }) {
+function InsightCard({ title, error, errorLabel, hasData, isLoading = false, onRetry, children }) {
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${isLoading ? styles.busy : ''}`} aria-busy={isLoading}>
       <h3 className={styles.cardTitle}>{title}</h3>
       {error && (
         <div className={styles.errorRow}>
@@ -29,6 +29,7 @@ InsightCard.propTypes = {
   error: PropTypes.instanceOf(Error),
   errorLabel: PropTypes.string.isRequired,
   hasData: PropTypes.bool.isRequired,
+  isLoading: PropTypes.bool,
   onRetry: PropTypes.func.isRequired,
   children: PropTypes.node,
 };

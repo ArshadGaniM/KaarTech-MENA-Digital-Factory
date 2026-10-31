@@ -91,6 +91,22 @@ describe('InsightCard', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it('marks itself busy while new numbers load, and not otherwise', () => {
+    const { rerender, container } = render(
+      <InsightCard {...base} error={null} hasData isLoading>
+        <p>the chart</p>
+      </InsightCard>
+    );
+    expect(container.firstChild).toHaveAttribute('aria-busy', 'true');
+
+    rerender(
+      <InsightCard {...base} error={null} hasData isLoading={false}>
+        <p>the chart</p>
+      </InsightCard>
+    );
+    expect(container.firstChild).toHaveAttribute('aria-busy', 'false');
+  });
+
   it('keeps the chart when a refresh failed, with the error above it', () => {
     render(
       <InsightCard {...base} error={new Error('boom')} hasData>

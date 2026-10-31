@@ -153,8 +153,8 @@ narrows `buckets` to resources deployed to that position name, and
 `?bucket=` narrows `positions` to resources in that bucket. Any other query
 key (also a `__proto__` key), an unknown `bucket`, a `bucket` or `position`
 given twice, or a `position` that is empty, longer than 255 characters or
-contains a NUL byte is a 422 `validation_error`. Values are
-bound parameters. A deployment whose position is soft-deleted still counts
+contains a NUL byte is a 422 `validation_error`. The query string is read raw, so none of this depends on how Express
+parses it. Values are bound parameters. A deployment whose position is soft-deleted still counts
 toward its resource's bucket, but that position's name is never listed.
 
 ### `/v1/control-center`

@@ -74,6 +74,7 @@ function AllocationInsights({ refreshKey, onNavigate }) {
         error={error}
         errorLabel="Could not load the allocation"
         hasData={data !== null}
+        isLoading={isLoading}
         onRetry={retry}
       >
         {data && (
@@ -86,6 +87,7 @@ function AllocationInsights({ refreshKey, onNavigate }) {
         error={error}
         errorLabel="Could not load the positions"
         hasData={data !== null}
+        isLoading={isLoading}
         onRetry={retry}
       >
         {positions.length === 0 ? (

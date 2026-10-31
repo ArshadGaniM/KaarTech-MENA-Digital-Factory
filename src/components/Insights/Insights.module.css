@@ -73,6 +73,11 @@
   border-radius: 10px;
 }
 
+.busy {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
 .cardTitle {
   font-size: 15px;
 }
