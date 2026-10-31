@@ -39,6 +39,22 @@ test("month helpers", () => {
   for (const bad of ["2026-13", "2026-1", "10-2026", "", undefined, "2026-10-01"]) assert.ok(!isValidMonth(bad), String(bad));
 });
 
+test("month windows roll over the year and follow leap years", () => {
+  const dec = monthWindow("2026-12");
+  assert.equal(dec.days, 31);
+  assert.equal(new Date(dec.end).toISOString().slice(0, 10), "2026-12-31");
+  assert.equal(monthWindow("2028-02").days, 29);
+  assert.ok(!isValidMonth("0099-05"));
+});
+
+test("an assignment that ends on the first day, or starts on the last day, covers exactly one day", () => {
+  const oneDay = (start, end) =>
+    teamOf(buildControlCenter({ ...base, assignments: [{ teamCode: "TEAM-001", projectId: "P", start, end }] }), "TEAM-001").monthCoveragePercent;
+  assert.equal(oneDay("2026-09-01", "2026-10-01"), Math.round((1 / 31) * 100));
+  assert.equal(oneDay("2026-10-31", "2026-12-01"), Math.round((1 / 31) * 100));
+  assert.equal(oneDay("2026-09-01", "2026-09-30"), 0);
+});
+
 test("members and seats count Consultants and Lead Consultants, never the Module Lead", () => {
   const team = teamOf(buildControlCenter(base), "TEAM-001");
   assert.equal(team.memberCount, 2);

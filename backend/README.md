@@ -122,6 +122,44 @@ a non-UUID string still can't be written — also return a 422
 `validation_error` naming the field, not a raw 500. See
 `isInvalidTextRepresentation`/`invalidValueError` in `src/errors.js`.
 
+### `/v1/control-center`
+
+Read-only (no auth, like every GET) data for the frontend's Control Center
+page. Code in `src/controlCenter.js` and `src/controlCenterRouter.js`.
+
+| Route | Returns |
+|---|---|
+| `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, teams: [...] }] } }`. Each team carries its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by main competency, then code. |
+| `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. 404 `team_not_found` for an unknown code. |
+| `GET /v1/control-center/stream` | Server-sent events. Sends `retry: 5000`, then one `event: changed` (`data: {}`) per burst of writes to the tables below, and a `: keep-alive` comment every 25 s. |
+
+`month` defaults to the current UTC month. A value that is not `YYYY-MM`
+is a 422 `validation_error`.
+
+Hour rules, all measured in the selected month:
+
+- A **seat** is a live Consultant or Lead Consultant position. Module Lead
+  positions are never counted.
+- **Available hours** = seats x 160.
+- **Allocated hours** = for each seat with someone deployed, 160 scaled by the
+  deployment's `allocation_percentage` (a seat never exceeds 160).
+- **Utilized hours** = allocated hours x the share of the month's days that
+  fall inside any of the team's project assignments (overlaps count once).
+- `status`: `unstaffed` (no allocated hours), `full` (utilized equals
+  allocated), `unused` (nothing utilized), otherwise `partial`.
+
+The stream route is unauthenticated, so at most 100 streams may be open at
+once. Past that it answers 503 `too_many_streams`. The snapshot and team
+routes share one set of table queries for a second and drop it as soon as a
+change arrives, so many open pages cost one load, not one each.
+
+The stream is fed by `LISTEN control_center_changed` on its own connection
+(`src/changeFeed.js`). The channel is notified by migration `0023`'s
+triggers. Without that migration nothing is notified, and the frontend falls
+back to refreshing every 30 seconds. `LISTEN` works on the session-mode
+pooler (`:5432`) this API already uses, but not on the transaction-mode
+pooler (`:6543`).
+
 ### `/v1/schema/entity-relationships`
 
 `GET /v1/schema/entity-relationships` (no auth, no params) returns
@@ -248,6 +286,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
 | `0020_add_resource_deployment_allocation.sql` | `resource_deployment.allocation_percentage numeric(5,2) not null` with a `ck_resource_deployment_allocation_percentage` check (above 0, up to 100). Existing rows backfilled to 100; the default is dropped afterwards so new rows must state a percentage. |
 | `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule. The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
+| `0023_control_center_notify.sql` | `notify_control_center_changed()` plus a statement-level `trg_control_center_notify` trigger on `departments`, `teams`, `positions`, `competencies`, `resource_deployment`, `project_assignments`, `projects` and `resources`. Each insert, update or delete sends one `NOTIFY control_center_changed`, which the backend turns into the Control Center stream's `changed` event. Not applied automatically. |
 | `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
@@ -284,6 +323,11 @@ Per database.md, never edit a committed migration — add a new one instead
 replaces `0001`'s `deleted_at` indexes rather than rewriting that file).
 
 ## Production database connection
+
+`DATABASE_SSL_CA` (optional): the database provider's CA certificate as PEM
+text. When set, every connection, including the Control Center's `LISTEN`
+connection, verifies the server certificate against it. When unset the
+connections stay encrypted but unverified, as before (`src/dbSsl.js`).
 
 Deployed on Render (`kaartech-mena-digital-factory-api`) as
 `DATABASE_URL`, pointed at Supabase's **session pooler**, not the direct

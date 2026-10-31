@@ -50,17 +50,27 @@ describe('ControlCenter', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading…');
   });
 
-  it('shows an alert when the first load fails', () => {
+  it('shows an alert, and keeps the month picker, when the load fails with no data', () => {
     useControlCenter.mockReturnValue({ data: null, isLoading: false, error: new Error('Backend unreachable'), updatedAt: null });
     render(<ControlCenter />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load the factory: Backend unreachable');
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeInTheDocument();
+    expect(screen.getByText('Not live')).toBeInTheDocument();
   });
 
-  it('keeps showing the last data and says so when a refresh fails', () => {
+  it('keeps showing the last data, and says it is not live, when a refresh fails', () => {
     useControlCenter.mockReturnValue({ ...loaded(), error: new Error('Backend unreachable') });
     render(<ControlCenter />);
     expect(screen.getByRole('alert')).toHaveTextContent('showing the last data');
+    expect(screen.getByText(/Not live, last updated 14:03:22/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Live,/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
+  });
+
+  it('raises an alert when the backend returns no departments at all', () => {
+    useControlCenter.mockReturnValue(loaded({ month: '2026-10', departments: [] }));
+    render(<ControlCenter />);
+    expect(screen.getByRole('alert')).toHaveTextContent('no departments');
   });
 
   it('shows one floor per department in sequence, named from the data, and marks a missing department', () => {

@@ -11,8 +11,11 @@ function TeamDialog({ code, month, onClose }) {
   const { data: team, isLoading, error } = useTeamDetail(code, month);
   const closeRef = useRef(null);
 
+  // Focus moves into the dialog on open and back to the card that opened it.
   useEffect(() => {
+    const opener = document.activeElement;
     closeRef.current?.focus();
+    return () => opener?.focus?.();
   }, []);
 
   useEffect(() => {
@@ -67,7 +70,7 @@ function TeamDialog({ code, month, onClose }) {
                 <span className={styles.hoursLabel}>Utilized</span>
                 <span className={styles.statValue}>{formatHours(team.utilizedHours)}</span>
               </li>
-              <li className={`${styles.statusPill} ${styles[`card_${team.status}`]}`}>{STATUS_LABELS[team.status]}</li>
+              <li className={`${styles.statusPill} ${styles[`card${team.status[0].toUpperCase()}${team.status.slice(1)}`]}`}>{STATUS_LABELS[team.status]}</li>
             </ul>
 
             {team.competencies.length > 0 && (
@@ -80,7 +83,7 @@ function TeamDialog({ code, month, onClose }) {
             ) : (
               <ul className={styles.projectList}>
                 {team.projects.map((project) => (
-                  <li key={`${project.projectId}-${project.start}`}>
+                  <li key={`${project.projectId}-${project.start}-${project.end}`}>
                     {project.projectName ?? project.projectId}, {project.start} to {project.end}
                   </li>
                 ))}

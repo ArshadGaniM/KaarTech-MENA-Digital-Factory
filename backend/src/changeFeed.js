@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import pg from "pg";
+import { dbSsl } from "./dbSsl.js";
 
 // Turns the database's NOTIFY signal (migration 0023) into "changed" events.
 // It listens on its own connection because a pooled one cannot hold a
@@ -9,12 +10,17 @@ import pg from "pg";
 export const CHANNEL = "control_center_changed";
 const DEBOUNCE_MS = 300;
 const MAX_RETRY_MS = 30_000;
+// One listener per open page stream; the router caps those well below this.
+const MAX_LISTENERS = 200;
 
 export function createChangeFeed({ connectionString = process.env.DATABASE_URL, ClientClass = pg.Client } = {}) {
   const emitter = new EventEmitter();
+  emitter.setMaxListeners(MAX_LISTENERS);
   let timer = null;
   let retryMs = 1000;
   let stopped = false;
+  let client = null;
+  let warnedNoConnection = false;
 
   const notifyChanged = () => {
     clearTimeout(timer);
@@ -22,8 +28,13 @@ export function createChangeFeed({ connectionString = process.env.DATABASE_URL, 
   };
 
   async function connect() {
-    if (stopped || !connectionString) return;
-    const client = new ClientClass({ connectionString, ssl: { rejectUnauthorized: false } });
+    if (stopped) return;
+    if (!connectionString) {
+      if (!warnedNoConnection) console.warn("Change feed disabled: DATABASE_URL is not set, pages will poll instead.");
+      warnedNoConnection = true;
+      return;
+    }
+    client = new ClientClass({ connectionString, ssl: dbSsl() });
     const reconnect = () => {
       if (stopped) return;
       setTimeout(connect, retryMs).unref();
@@ -49,6 +60,7 @@ export function createChangeFeed({ connectionString = process.env.DATABASE_URL, 
     stop() {
       stopped = true;
       clearTimeout(timer);
+      client?.end().catch(() => {});
     },
     onChange(listener) {
       emitter.on("changed", listener);

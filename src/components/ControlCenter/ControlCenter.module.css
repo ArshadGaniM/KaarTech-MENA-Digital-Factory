@@ -110,6 +110,13 @@
   background: var(--color-status-partial-ink);
 }
 
+.liveDotError {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
 /* Building */
 .building {
   width: 100%;
@@ -259,22 +266,22 @@
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
-.card_full {
+.cardFull {
   background: linear-gradient(var(--color-status-full), color-mix(in srgb, var(--color-status-full) 80%, white));
   --status-ink: var(--color-status-full-ink);
 }
 
-.card_partial {
+.cardPartial {
   background: linear-gradient(var(--color-status-partial), color-mix(in srgb, var(--color-status-partial) 80%, white));
   --status-ink: var(--color-status-partial-ink);
 }
 
-.card_unused {
+.cardUnused {
   background: linear-gradient(var(--color-status-unused), color-mix(in srgb, var(--color-status-unused) 80%, white));
   --status-ink: var(--color-status-unused-ink);
 }
 
-.card_unstaffed {
+.cardUnstaffed {
   background: linear-gradient(var(--color-status-unstaffed), color-mix(in srgb, var(--color-status-unstaffed) 80%, white));
   --status-ink: var(--color-status-unstaffed-ink);
 }

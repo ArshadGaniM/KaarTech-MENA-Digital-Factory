@@ -5,6 +5,7 @@
 create or replace function public.notify_control_center_changed()
 returns trigger
 language plpgsql
+set search_path = pg_catalog
 as $$
 begin
   perform pg_notify('control_center_changed', tg_table_name);

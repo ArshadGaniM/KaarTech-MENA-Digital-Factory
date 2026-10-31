@@ -12,7 +12,7 @@
 export const HOURS_PER_PERSON = 160;
 const COUNTED_POSITIONS = new Set(["Consultant", "Lead Consultant"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+const MONTH_PATTERN = /^[12]\d{3}-(0[1-9]|1[0-2])$/;
 
 const toUtcDay = (isoDate) => {
   const [year, month, day] = isoDate.split("-").map(Number);
@@ -147,7 +147,6 @@ export function buildControlCenter({ departments, teams, positions, deployments,
   };
 
   return {
-    hoursPerPerson: HOURS_PER_PERSON,
     month,
     departments: departments.map((department) => ({
       code: department.code,

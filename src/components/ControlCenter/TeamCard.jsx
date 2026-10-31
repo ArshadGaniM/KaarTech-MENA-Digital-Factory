@@ -12,7 +12,7 @@ function TeamCard({ team, onOpen }) {
     <li>
       <button
         type="button"
-        className={`${styles.card} ${styles[`card_${team.status}`]}`}
+        className={`${styles.card} ${styles[`card${team.status[0].toUpperCase()}${team.status.slice(1)}`]}`}
         aria-label={`${team.name}, ${team.code}. ${STATUS_LABELS[team.status]}. Open details`}
         onClick={() => onOpen(team.code)}
       >
