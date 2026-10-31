@@ -17,7 +17,9 @@ export function useCountUp(target, duration = 700) {
     const startedAt = performance.now();
     let frame;
     const tick = (now) => {
-      const progress = Math.min(1, (now - startedAt) / duration);
+      // rAF timestamps can precede performance.now() by a frame, which would
+      // give a negative progress and a count of -0.
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
       const next = Math.round(from + (target - from) * (1 - (1 - progress) ** 3));
       fromRef.current = next;
       setShown(next);

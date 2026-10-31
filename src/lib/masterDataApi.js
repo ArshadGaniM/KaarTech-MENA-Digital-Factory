@@ -248,18 +248,20 @@ export async function fetchGroupSummary(route, groupBy, filters = {}) {
   const res = await fetch(`${BACKEND_URL}/v1/${route}/summary?${params}`);
   const payload = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(payload?.error?.message || `Failed to load the ${route} summary`);
+    throw new Error(payload?.error?.message || `Failed to load the ${route} summary (HTTP ${res.status})`);
   }
   const groups = payload?.data;
-  const valid = Array.isArray(groups) && groups.every((group) => Number.isFinite(group?.count) && group.count >= 0);
+  // `total` is required: summing the groups instead would quietly understate
+  // it when the backend cuts the group list off, or hide an old backend.
+  const valid =
+    Array.isArray(groups) &&
+    groups.every((group) => Number.isFinite(group?.count) && group.count >= 0) &&
+    Number.isFinite(payload.total) &&
+    payload.total >= 0;
   if (!valid) {
     throw new Error(`${route} summary returned a malformed response.`);
   }
-  const mapped = groups.map(({ value, count }) => ({ value: value ?? null, count }));
-  // The backend counts every matching row. Summing the groups would
-  // understate it when the group list was cut off.
-  const total = Number.isFinite(payload.total) && payload.total >= 0 ? payload.total : mapped.reduce((sum, group) => sum + group.count, 0);
-  return { groups: mapped, total };
+  return { groups: groups.map(({ value, count }) => ({ value: value ?? null, count })), total: payload.total };
 }
 
 // Pages through the backend's own max page size until every row has been

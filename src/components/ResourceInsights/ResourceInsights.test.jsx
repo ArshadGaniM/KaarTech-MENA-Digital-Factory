@@ -165,6 +165,37 @@ describe('ResourceInsights', () => {
     expect(screen.getByRole('button', { name: /Role 1/ })).toBeInTheDocument();
   });
 
+  it('keeps a chart on screen when its refresh fails, with an error and a retry', async () => {
+    const user = userEvent.setup();
+    useGroupSummary.mockImplementation((_route, groupBy) =>
+      groupBy === 'locationType'
+        ? { ...done([{ value: 'Offshore', count: 700 }]), error: new Error('Backend unreachable') }
+        : done(designations(2))
+    );
+    renderInsights();
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+    expect(screen.getByRole('button', { name: /Offshore 700/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(useGroupSummary).toHaveBeenLastCalledWith('resources', 'designation', expect.any(Object), 1);
+    expect(useGroupSummary).toHaveBeenCalledWith('resources', 'locationType', expect.any(Object), 1);
+  });
+
+  it('offers Try again when a chart has no data at all', () => {
+    useGroupSummary.mockImplementation((_route, groupBy) =>
+      groupBy === 'designation'
+        ? { data: null, isLoading: false, error: new Error('Backend unreachable') }
+        : done([{ value: 'Offshore', count: 1 }])
+    );
+
+    renderInsights();
+
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText('Loading…', { selector: 'p' })).not.toBeInTheDocument();
+  });
+
   it('does not show a match count it cannot trust when a chart failed', () => {
     useGroupSummary.mockImplementation((_route, groupBy) =>
       groupBy === 'locationType'

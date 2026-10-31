@@ -18,8 +18,20 @@ const labelOf = (value) => value ?? 'Not set';
 // never by its own, so every slice stays visible and can be switched.
 function ResourceInsights({ refreshKey, onNavigate }) {
   const [filters, setFilters] = useState(NO_FILTERS);
-  const byLocation = useGroupSummary('resources', 'locationType', { designation: filters.designation }, refreshKey);
-  const byDesignation = useGroupSummary('resources', 'designation', { locationType: filters.locationType }, refreshKey);
+  // Both only ever increase, so their sum changes on every retry or refresh.
+  const [retries, setRetries] = useState(0);
+  const byLocation = useGroupSummary('resources', 'locationType', { designation: filters.designation }, refreshKey + retries);
+  const byDesignation = useGroupSummary('resources', 'designation', { locationType: filters.locationType }, refreshKey + retries);
+  const errorNote = (message) => (
+    <div className={styles.errorRow}>
+      <p className={styles.error} role="alert">
+        {message}
+      </p>
+      <button type="button" className={styles.link} onClick={() => setRetries((count) => count + 1)}>
+        Try again
+      </button>
+    </div>
+  );
 
   const toggle = (field, value) => setFilters((current) => ({ ...current, [field]: current[field] === value ? null : value }));
   const clear = (field) => setFilters((current) => ({ ...current, [field]: null }));
@@ -84,12 +96,9 @@ function ResourceInsights({ refreshKey, onNavigate }) {
       <div className={styles.cards}>
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Onsite and offshore</h3>
-          {byLocation.error ? (
-            <p className={styles.error} role="alert">
-              Could not load the location split: {byLocation.error.message}
-            </p>
-          ) : byLocation.data === null ? (
-            <p className={styles.muted}>Loading…</p>
+          {byLocation.error && errorNote(`Could not load the location split: ${byLocation.error.message}`)}
+          {byLocation.data === null ? (
+            !byLocation.error && <p className={styles.muted}>Loading…</p>
           ) : (
             <DonutChart
               segments={byLocation.data.groups.map((group) => ({
@@ -107,12 +116,9 @@ function ResourceInsights({ refreshKey, onNavigate }) {
 
         <div className={styles.card}>
           <h3 className={styles.cardTitle}>Top designations</h3>
-          {byDesignation.error ? (
-            <p className={styles.error} role="alert">
-              Could not load the designations: {byDesignation.error.message}
-            </p>
-          ) : byDesignation.data === null ? (
-            <p className={styles.muted}>Loading…</p>
+          {byDesignation.error && errorNote(`Could not load the designations: ${byDesignation.error.message}`)}
+          {byDesignation.data === null ? (
+            !byDesignation.error && <p className={styles.muted}>Loading…</p>
           ) : shown.length === 0 ? (
             <p className={styles.muted}>No resources match.</p>
           ) : (

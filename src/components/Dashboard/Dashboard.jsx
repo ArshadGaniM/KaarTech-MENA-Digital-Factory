@@ -86,7 +86,7 @@ function Dashboard({ onNavigate }) {
               type="button"
               className={styles.refreshButton}
               disabled={isLoading}
-              onClick={() => setRefreshKey((key) => key + 1)}
+              onClick={retry}
             >
               {isLoading ? 'Refreshing…' : 'Refresh'}
             </button>

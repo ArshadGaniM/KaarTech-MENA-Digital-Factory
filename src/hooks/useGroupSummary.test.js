@@ -43,6 +43,28 @@ describe('useGroupSummary', () => {
     expect(fetchGroupSummary).toHaveBeenCalledTimes(1);
   });
 
+  it('never reports a result as current for filters it was not fetched with', async () => {
+    const renders = [];
+    const { result, rerender } = renderHook(
+      ({ filters }) => {
+        const summary = useGroupSummary('resources', 'designation', filters);
+        renders.push({ wanted: filters.locationType, loading: summary.isLoading, fetchedFor: summary.data?.key });
+        return summary;
+      },
+      { initialProps: { filters: { locationType: null } } }
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    rerender({ filters: { locationType: 'Offshore' } });
+    await waitFor(() => expect(result.current.data.key).toContain('Offshore'));
+
+    // Every render that asked for Offshore but still held the old result must say it is loading.
+    const staleButQuiet = renders.filter(
+      (entry) => entry.wanted === 'Offshore' && entry.fetchedFor && !entry.fetchedFor.includes('Offshore') && !entry.loading
+    );
+    expect(staleButQuiet).toEqual([]);
+  });
+
   it('surfaces a failure as error', async () => {
     fetchGroupSummary.mockRejectedValue(new Error('Backend unreachable'));
 

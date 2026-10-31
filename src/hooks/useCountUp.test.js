@@ -55,6 +55,16 @@ describe('useCountUp', () => {
       expect(frames).toHaveLength(0);
     });
 
+    it('never shows -0 when the first frame timestamp is earlier than the start time', () => {
+      performance.now.mockReturnValue(100);
+      const { result } = renderHook(() => useCountUp(100, 1000));
+
+      act(() => frames.shift()(50));
+
+      expect(Object.is(result.current, -0)).toBe(false);
+      expect(result.current).toBeGreaterThanOrEqual(0);
+    });
+
     it('cancels the pending frame when the component unmounts', () => {
       const cancel = vi.fn();
       vi.stubGlobal('cancelAnimationFrame', cancel);

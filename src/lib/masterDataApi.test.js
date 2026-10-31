@@ -377,10 +377,32 @@ describe('fetchGroupSummary', () => {
     await expect(fetchGroupSummary('resources', 'nope')).rejects.toThrow('groupBy must be one of: name.');
   });
 
+  it("includes the HTTP status when an error body is not JSON, such as a proxy 502", async () => {
+    fetch.mockResolvedValue({ ok: false, status: 502, json: () => Promise.reject(new SyntaxError('Unexpected token <')) });
+
+    await expect(fetchGroupSummary('resources', 'designation')).rejects.toThrow('HTTP 502');
+  });
+
   it.each([
-    ['not an array', { data: 'x' }],
-    ['a negative count', { data: [{ value: 'a', count: -1 }] }],
-    ['a non-numeric count', { data: [{ value: 'a', count: '3' }] }],
+    ['missing', { data: [{ value: 'a', count: 3 }] }],
+    ['negative', { data: [{ value: 'a', count: 3 }], total: -1 }],
+    ['a string', { data: [{ value: 'a', count: 3 }], total: '3' }],
+  ])('rejects a response whose total is %s instead of summing the groups', async (_label, payload) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) });
+
+    await expect(fetchGroupSummary('resources', 'designation')).rejects.toThrow(/malformed/);
+  });
+
+  it('keeps the backend total even when it is larger than the groups it sent', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ value: 'a', count: 3 }], total: 500 }) });
+
+    expect((await fetchGroupSummary('resources', 'designation')).total).toBe(500);
+  });
+
+  it.each([
+    ['not an array', { data: 'x', total: 1 }],
+    ['a negative count', { data: [{ value: 'a', count: -1 }], total: 1 }],
+    ['a non-numeric count', { data: [{ value: 'a', count: '3' }], total: 1 }],
     ['no body data', {}],
   ])('rejects a malformed response (%s)', async (_label, payload) => {
     fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) });
