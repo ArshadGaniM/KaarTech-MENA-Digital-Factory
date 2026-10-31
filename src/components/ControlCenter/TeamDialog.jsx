@@ -8,8 +8,8 @@ import styles from './ControlCenter.module.css';
 
 const percent = (value) => (value === null ? '—' : `${value}%`);
 
-function TeamDialog({ code, month, onClose }) {
-  const { data: team, isLoading, error } = useTeamDetail(code, month);
+function TeamDialog({ code, month, refreshKey, updatedAt, onClose }) {
+  const { data: team, isLoading, error } = useTeamDetail(code, month, refreshKey);
   const closeRef = useRef(null);
 
   // Focus moves into the dialog on open and back to the card that opened it.
@@ -48,17 +48,27 @@ function TeamDialog({ code, month, onClose }) {
           </button>
         </header>
 
-        {isLoading ? (
+        {!team && isLoading ? (
           <p role="status" aria-live="polite">
             Loading…
           </p>
-        ) : error ? (
+        ) : !team ? (
           <p className={styles.statusError} role="alert">
             Could not load the team: {error.message}
           </p>
         ) : (
           <>
-            <ul className={styles.dialogStats}>
+            {error ? (
+              <p className={styles.statusError} role="alert">
+                Could not refresh, showing the last data: {error.message}
+              </p>
+            ) : (
+              <p className={styles.dialogLive} role="status" aria-live="polite">
+                <span className={isLoading ? styles.liveDotBusy : styles.liveDot} aria-hidden="true" />
+                {isLoading ? 'Updating…' : `Live, updated ${updatedAt.toLocaleTimeString('en-GB')}`}
+              </p>
+            )}
+            <ul key={`${team.availableHours}-${team.allocatedHours}-${team.utilizedHours}`} className={`${styles.dialogStats} ${styles.dialogStatsFlash}`}>
               <li>
                 <span className={styles.hoursLabel}>Available</span>
                 <span className={styles.statValue}>{formatHours(team.availableHours)}</span>
@@ -132,6 +142,8 @@ function TeamDialog({ code, month, onClose }) {
 TeamDialog.propTypes = {
   code: PropTypes.string.isRequired,
   month: PropTypes.string.isRequired,
+  refreshKey: PropTypes.number.isRequired,
+  updatedAt: PropTypes.instanceOf(Date).isRequired,
   onClose: PropTypes.func.isRequired,
 };
 

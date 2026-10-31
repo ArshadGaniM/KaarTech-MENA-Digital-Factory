@@ -65,7 +65,13 @@ function ControlCenter() {
       </section>
       )}
 
-      {openTeam && <TeamDialog code={openTeam} month={month} onClose={() => setOpenTeam(null)} />}
+      {openTeam && <TeamDialog
+          code={openTeam}
+          month={month}
+          refreshKey={updatedAt.getTime()}
+          updatedAt={updatedAt}
+          onClose={() => setOpenTeam(null)}
+        />}
     </div>
   );
 }

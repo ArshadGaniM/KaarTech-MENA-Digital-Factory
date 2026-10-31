@@ -483,6 +483,26 @@
   border-radius: 999px;
 }
 
+.dialogLive {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* The figures sweep with a light highlight each time they change. */
+.dialogStatsFlash {
+  animation: statsFlash 1.2s ease-out 1;
+}
+
+@keyframes statsFlash {
+  from {
+    background: var(--color-status-partial);
+  }
+}
+
 .dialogLine {
   margin: 0 0 var(--space-1);
   font-size: 14px;
@@ -590,6 +610,7 @@
   .conveyor,
   .meterFill,
   .flash,
+  .dialogStatsFlash,
   .liveDot,
   .overlay,
   .dialog,
