@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MasterDataTable from './MasterDataTable';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
@@ -471,5 +471,71 @@ describe('MasterDataTable column resize', () => {
     expect(removeSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
     removeSpy.mockRestore();
+  });
+
+  // FEAT-24: a search box above the table, sent to the backend once typing pauses.
+  describe('search', () => {
+    it('shows a search box and starts with no term', () => {
+      mockTable({ data: [{ id: '1', code: 'PR-1', name: 'x', markedDeleted: 'No' }] });
+
+      render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+      expect(screen.getByRole('searchbox', { name: 'Search practice records' })).toHaveValue('');
+      expect(useMasterDataTable).toHaveBeenLastCalledWith('practices', '');
+      expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+    });
+
+    it('sends the typed term once typing pauses, not on every keystroke', async () => {
+      vi.useFakeTimers();
+      try {
+        mockTable({ data: [] });
+        render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+        fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Nith' } });
+        fireEvent.change(screen.getByRole('searchbox'), { target: { value: '  Nithyasri ' } });
+        expect(useMasterDataTable).not.toHaveBeenLastCalledWith('practices', 'Nithyasri');
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(350);
+        });
+
+        expect(useMasterDataTable).toHaveBeenLastCalledWith('practices', 'Nithyasri');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('says no record matches the term when the search finds nothing', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+      await user.type(screen.getByRole('searchbox'), 'zzz');
+
+      expect(await screen.findByText('No records match "zzz".')).toBeInTheDocument();
+    });
+
+    it('Clear empties the box and removes the term', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+
+      await user.type(screen.getByRole('searchbox'), 'abc');
+      await user.click(screen.getByRole('button', { name: 'Clear' }));
+
+      expect(screen.getByRole('searchbox')).toHaveValue('');
+      await waitFor(() => expect(useMasterDataTable).toHaveBeenLastCalledWith('practices', ''));
+    });
+
+    it('clears the search when the table changes', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      const { rerender } = render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
+      await user.type(screen.getByRole('searchbox'), 'abc');
+
+      rerender(<MasterDataTable route="teams" columns={COLUMNS} singularLabel="Team" />);
+
+      expect(screen.getByRole('searchbox')).toHaveValue('');
+    });
   });
 });

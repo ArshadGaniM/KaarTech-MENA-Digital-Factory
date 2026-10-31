@@ -7,7 +7,46 @@
 .toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: var(--space-2, 8px);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-right: auto;
+  flex: 0 1 360px;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.searchInput::-webkit-search-cancel-button {
+  display: none;
+}
+
+.searchInput:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.searchClear {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .addButton {

@@ -38,7 +38,7 @@ same data at runtime rather than reading source.
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|
-| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. Returns `total` (all rows, for pagination) and `activeTotal` (live rows only). |
+| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. Returns `total` (all rows, for pagination) and `activeTotal` (live rows only). Optional `?q=` (up to 100 characters) keeps only rows where any cell — id, code, any field, a looked-up name or the audit names — contains the text or has a word that nearly matches it (a near miss such as `Nithyasri` finds `Nithyashri S`; fuzzy matching needs 4 or more characters). Exact hits sort first, and `total`/`activeTotal` then count the matches. |
 | GET | `/v1/<table>/:id` | — | none | 404 only if the id doesn't exist — returns a soft-deleted row too. |
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
 | PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |
@@ -248,6 +248,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
 | `0020_add_resource_deployment_allocation.sql` | `resource_deployment.allocation_percentage numeric(5,2) not null` with a `ck_resource_deployment_allocation_percentage` check (above 0, up to 100). Existing rows backfilled to 100; the default is dropped afterwards so new rows must state a percentage. |
 | `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule. The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
+| `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `extensions` schema), used by the list routes' fuzzy `?q=` search. |
 | `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
