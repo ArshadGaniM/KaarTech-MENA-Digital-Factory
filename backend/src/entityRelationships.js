@@ -69,6 +69,8 @@ function fieldsOf(table, tables) {
       required: !!field.required,
     };
     if (field.maxLength) entry.maxLength = field.maxLength;
+    if (field.integer) entry.integer = true;
+    if (field.min !== undefined) entry.min = field.min;
     if (field.values) entry.values = field.values;
     if (field.references) {
       const target = tables.find((t) => t.tableName === field.references.table);

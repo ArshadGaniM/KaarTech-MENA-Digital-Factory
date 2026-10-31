@@ -28,9 +28,9 @@ describe('MASTER_DATA_TABLES column definitions', () => {
   );
 
   // FEAT-20: departments gained two optional free-text fields.
-  it('gives departments Input and Output columns between the name and the audit columns', () => {
+  it('gives departments Floor Number, Input and Output columns between the name and the audit columns', () => {
     const keys = columnsFor('departments').map((column) => column.key);
-    expect(keys.slice(0, 4)).toEqual(['code', 'name', 'input', 'output']);
+    expect(keys.slice(0, 5)).toEqual(['code', 'name', 'floorNumber', 'input', 'output']);
   });
 
   // FEAT-21: a resource can hold several deployments, each with a share.

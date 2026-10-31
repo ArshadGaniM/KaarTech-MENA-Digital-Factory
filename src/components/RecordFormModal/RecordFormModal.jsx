@@ -95,7 +95,8 @@ function FieldControl({ field, label, value, onChange, pickListOptions, pickList
       required={field.required}
       maxLength={field.maxLength}
       disabled={locked}
-      step={field.type === 'number' ? 'any' : undefined}
+      step={field.integer ? 1 : field.type === 'number' ? 'any' : undefined}
+      min={field.min}
     />
   );
 }
@@ -106,6 +107,8 @@ FieldControl.propTypes = {
     type: PropTypes.string,
     required: PropTypes.bool,
     maxLength: PropTypes.number,
+    integer: PropTypes.bool,
+    min: PropTypes.number,
     values: PropTypes.arrayOf(PropTypes.string),
     references: PropTypes.shape({ table: PropTypes.string, route: PropTypes.string }),
   }).isRequired,

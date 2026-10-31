@@ -2,7 +2,6 @@ import { useState } from 'react';
 import FactoryFloor from './FactoryFloor';
 import MonthPicker from './MonthPicker';
 import TeamDialog from './TeamDialog';
-import { FLOORS } from './factoryLayout';
 import { useControlCenter } from '../../hooks/useControlCenter';
 import { currentMonth } from '../../lib/months';
 import styles from './ControlCenter.module.css';
@@ -21,7 +20,6 @@ function ControlCenter() {
   const [openTeam, setOpenTeam] = useState(null);
   const { data, isLoading, error, updatedAt } = useControlCenter(month);
   const live = liveStatus({ data, error, isLoading, updatedAt });
-  const departments = new Map((data?.departments ?? []).map((department) => [department.code, department]));
 
   return (
     <div className={styles.controlCenter}>
@@ -49,18 +47,16 @@ function ControlCenter() {
           MENA Digital Factory
         </h1>
         <ol className={styles.floors}>
-          {FLOORS.map((floor, i) => {
-            const department = departments.get(floor.departmentCode);
-            return (
-              <FactoryFloor
-                key={floor.id}
-                level={FLOORS.length - i}
-                name={department?.name ?? `${floor.departmentCode} (department not found)`}
-                teams={department?.teams ?? []}
-                onOpenTeam={setOpenTeam}
-              />
-            );
-          })}
+          {data.departments.map((department, i) => (
+            <FactoryFloor
+              key={department.code}
+              level={department.floorNumber}
+              order={i}
+              name={department.name}
+              teams={department.teams}
+              onOpenTeam={setOpenTeam}
+            />
+          ))}
         </ol>
       </section>
       )}

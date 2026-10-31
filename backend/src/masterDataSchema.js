@@ -117,6 +117,8 @@ export function validateBody(table, body, { partial = false } = {}) {
     if (field.type === "number") {
       if (typeof value !== "number" || !Number.isFinite(value)) {
         details[field.key] = `${field.key} must be a number.`;
+      } else if (field.integer && !Number.isInteger(value)) {
+        details[field.key] = `${field.key} must be a whole number.`;
       } else if (field.min !== undefined && value < field.min) {
         details[field.key] = `${field.key} must be at least ${field.min}.`;
       } else if (field.max !== undefined && value > field.max) {

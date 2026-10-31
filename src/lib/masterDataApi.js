@@ -95,6 +95,7 @@ export const MASTER_DATA_TABLES = [
     columns: [
       { key: "code", label: "Department Code" },
       { key: "name", label: "Department Name" },
+      { key: "floorNumber", label: "Floor Number" },
       { key: "input", label: "Input" },
       { key: "output", label: "Output" },
       ...AUDIT_COLUMNS,

@@ -160,7 +160,7 @@
   grid-template-columns: 190px minmax(0, 1fr);
   gap: 6px;
   animation: floorRise 0.6s ease-out both;
-  animation-delay: calc((11 - var(--level)) * 60ms);
+  animation-delay: calc(var(--order) * 60ms);
 }
 
 .floorSign {

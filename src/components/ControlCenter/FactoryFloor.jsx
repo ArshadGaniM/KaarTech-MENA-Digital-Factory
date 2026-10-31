@@ -16,9 +16,9 @@ function groupByCompetency(teams) {
   return groups;
 }
 
-function FactoryFloor({ name, level, teams, onOpenTeam }) {
+function FactoryFloor({ name, level, order, teams, onOpenTeam }) {
   return (
-    <li className={styles.floor} style={{ '--level': level }}>
+    <li className={styles.floor} style={{ '--order': order }}>
       <div className={styles.floorSign}>
         <span className={styles.floorNumber} aria-hidden="true">
           F{level}
@@ -50,6 +50,7 @@ function FactoryFloor({ name, level, teams, onOpenTeam }) {
 FactoryFloor.propTypes = {
   name: PropTypes.string.isRequired,
   level: PropTypes.number.isRequired,
+  order: PropTypes.number.isRequired,
   teams: PropTypes.arrayOf(teamShape).isRequired,
   onOpenTeam: PropTypes.func.isRequired,
 };

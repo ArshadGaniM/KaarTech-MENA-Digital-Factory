@@ -118,15 +118,23 @@ test("restore_department rejects a non-uuid id at the schema layer without calli
 
 test("add_department accepts input/output and forwards them; over-long values are rejected before any request", async () => {
   respond = () => ({ status: 201, body: { data: { id: ID } } });
-  await callTool("add_department", { name: "Design", input: "Briefs", output: "Mockups" });
+  await callTool("add_department", { name: "Design", floorNumber: 10, input: "Briefs", output: "Mockups" });
   assert.equal(requests[0].method, "POST");
   assert.equal(requests[0].body.input, "Briefs");
   assert.equal(requests[0].body.output, "Mockups");
 
-  const tooLong = await callTool("add_department", { name: "Design", output: "x".repeat(2001) }).catch((err) => ({
+  const tooLong = await callTool("add_department", { name: "Design", floorNumber: 10, output: "x".repeat(2001) }).catch((err) => ({
     isError: true,
     text: err.message,
   }));
   assert.equal(tooLong.isError, true);
+  assert.deepEqual(requests, []);
+});
+
+test("add_department requires a whole floor number of at least 1, rejected before any request", async () => {
+  for (const args of [{ name: "Design" }, { name: "Design", floorNumber: 2.5 }, { name: "Design", floorNumber: 0 }]) {
+    const result = await callTool("add_department", args).catch((err) => ({ isError: true, text: err.message }));
+    assert.equal(result.isError, true, JSON.stringify(args));
+  }
   assert.deepEqual(requests, []);
 });
