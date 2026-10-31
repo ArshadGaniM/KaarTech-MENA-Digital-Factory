@@ -53,3 +53,6 @@ just "does an artifact with an acceptable verdict exist somewhere."
 
 - A Playwright `fullPage` capture briefly resizes the page. Bars with a `transition: width` were caught partway and looked nearly empty, while the page itself measured correct. Check `getBoundingClientRect()` and take a normal viewport capture before calling it a CSS bug.
 
+
+### Check platform facts against the live account before writing them down
+CLAUDE.md said no deployment platform existed and no backend was built while both were live. Section 21 now holds IDs read from the Vercel and Render accounts. When a doc states a fact about hosting, read it from the platform, not from memory, and search the other files that repeat it (rule files, hook comments, .env.example).
