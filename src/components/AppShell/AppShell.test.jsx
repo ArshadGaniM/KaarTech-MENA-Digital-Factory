@@ -26,10 +26,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// NAV_ITEMS[0] is "Control Center" and NAV_ITEMS[1] is "Dashboard" (no
-// route/columns). NAV_ITEMS[2]/[3] are the first two real master-data tables, used to
-// genuinely exercise the item-switching path without a mocked registry.
-const [controlCenter, dashboard, firstTable, secondTable] = NAV_ITEMS;
+// NAV_ITEMS[0] is "Control Center", [1] is "Organization Structure" and [2] is
+// "Dashboard" (no route/columns). NAV_ITEMS[3]/[4] are the first two real master-data
+// tables, used to genuinely exercise the item-switching path without a mocked registry.
+const [controlCenter, organizationStructure, dashboard, firstTable, secondTable] = NAV_ITEMS;
 
 describe('AppShell', () => {
   it('resolves the initial view from a valid initialHash', async () => {
@@ -84,6 +84,14 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: firstTable.label })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('button', { name: secondTable.label })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('columnheader', { name: secondTable.columns[0].label })).toBeInTheDocument();
+  });
+
+  it('shows the Organization Structure page under its own heading', async () => {
+    render(<AppShell initialHash={organizationStructure.hash} />);
+
+    expect(screen.getByRole('button', { name: organizationStructure.label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { name: organizationStructure.label })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: organizationStructure.label })).toBeInTheDocument();
   });
 
   it('shows the Dashboard overview for the Dashboard section itself', async () => {
