@@ -152,14 +152,14 @@ export function buildControlCenter({ departments, teams, positions, deployments,
     departments: [...departments]
       .sort((a, b) => b.floorNumber - a.floorNumber)
       .map((department) => ({
-      code: department.code,
-      name: department.name,
-      floorNumber: department.floorNumber,
-      teams: (teamsByDepartment.get(department.code) ?? [])
-        .map(buildTeam)
-        // Grouped by competency so teams of one skill sit together.
-        .sort(byCompetencyThenCode),
-    })),
+        code: department.code,
+        name: department.name,
+        floorNumber: department.floorNumber,
+        teams: (teamsByDepartment.get(department.code) ?? [])
+          .map(buildTeam)
+          // Grouped by competency so teams of one skill sit together.
+          .sort(byCompetencyThenCode),
+      })),
   };
 }
 
@@ -203,7 +203,7 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
 
 export async function loadControlCenterRows(query) {
   const [departments, teams, positions, deployments, assignments] = await Promise.all([
-    query('select code, name, floor_number as "floorNumber" from departments where deleted_at is null order by floor_number desc'),
+    query('select code, name, floor_number as "floorNumber" from departments where deleted_at is null order by code'),
     query('select code, name, department_code as "departmentCode" from teams where deleted_at is null order by code'),
     query('select code, name, team_code as "teamCode", competencies from positions where deleted_at is null order by code'),
     query(

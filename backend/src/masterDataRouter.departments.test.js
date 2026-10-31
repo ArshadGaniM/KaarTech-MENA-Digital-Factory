@@ -129,7 +129,9 @@ for (const [label, floorNumber, message] of [
   ["zero", 0, /at least 1/],
   ["a negative number", -3, /at least 1/],
   ["a string", "two", /must be a number/],
-  ["null", null, /./],
+  ["null", null, /floorNumber/],
+  ["above the top floor", 1001, /at most 1000/],
+  ["a number too big for the database column", 3000000000, /at most 1000/],
 ]) {
   test(`POST /v1/departments rejects floorNumber ${label} with a 422`, async (t) => {
     t.mock.method(pool, "query", async () => ({ rows: [] }));
@@ -181,4 +183,49 @@ test("restoring a department whose floor was taken meanwhile is a 422 naming flo
 
   assert.equal(res.status, 422);
   assert.ok((await res.json()).error.details.floorNumber);
+});
+
+for (const [label, floorNumber, message] of [
+  ["a fraction", 2.5, /whole number/],
+  ["zero", 0, /at least 1/],
+  ["above the top floor", 1001, /at most 1000/],
+  ["null", null, /floorNumber/],
+]) {
+  test(`PATCH /v1/departments/:id rejects floorNumber ${label} with a 422 and never updates`, async (t) => {
+    let updated = false;
+    t.mock.method(pool, "query", async (sql) => {
+      if (sql.startsWith("select")) return { rows: [row()] };
+      updated = true;
+      return { rows: [row()] };
+    });
+    const res = await send("PATCH", `/${DEPT_ID}`, { floorNumber });
+    assert.equal(res.status, 422);
+    assert.match((await res.json()).error.details.floorNumber, message);
+    assert.equal(updated, false);
+  });
+}
+
+test("PATCH /v1/departments/:id without floorNumber leaves the floor as it was", async (t) => {
+  let updateValues;
+  t.mock.method(pool, "query", async (sql, values) => {
+    if (sql.startsWith("select")) return { rows: [row({ floor_number: 7 })] };
+    updateValues = values;
+    return { rows: [row({ floor_number: 7, name: "Renamed" })] };
+  });
+  const res = await send("PATCH", `/${DEPT_ID}`, { name: "Renamed" });
+  assert.equal(res.status, 200);
+  assert.equal(updateValues[1], 7);
+});
+
+test("PATCH /v1/departments/:id onto a floor another live department holds is a 422 naming floorNumber", async (t) => {
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select")) return { rows: [row()] };
+    const err = new Error("duplicate key value violates unique constraint");
+    err.code = "23505";
+    err.constraint = "ux_departments_floor_number_live";
+    throw err;
+  });
+  const res = await send("PATCH", `/${DEPT_ID}`, { floorNumber: 9 });
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.floorNumber, /already in use/);
 });

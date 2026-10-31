@@ -27,7 +27,6 @@ const detail = {
 const props = {
   code: 'TEAM-001',
   month: '2026-10',
-  refreshKey: 1,
   updatedAt: new Date(2026, 9, 30, 14, 3, 22),
   onClose: () => {},
 };
@@ -98,10 +97,19 @@ describe('TeamDialog', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
   });
 
-  it('asks for the team with the refresh key, so a refreshed page refetches the open team', () => {
+  it('refetches the team whenever the page refreshed, using the page update time as the key', () => {
     useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
-    render(<TeamDialog {...props} refreshKey={42} />);
-    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', '2026-10', 42);
+    const updatedAt = new Date(2026, 9, 30, 15, 0, 0);
+    render(<TeamDialog {...props} updatedAt={updatedAt} />);
+    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', '2026-10', updatedAt.getTime());
+  });
+
+  it('does not claim to be live while the page refresh is failing', () => {
+    useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+    render(<TeamDialog {...props} pageError={new Error('Backend unreachable')} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not refresh, showing the last data: Backend unreachable');
+    expect(screen.queryByText(/Live, updated/)).not.toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /Sam Split/ })).toBeInTheDocument();
   });
 
   it('shows when the figures were last updated, and "Updating…" while a refetch runs, without hiding the team', () => {

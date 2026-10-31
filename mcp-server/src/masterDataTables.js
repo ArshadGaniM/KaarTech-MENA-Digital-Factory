@@ -103,7 +103,7 @@ export const MASTER_DATA_TABLES = [
     hasCode: true,
     fields: [
       { key: "name", label: "name", required: true, type: "string" },
-      { key: "floorNumber", label: "floor number (1 is the ground floor, must be unused by another department)", required: true, type: "number", integer: true, min: 1 },
+      { key: "floorNumber", label: "floor number (1 to 1000, 1 is the ground floor, must be unused by another department)", required: true, type: "number", integer: true, min: 1, max: 1000 },
       { key: "input", label: "input", required: false, type: "string", maxLength: 2000 },
       { key: "output", label: "output", required: false, type: "string", maxLength: 2000 },
     ],

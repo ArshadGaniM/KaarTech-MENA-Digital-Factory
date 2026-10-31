@@ -8,8 +8,10 @@ import styles from './ControlCenter.module.css';
 
 const percent = (value) => (value === null ? '—' : `${value}%`);
 
-function TeamDialog({ code, month, refreshKey, updatedAt, onClose }) {
-  const { data: team, isLoading, error } = useTeamDetail(code, month, refreshKey);
+// `pageError` is the page's own refresh failure: the popup is refetched from
+// the page's refreshes, so while those fail it must not claim to be live.
+function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
+  const { data: team, isLoading, error } = useTeamDetail(code, month, updatedAt.getTime());
   const closeRef = useRef(null);
 
   // Focus moves into the dialog on open and back to the card that opened it.
@@ -58,9 +60,9 @@ function TeamDialog({ code, month, refreshKey, updatedAt, onClose }) {
           </p>
         ) : (
           <>
-            {error ? (
+            {error || pageError ? (
               <p className={styles.statusError} role="alert">
-                Could not refresh, showing the last data: {error.message}
+                Could not refresh, showing the last data: {(error ?? pageError).message}
               </p>
             ) : (
               <p className={styles.dialogLive} role="status" aria-live="polite">
@@ -142,8 +144,8 @@ function TeamDialog({ code, month, refreshKey, updatedAt, onClose }) {
 TeamDialog.propTypes = {
   code: PropTypes.string.isRequired,
   month: PropTypes.string.isRequired,
-  refreshKey: PropTypes.number.isRequired,
   updatedAt: PropTypes.instanceOf(Date).isRequired,
+  pageError: PropTypes.instanceOf(Error),
   onClose: PropTypes.func.isRequired,
 };
 

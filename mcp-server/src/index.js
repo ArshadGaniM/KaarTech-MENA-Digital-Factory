@@ -27,6 +27,7 @@ export function fieldSchema(field) {
     base = z.number().finite();
     if (field.integer) base = base.int();
     if (field.min !== undefined) base = base.min(field.min);
+    if (field.max !== undefined) base = base.max(field.max);
   }
   else if (field.type === "date") base = z.string().date();
   else base = z.string().min(1).max(field.maxLength ?? 255);

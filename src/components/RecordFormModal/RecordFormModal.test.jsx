@@ -39,7 +39,7 @@ describe('RecordFormModal', () => {
           identity: { type: 'auto-generated' },
           fields: [
             { key: 'name', type: 'string', required: true },
-            { key: 'floorNumber', type: 'number', required: true, integer: true, min: 1 },
+            { key: 'floorNumber', type: 'number', required: true, integer: true, min: 1, max: 1000 },
           ],
         },
       ],
@@ -61,6 +61,7 @@ describe('RecordFormModal', () => {
     expect(floor).toHaveAttribute('type', 'number');
     expect(floor).toHaveAttribute('step', '1');
     expect(floor).toHaveAttribute('min', '1');
+    expect(floor).toHaveAttribute('max', '1000');
     expect(floor).toBeRequired();
   });
 

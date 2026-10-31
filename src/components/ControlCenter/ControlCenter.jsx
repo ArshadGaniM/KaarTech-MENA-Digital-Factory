@@ -42,32 +42,34 @@ function ControlCenter() {
       )}
 
       {data && (
-      <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-labelledby="factory-title">
-        <h1 id="factory-title" className={styles.roof}>
-          MENA Digital Factory
-        </h1>
-        <ol className={styles.floors}>
-          {data.departments.map((department, i) => (
-            <FactoryFloor
-              key={department.code}
-              level={department.floorNumber}
-              order={i}
-              name={department.name}
-              teams={department.teams}
-              onOpenTeam={setOpenTeam}
-            />
-          ))}
-        </ol>
-      </section>
+        <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-labelledby="factory-title">
+          <h1 id="factory-title" className={styles.roof}>
+            MENA Digital Factory
+          </h1>
+          <ol className={styles.floors}>
+            {data.departments.map((department, i) => (
+              <FactoryFloor
+                key={department.code}
+                level={department.floorNumber}
+                order={i}
+                name={department.name}
+                teams={department.teams}
+                onOpenTeam={setOpenTeam}
+              />
+            ))}
+          </ol>
+        </section>
       )}
 
-      {openTeam && <TeamDialog
+      {openTeam && (
+        <TeamDialog
           code={openTeam}
           month={month}
-          refreshKey={updatedAt.getTime()}
           updatedAt={updatedAt}
+          pageError={error}
           onClose={() => setOpenTeam(null)}
-        />}
+        />
+      )}
     </div>
   );
 }
