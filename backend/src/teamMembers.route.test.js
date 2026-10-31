@@ -23,8 +23,10 @@ const ROW = {
 
 let server;
 let baseUrl;
+let previousKey;
 
 before(async () => {
+  previousKey = process.env.INTERNAL_API_KEY;
   process.env.INTERNAL_API_KEY = "test-secret";
   const app = express();
   app.use(express.json());
@@ -40,6 +42,8 @@ before(async () => {
 
 after(async () => {
   await new Promise((resolve) => server.close(resolve));
+  if (previousKey === undefined) delete process.env.INTERNAL_API_KEY;
+  else process.env.INTERNAL_API_KEY = previousKey;
 });
 
 const writes = [
@@ -132,4 +136,33 @@ test("GET stays open without a key", async (t) => {
 
   assert.equal(res.status, 200);
   assert.equal((await res.json()).total, 1);
+});
+
+test("a keyed POST with an invalid body returns 422 and runs no query", async (t) => {
+  let queryCalled = false;
+  t.mock.method(pool, "query", async () => {
+    queryCalled = true;
+    return { rows: [] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/team-members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({}),
+  });
+
+  assert.equal(res.status, 422);
+  assert.equal(queryCalled, false);
+});
+
+test("PATCH with the key on a missing member returns 404", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [] }));
+
+  const res = await fetch(`${baseUrl}/v1/team-members/${MEMBER_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ role: "Lead" }),
+  });
+
+  assert.equal(res.status, 404);
 });
