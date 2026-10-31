@@ -137,10 +137,17 @@ export function createMasterDataRouter(table) {
            limit $1 offset $2`,
           [limit, offset]
         ),
-        pool.query(`select count(*)::int as total from ${tableName}`),
+        pool.query(
+          `select count(*)::int as total,
+                  (count(*) filter (where deleted_at is null))::int as "activeTotal"
+           from ${tableName}`
+        ),
       ]);
 
-      res.json({ data: rows.rows.map((row) => toResponse(table, row)), total: count.rows[0].total });
+      // `total` counts soft-deleted rows too (pagination needs it); `activeTotal`
+      // excludes them, for callers that report how many live records exist.
+      const { total, activeTotal } = count.rows[0];
+      res.json({ data: rows.rows.map((row) => toResponse(table, row)), total, activeTotal });
     } catch (err) {
       next(err);
     }
