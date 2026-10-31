@@ -838,22 +838,42 @@ Never hard-code secrets. Add new vars to `.env.example` alongside the actual `.e
 ## 21. Deployment Verification Protocol
 
 > Always use a documented method to check whether a deployment is healthy after
-> any push to `main`. No deployment platform is wired up yet — fill in once one is
-> chosen (e.g. Vercel, Render).
+> any push to `main`.
 
-### Standard Check (run after every merge to `main`, once deployment exists)
+### Where it runs
+
+| Part | Platform | Identifier |
+|---|---|---|
+| Frontend | Vercel, project `kaartech-mena-digital-factory` | project `prj_85sGDiy9s3nlZZQQ6QQCAu8ncr3k`, team `team_dS1jpFKou5GwZsATwlgGLIvx` |
+| Backend API | Render web service `kaartech-mena-digital-factory-api` (Node, Frankfurt, free plan) | service `srv-dal98lnf3r2c73ff3540`, workspace `tea-d7m98vegvqtc73a717og`, URL `https://kaartech-mena-digital-factory-api.onrender.com` |
+| Database | Supabase Postgres | migrations in `backend/migrations/` |
+
+Vercel deploys the frontend on every merge to `main`. Render is set to deploy
+on commit to `main`, but a merge has not always produced a deploy. Check for one
+and trigger it if missing. The Render account also holds an unrelated service
+(`arshad-ai`) and Vercel an unrelated project (`arshad-ai`). Leave both alone.
+
+### Standard Check (run after every merge to `main`)
 ```
-1. Look up the deployment platform's workspace/project ID
-2. Pull recent error/critical/warning logs for the deployed service (last 30 lines)
-3. Read and diagnose every error/warning line
-4. If any ERROR or CRITICAL found → fix the root cause, commit, push
-5. Confirm health via a startup-complete line and a successful health-check request
+1. Apply any new migration to the live database first, but only with the owner's yes
+2. Frontend: list Vercel deployments for the project and confirm the newest one is READY
+3. Backend: list Render deploys for the service. If none started for the merge, trigger one
+4. Pull recent error/critical/warning logs for the Render service (last 30 lines)
+5. Read and diagnose every error/warning line
+6. If any ERROR or CRITICAL found → fix the root cause, commit, push
+7. Confirm health: `GET /health` on the API URL returns 200, and a changed route answers on the live API
 ```
+
+Order matters when a migration adds a required column: migration, then backend, then frontend.
 
 ### Known recurring issues table
 
 | Error | Root cause | Fix |
 |---|---|---|
+| Frontend shows an error after a merge that adds a backend route | Vercel finished before Render redeployed | Trigger the Render deploy, poll the live route, then recheck the page |
+| Merge to `main` produced no Render deploy | Auto-deploy did not fire | Trigger a deploy for `srv-dal98lnf3r2c73ff3540` and poll until live |
+
+---|---|---|
 | *(fill in as issues are discovered)* | | |
 
 ---
