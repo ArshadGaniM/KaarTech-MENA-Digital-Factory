@@ -2,7 +2,7 @@
 
 Express + `pg` (Postgres/Supabase) API following the conventions in
 `../.claude/rules/api.md` and `../.claude/rules/database.md`: response
-bodies are always `{ data }` / `{ data, total } ` / `{ error }`, never raw
+bodies are always `{ data }` / `{ data, total, activeTotal }` (list routes: `total` counts soft-deleted rows for pagination, `activeTotal` leaves them out) / `{ error }`, never raw
 ORM/query rows.
 
 ## Setup
@@ -38,7 +38,7 @@ same data at runtime rather than reading source.
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|
-| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. |
+| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. Returns `total` (all rows, for pagination) and `activeTotal` (live rows only). |
 | GET | `/v1/<table>/:id` | — | none | 404 only if the id doesn't exist — returns a soft-deleted row too. |
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
 | PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |

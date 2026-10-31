@@ -111,6 +111,23 @@ describe('fetchMasterDataTable', () => {
     vi.unstubAllGlobals();
   });
 
+  it('passes activeTotal through when the backend sends it', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 10, activeTotal: 4 }) });
+
+    expect((await fetchMasterDataTable('resources')).activeTotal).toBe(4);
+  });
+
+  it.each([
+    ['absent', undefined],
+    ['negative', -1],
+    ['a string', '4'],
+    ['NaN', NaN],
+  ])('treats an activeTotal that is %s as missing', async (_label, activeTotal) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 10, activeTotal }) });
+
+    expect((await fetchMasterDataTable('resources')).activeTotal).toBeUndefined();
+  });
+
   it('defaults to limit=20, offset=0 and returns { rows, total } (CLAUDE.md §10)', async () => {
     fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ id: '1' }], total: 45 }) });
 

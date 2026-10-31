@@ -12,7 +12,7 @@ beforeEach(() => {
     'fetch',
     vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [], total: 0 }),
+      json: () => Promise.resolve({ data: [], total: 0, activeTotal: 0 }),
     })
   );
 });
@@ -21,10 +21,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// NAV_ITEMS[0] is "Dashboard" (no route/columns — empty placeholder).
-// NAV_ITEMS[1]/[2] are the first two real master-data tables, used to
+// NAV_ITEMS[0] is "Control Center" and NAV_ITEMS[1] is "Dashboard" (no
+// route/columns). NAV_ITEMS[2]/[3] are the first two real master-data tables, used to
 // genuinely exercise the item-switching path without a mocked registry.
-const [dashboard, firstTable, secondTable] = NAV_ITEMS;
+const [controlCenter, dashboard, firstTable, secondTable] = NAV_ITEMS;
 
 describe('AppShell', () => {
   it('resolves the initial view from a valid initialHash', async () => {
@@ -34,17 +34,18 @@ describe('AppShell', () => {
     expect(await screen.findByRole('columnheader', { name: firstTable.columns[0].label })).toBeInTheDocument();
   });
 
-  it('falls back to the first NAV_ITEMS entry (Dashboard) for an invalid or missing hash', () => {
+  it('falls back to the first NAV_ITEMS entry (Control Center) for an invalid or missing hash', () => {
     render(<AppShell initialHash="#does-not-exist" />);
 
-    expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('uses the first NAV_ITEMS entry (Dashboard) when no initialHash is passed at all', () => {
+  it('uses the first NAV_ITEMS entry (Control Center) when no initialHash is passed at all', async () => {
     render(<AppShell />);
 
-    expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { name: controlCenter.label })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory' })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
@@ -79,11 +80,11 @@ describe('AppShell', () => {
     expect(await screen.findByRole('columnheader', { name: secondTable.columns[0].label })).toBeInTheDocument();
   });
 
-  it('shows an empty placeholder for the Dashboard section itself', () => {
+  it('shows the Dashboard overview for the Dashboard section itself', async () => {
     render(<AppShell initialHash={dashboard.hash} />);
 
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Nothing here yet.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 
   it('renders a skip link targeting the main content region', () => {
