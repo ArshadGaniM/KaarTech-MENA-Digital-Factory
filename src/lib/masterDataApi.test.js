@@ -7,6 +7,7 @@ import {
   restoreRecord,
   fetchMasterDataTable,
   fetchAllMasterDataTableRows,
+  fetchGroupSummary,
 } from './masterDataApi';
 
 function columnsFor(route) {
@@ -333,5 +334,57 @@ describe('updateRecord / restoreRecord / createRecord', () => {
     fetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.reject(new Error('not json')) });
 
     await expect(updateRecord('departments', 'row-1', {})).rejects.toThrow(/could not be read/);
+  });
+});
+
+describe('fetchGroupSummary', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('requests the summary route with groupBy and only the filters that have a value', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ value: 'Onsite', count: 3 }, { value: null, count: 1 }], total: 4 }),
+    });
+
+    const result = await fetchGroupSummary('resources', 'designation', { locationType: 'Offshore', skill: null });
+
+    const url = new URL(fetch.mock.calls[0][0]);
+    expect(url.pathname).toBe('/v1/resources/summary');
+    expect(url.searchParams.get('groupBy')).toBe('designation');
+    expect(url.searchParams.get('locationType')).toBe('Offshore');
+    expect(url.searchParams.has('skill')).toBe(false);
+    expect(result).toEqual({
+      groups: [
+        { value: 'Onsite', count: 3 },
+        { value: null, count: 1 },
+      ],
+      total: 4,
+    });
+  });
+
+  it("throws the backend's own message on an error response", async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: { message: 'groupBy must be one of: name.' } }),
+    });
+
+    await expect(fetchGroupSummary('resources', 'nope')).rejects.toThrow('groupBy must be one of: name.');
+  });
+
+  it.each([
+    ['not an array', { data: 'x' }],
+    ['a negative count', { data: [{ value: 'a', count: -1 }] }],
+    ['a non-numeric count', { data: [{ value: 'a', count: '3' }] }],
+    ['no body data', {}],
+  ])('rejects a malformed response (%s)', async (_label, payload) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) });
+
+    await expect(fetchGroupSummary('resources', 'designation')).rejects.toThrow(/malformed/);
   });
 });

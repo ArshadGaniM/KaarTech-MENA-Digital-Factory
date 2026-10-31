@@ -164,6 +164,52 @@ export function createMasterDataRouter(table) {
     }
   });
 
+  // Grouped counts of live rows for dashboard charts. Registered before
+  // "/:id" so "summary" is never read as a row id. Only short text and
+  // enum fields can be grouped or filtered on: long free text (a skill
+  // list, a notes field) makes meaningless groups. Any other query key is
+  // rejected, so a typo in a filter name fails loudly instead of being
+  // ignored and returning an unfiltered count.
+  const groupableFields = fields.filter((f) => (f.type === "enum" || f.type === "string") && (f.maxLength ?? 0) <= 255);
+  const groupableKeys = groupableFields.map((f) => f.key).join(", ");
+  const MAX_GROUPS = 100;
+
+  router.get("/summary", async (req, res, next) => {
+    try {
+      const { groupBy, ...filters } = req.query;
+      const groupField = groupableFields.find((f) => f.key === groupBy);
+      if (!groupField) {
+        throw validationError({ groupBy: `groupBy must be one of: ${groupableKeys || "(none)"}.` });
+      }
+
+      const conditions = [`${tableName}.deleted_at is null`];
+      const values = [];
+      for (const [key, value] of Object.entries(filters)) {
+        const filterField = groupableFields.find((f) => f.key === key);
+        if (!filterField || typeof value !== "string") {
+          throw validationError({ [key]: `${key} is not a valid filter. Use one of: ${groupableKeys || "(none)"}.` });
+        }
+        values.push(value);
+        conditions.push(`${tableName}.${filterField.column} = $${values.length}`);
+      }
+
+      const groupColumn = `${tableName}.${groupField.column}`;
+      const result = await pool.query(
+        `select ${groupColumn} as value, count(*)::int as count
+         from ${tableName}
+         where ${conditions.join(" and ")}
+         group by ${groupColumn}
+         order by count desc, ${groupColumn} asc nulls last
+         limit ${MAX_GROUPS}`,
+        values
+      );
+      const total = result.rows.reduce((sum, row) => sum + row.count, 0);
+      res.json({ data: result.rows, total });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get("/:id", async (req, res, next) => {
     try {
       const result = await pool.query(

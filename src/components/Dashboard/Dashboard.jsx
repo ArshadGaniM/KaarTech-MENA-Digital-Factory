@@ -1,20 +1,25 @@
+import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
+import AnimatedNumber from '../AnimatedNumber';
+import ResourceInsights from '../ResourceInsights';
 import { useTableCounts } from '../../hooks/useTableCounts';
+import { formatCount } from '../../lib/formatCount';
 import styles from './Dashboard.module.css';
 
 // The four tables that describe the factory's people, work and footprint.
 const FEATURED_ROUTES = ['resources', 'projects', 'teams', 'delivery-centers'];
 
-const numberFormat = new Intl.NumberFormat('en-US');
-
-function formatCount(count) {
-  return count === null ? '—' : numberFormat.format(count);
-}
+const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 
 function Dashboard({ onNavigate }) {
-  const { data, isLoading, error } = useTableCounts();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { data, isLoading, error } = useTableCounts(refreshKey);
+  // A new timestamp each time fresh counts arrive, not on every render.
+  const updatedAt = useMemo(() => (data ? timeFormat.format(new Date()) : null), [data]);
 
-  if (isLoading) {
+  // Only the very first load replaces the page. A refresh keeps the current
+  // numbers on screen until the new ones arrive.
+  if (isLoading && !data) {
     return (
       <p className={styles.status} role="status" aria-live="polite">
         Loading…
@@ -54,20 +59,37 @@ function Dashboard({ onNavigate }) {
       )}
 
       <section aria-labelledby="dashboard-overview" className={styles.section}>
-        <h2 id="dashboard-overview" className={styles.sectionTitle}>
-          Overview
-        </h2>
+        <div className={styles.sectionHeader}>
+          <h2 id="dashboard-overview" className={styles.sectionTitle}>
+            Overview
+          </h2>
+          <div className={styles.refresh}>
+            <span className={styles.updated}>Updated {updatedAt}</span>
+            <button
+              type="button"
+              className={styles.refreshButton}
+              disabled={isLoading}
+              onClick={() => setRefreshKey((key) => key + 1)}
+            >
+              {isLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+        </div>
         <ul className={styles.tiles}>
           {featured.map((table) => (
             <li key={table.route}>
               <button type="button" className={styles.tile} onClick={() => onNavigate(table.route)}>
                 <span className={styles.tileLabel}>{table.label}</span>
-                <span className={styles.tileValue}>{formatCount(table.count)}</span>
+                <span className={styles.tileValue}>
+                  <AnimatedNumber value={table.count} />
+                </span>
               </button>
             </li>
           ))}
         </ul>
       </section>
+
+      <ResourceInsights refreshKey={refreshKey} onNavigate={onNavigate} />
 
       <div className={styles.panels}>
         <section aria-labelledby="dashboard-records" className={styles.panel}>
