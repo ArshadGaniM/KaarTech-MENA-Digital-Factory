@@ -59,3 +59,10 @@ CLAUDE.md said no deployment platform existed and no backend was built while bot
 
 ### A test outside `src/*.test.js` never runs
 The backend `npm test` glob is `src/*.test.js`. A first copy of the team-members test sat in `src/routes/` and was silently skipped. After adding a test file, check that the full suite count went up, and keep tests directly in `src/`.
+
+### A hook that keeps the last result while loading must forget it after a failure
+`useKeyedResource` keeps the previous result on screen while new filters load, so a chart does not blank. A failed fetch must then drop that result, and keep dropping it through the retry. Dropping it only while the error was set let the first filter's numbers come back under a third filter's chip as soon as a retry cleared the error. Two reviewers found it in the same round. Remember the failure in state, and test the sequence: load A, fail B, retry or pick C.
+
+### Build a validation error object from pairs
+Assigning to a key named `__proto__` on a plain object is silently dropped, so a validator that fills `details[key] = message` can pass a request it should reject. Express's default query parser removes that key first, which hid the problem. Collect `[key, message]` pairs and build the object with `Object.fromEntries`, and test it with `app.set("query parser", "simple")`, which keeps the key.
+

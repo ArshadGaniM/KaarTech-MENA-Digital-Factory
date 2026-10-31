@@ -62,6 +62,51 @@ describe('useKeyedResource', () => {
     expect(result.current.data).toBeNull();
   });
 
+  it('keeps dropping the old data while a retry or a third key loads after a failure', async () => {
+    let finish;
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ n: 1 })
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    const { result, rerender } = renderHook(({ key }) => useKeyedResource(fetcher, key), { initialProps: { key: 'a' } });
+    await settle(result);
+
+    rerender({ key: 'b' });
+    await waitFor(() => expect(result.current.error).toEqual(new Error('boom')));
+
+    rerender({ key: 'c' });
+
+    // Key c is loading. The old result for key a must not come back under it.
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toBeNull();
+    await act(async () => finish({ n: 3 }));
+    await settle(result);
+    expect(result.current.data).toEqual({ n: 3, key: 'c' });
+  });
+
+  it('shows the old data again as the loading placeholder only after a later success', async () => {
+    let finish;
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ n: 1 })
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({ n: 3 })
+      .mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    const { result, rerender } = renderHook(({ key }) => useKeyedResource(fetcher, key), { initialProps: { key: 'a' } });
+    await settle(result);
+    rerender({ key: 'b' });
+    await waitFor(() => expect(result.current.error).toEqual(new Error('boom')));
+    rerender({ key: 'c' });
+    await waitFor(() => expect(result.current.data?.key).toBe('c'));
+
+    rerender({ key: 'd' });
+
+    expect(result.current.data.key).toBe('c');
+    expect(result.current.isLoading).toBe(true);
+    await act(async () => finish({ n: 4 }));
+  });
+
   it('keeps its data when a refresh of the same key fails, since it still matches what is asked for', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce({ n: 1 }).mockRejectedValueOnce(new Error('boom'));
     const { result, rerender } = renderHook(({ refresh }) => useKeyedResource(fetcher, 'a', refresh), { initialProps: { refresh: 0 } });

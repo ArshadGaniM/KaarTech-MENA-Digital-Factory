@@ -4,6 +4,7 @@ import { validationError } from "./errors.js";
 import { BUCKETS, loadAllocationSummary } from "./allocation.js";
 
 const MAX_POSITION_LENGTH = 255;
+const MAX_KEY_SHOWN = 50;
 
 // Read-only, like every GET in this API (reads are open, only writes need
 // the internal key). Any query key other than bucket and position is
@@ -14,21 +15,29 @@ export function createAllocationRouter({ query = (...args) => pool.query(...args
 
   router.get("/summary", async (req, res, next) => {
     try {
-      const details = {};
+      // Problems are collected as pairs and turned into the details object
+      // last: assigning to a key named `__proto__` on a plain object is
+      // silently dropped, which would let a bad request through. Express's
+      // default parser removes that key, but a different parser setting
+      // would not.
+      const problems = [];
       for (const key of Object.keys(req.query)) {
-        if (key !== "bucket" && key !== "position") details[key] = `${key} is not a valid filter. Use bucket or position.`;
+        if (key !== "bucket" && key !== "position") {
+          const shown = key.slice(0, MAX_KEY_SHOWN);
+          problems.push([shown, `${shown} is not a valid filter. Use bucket or position.`]);
+        }
       }
       const { bucket, position } = req.query;
       if (bucket !== undefined && !BUCKETS.includes(bucket)) {
-        details.bucket = `bucket must be one of: ${BUCKETS.join(", ")}.`;
+        problems.push(["bucket", `bucket must be one of: ${BUCKETS.join(", ")}.`]);
       }
       if (
         position !== undefined &&
         (typeof position !== "string" || position === "" || position.length > MAX_POSITION_LENGTH || position.includes("\0"))
       ) {
-        details.position = `position must be a text of 1 to ${MAX_POSITION_LENGTH} characters.`;
+        problems.push(["position", `position must be a text of 1 to ${MAX_POSITION_LENGTH} characters.`]);
       }
-      if (Object.keys(details).length > 0) throw validationError(details);
+      if (problems.length > 0) throw validationError(Object.fromEntries(problems));
 
       res.json({ data: await loadAllocationSummary(query, { bucket, position }) });
     } catch (err) {

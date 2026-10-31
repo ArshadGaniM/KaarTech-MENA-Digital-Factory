@@ -143,7 +143,7 @@ percentages. `buckets` always holds the same four keys in this order, with
 | `none` | no live deployment at all |
 | `over` | total is above 100. The allocation rule should make this impossible, so it is reported only so a broken rule cannot hide |
 
-Every live resource is in exactly one bucket. `positions` counts the
+Without a `position` filter, every live resource is in exactly one bucket. `positions` counts the
 resources deployed to each position **name** (a resource deployed twice to
 positions with the same name counts once), largest first, at most 50.
 Soft-deleted resources and deployments are left out everywhere.
@@ -151,8 +151,9 @@ Soft-deleted resources and deployments are left out everywhere.
 Each side is narrowed by the other's pick, never by its own: `?position=`
 narrows `buckets` to resources deployed to that position name, and
 `?bucket=` narrows `positions` to resources in that bucket. Any other query
-key, an unknown `bucket`, or a `position` that is empty, longer than 255
-characters or contains a NUL byte is a 422 `validation_error`. Values are
+key (also a `__proto__` key), an unknown `bucket`, a `bucket` or `position`
+given twice, or a `position` that is empty, longer than 255 characters or
+contains a NUL byte is a 422 `validation_error`. Values are
 bound parameters. A deployment whose position is soft-deleted still counts
 toward its resource's bucket, but that position's name is never listed.
 
