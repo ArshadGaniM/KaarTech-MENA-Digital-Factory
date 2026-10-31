@@ -54,8 +54,7 @@ assigned, it stays on Haiku. Where an agent is assigned Sonnet, it stays on
 Sonnet. Any agent that was assigned Opus (or anything above Sonnet) has
 been brought down to Sonnet — see `scripts/register_agent.py`'s
 `MODEL_KEYWORDS` mapping (the concrete tier-to-model resolution) and,
-once agent auto-registration runs per §14 (forward-looking — the backend
-has no agent registry to register against), `.claude/agents/registry.json` as the
+once agent auto-registration runs per §14, `.claude/agents/registry.json` as the
 resulting inventory. Opus (or any
 higher-than-Sonnet model) may be used **only** when Sonnet/Haiku
 demonstrably cannot achieve the task, and **only** with the owner's
@@ -325,7 +324,7 @@ A recurring scheduled trigger (Routine/cron) does the resurrecting across sessio
 | 3.5 | Engineer (MVP) | fast | Builds production-ready MVP from SDD + system design |
 | 4 | Developer | fast | Generates complete feature code |
 | 4.15 | Database Specialist | fast | SQL/ORM/migration audit — N+1, missing indexes, unsafe queries |
-| 4.16 | Language/Framework Specialist | fast | Async correctness, type-system usage, dependency injection |
+| 4.16 | Language/Framework Specialist | fast | Promise and await correctness, PropTypes and type usage, module boundaries |
 | 4.2 | Code Reviewer | deep | Project-conventions review against this file's rule files |
 | 4.3 | Frontend Engineer | fast | Production-grade UI — all states, accessible, responsive, reusable |
 | 4.4 | Type-Design Analyzer | fast | Type system audit — weak types, missing invariant encoding |
@@ -667,7 +666,11 @@ or the weekly sync.
 | `category` | `development_team` if under `dev-team/`; else `other` |
 | `pipeline_stage` | `null` for all non-pipeline agents |
 
-### Registration (once the backend has an agent registry to register against)
+### Registration
+
+Both scripts write local JSON inventories (`.claude/agents/registry.json` and
+`.claude/skills/registry.json`). They do not call the Express backend, and no
+table holds agents or skills. The scripts need Python 3 only for this tooling.
 
 ```bash
 python scripts/register_agent.py --file .claude/agents/<slug>/<filename>.md --category other

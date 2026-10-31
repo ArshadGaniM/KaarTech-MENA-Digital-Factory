@@ -3,7 +3,7 @@
 Express + `pg` (Postgres/Supabase) API following the conventions in
 `../.claude/rules/api.md` and `../.claude/rules/database.md`: response
 bodies are always `{ data }` / `{ data, total, activeTotal }` (list routes: `total` counts soft-deleted rows for pagination, `activeTotal` leaves them out) / `{ error }`, never raw
-ORM/query rows.
+database rows.
 
 ## Setup
 
@@ -248,13 +248,14 @@ on update, only `updatedBy` changes. Capped at 255 characters (both in
 `validateActor()`/`validateBody()` and as a DB `CHECK` constraint,
 `migrations/0006`).
 
-**Why GET is unauthenticated but writes require a key:** the frontend's
-dashboard is a public browser bundle — it can never safely hold a
-real secret, so reads stay open. Writes go only through the
-[master-data MCP server](../mcp-server/README.md), a trusted server-side
-client that sends `INTERNAL_API_KEY` on every call.
+**Why GET is unauthenticated but writes require a key:** the frontend is a
+public browser bundle, so reads stay open. Writes need `INTERNAL_API_KEY` in the
+`x-internal-api-key` header. The [master-data MCP server](../mcp-server/README.md)
+sends it from a trusted server-side client. The frontend's add, edit and delete
+forms send it too, as `VITE_INTERNAL_API_KEY`, which is visible in the built bundle.
+That is a known limit while there is no login system (CLAUDE.md §20).
 
-Reused across all six routers is the shared factory
+Reused across every master-data router is the shared factory
 `createMasterDataRouter(table)` in `src/masterDataRouter.js`: it builds its
 SQL column lists, `INSERT`/`UPDATE` statements, and validation from
 `table.fields` rather than hardcoding a single `name` column, so a table
@@ -353,7 +354,8 @@ outright ("only superusers can alter privileged roles"), and handing the
 backend superuser credentials would be worse practice anyway. `backend_app`
 has `BYPASSRLS` (required — with RLS enabled and zero policies on every
 table, a non-bypassing role gets zero rows on every read and a
-`42501 insufficient_privilege` on every write) plus explicit
-`SELECT`/`INSERT`/`UPDATE`/`DELETE` on the 7 application tables.
+`42501 insufficient_privilege` on every write) plus
+`SELECT`/`INSERT`/`UPDATE`/`DELETE` on the application tables. Default privileges
+set in the same migration cover tables created later.
 
 Connection string shape: `postgres://backend_app.<project_ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`
