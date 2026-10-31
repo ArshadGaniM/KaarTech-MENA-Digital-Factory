@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { formatHours, STATUS_LABELS } from '../../lib/hours';
+import { statusClass } from './statusClass';
 import { teamShape } from './teamShape';
 import styles from './ControlCenter.module.css';
 
@@ -12,7 +13,7 @@ function TeamCard({ team, onOpen }) {
     <li>
       <button
         type="button"
-        className={`${styles.card} ${styles[`card${team.status[0].toUpperCase()}${team.status.slice(1)}`]}`}
+        className={`${styles.card} ${statusClass(styles, team.status)}`}
         aria-label={`${team.name}, ${team.code}. ${STATUS_LABELS[team.status]}. Open details`}
         onClick={() => onOpen(team.code)}
       >

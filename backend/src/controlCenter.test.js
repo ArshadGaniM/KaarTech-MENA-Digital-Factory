@@ -170,3 +170,19 @@ test("team detail lists every seat, marks vacant ones, and shows what each perso
   const vacant = detail.seats.find((s) => s.positionCode === "POS-4");
   assert.deepEqual([vacant.employeeId, vacant.allocationPercentage, vacant.availablePercentage], [null, null, null]);
 });
+
+test("a person allocated over 100% across teams has 0% available, never negative", () => {
+  const detail = buildTeamDetail({
+    team: base.teams[0],
+    department: base.departments[0],
+    positions: base.positions.filter((p) => p.code === "POS-2"),
+    deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 }],
+    allDeployments: [
+      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 },
+      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-9", allocationPercentage: 40 },
+    ],
+    assignments: [],
+    month,
+  });
+  assert.equal(detail.seats[0].availablePercentage, 0);
+});

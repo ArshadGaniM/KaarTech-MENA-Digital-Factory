@@ -21,6 +21,7 @@ export function createChangeFeed({ connectionString = process.env.DATABASE_URL, 
   let stopped = false;
   let client = null;
   let warnedNoConnection = false;
+  let connectedBefore = false;
 
   const notifyChanged = () => {
     clearTimeout(timer);
@@ -34,23 +35,27 @@ export function createChangeFeed({ connectionString = process.env.DATABASE_URL, 
       warnedNoConnection = true;
       return;
     }
-    client = new ClientClass({ connectionString, ssl: dbSsl() });
     const reconnect = () => {
       if (stopped) return;
       setTimeout(connect, retryMs).unref();
       retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
     };
-    client.on("notification", notifyChanged);
-    client.on("error", (err) => console.error("Change feed connection error:", err.message));
-    client.on("end", reconnect);
     try {
+      // keepAlive so a silently dropped idle socket is noticed and reopened.
+      client = new ClientClass({ connectionString, ssl: dbSsl(), keepAlive: true });
+      client.on("notification", notifyChanged);
+      client.on("error", (err) => console.error("Change feed connection error:", err.message));
+      client.on("end", reconnect);
       await client.connect();
       await client.query(`LISTEN ${CHANNEL}`);
       retryMs = 1000;
+      // Writes made while the connection was down were never announced.
+      if (connectedBefore) notifyChanged();
+      connectedBefore = true;
     } catch (err) {
       console.error("Change feed could not start:", err.message);
-      client.removeAllListeners("end");
-      client.end().catch(() => {});
+      client?.removeAllListeners("end");
+      client?.end().catch(() => {});
       reconnect();
     }
   }

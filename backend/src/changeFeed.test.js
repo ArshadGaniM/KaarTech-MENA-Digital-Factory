@@ -87,3 +87,42 @@ test("warns once when there is no connection string", async (t) => {
   await feed.start();
   assert.equal(warn.mock.callCount(), 1);
 });
+
+test("a client that cannot even be created is logged and retried, never thrown", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const error = t.mock.method(console, "error", () => {});
+  let attempts = 0;
+  class Throwing {
+    constructor() {
+      attempts += 1;
+      throw new Error("bad ssl setting");
+    }
+  }
+  const feed = createChangeFeed({ connectionString: "postgres://x", ClientClass: Throwing });
+  await feed.start();
+  assert.equal(error.mock.callCount(), 1);
+
+  t.mock.timers.tick(1000);
+  await Promise.resolve();
+  assert.equal(attempts, 2);
+  feed.stop();
+});
+
+test("announces a change after reconnecting, since writes during the gap were missed", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  FakeClient.instances = [];
+  const feed = createChangeFeed({ connectionString: "postgres://x", ClientClass: FakeClient });
+  let events = 0;
+  feed.onChange(() => (events += 1));
+  await feed.start();
+  t.mock.timers.tick(300);
+  assert.equal(events, 0); // first connection announces nothing
+
+  FakeClient.instances[0].emit("end");
+  t.mock.timers.tick(1000);
+  await Promise.resolve();
+  await Promise.resolve();
+  t.mock.timers.tick(300);
+  assert.equal(events, 1);
+  feed.stop();
+});

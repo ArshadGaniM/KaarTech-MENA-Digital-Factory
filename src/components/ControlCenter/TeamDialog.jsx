@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { useTeamDetail } from '../../hooks/useTeamDetail';
 import { formatHours, STATUS_LABELS } from '../../lib/hours';
 import { formatMonth } from '../../lib/months';
+import { statusClass } from './statusClass';
 import styles from './ControlCenter.module.css';
 
 const percent = (value) => (value === null ? '—' : `${value}%`);
@@ -70,7 +71,7 @@ function TeamDialog({ code, month, onClose }) {
                 <span className={styles.hoursLabel}>Utilized</span>
                 <span className={styles.statValue}>{formatHours(team.utilizedHours)}</span>
               </li>
-              <li className={`${styles.statusPill} ${styles[`card${team.status[0].toUpperCase()}${team.status.slice(1)}`]}`}>{STATUS_LABELS[team.status]}</li>
+              <li className={`${styles.statusPill} ${statusClass(styles, team.status)}`}>{STATUS_LABELS[team.status]}</li>
             </ul>
 
             {team.competencies.length > 0 && (

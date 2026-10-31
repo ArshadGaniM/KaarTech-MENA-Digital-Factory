@@ -31,3 +31,17 @@ test("parseAllowedOrigins drops empty entries from stray/trailing commas", () =>
     ["https://a.example.com", "https://b.example.com"],
   );
 });
+
+test("parseAllowedOrigins allows no origin when unset in production, so no site can read the API", () => {
+  assert.deepEqual(parseAllowedOrigins(undefined, "production"), []);
+  assert.deepEqual(parseAllowedOrigins("  ", "production"), []);
+});
+
+test("parseAllowedOrigins still honours a configured list in production", () => {
+  assert.deepEqual(parseAllowedOrigins("https://a.example.com", "production"), ["https://a.example.com"]);
+});
+
+test("parseAllowedOrigins keeps '*' outside production when unset", () => {
+  assert.equal(parseAllowedOrigins(undefined, "development"), "*");
+  assert.equal(parseAllowedOrigins(undefined, undefined), "*");
+});
