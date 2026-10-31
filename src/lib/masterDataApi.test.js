@@ -145,6 +145,17 @@ describe('fetchMasterDataTable', () => {
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=40$/));
   });
 
+  // FEAT-24
+  it('sends a trimmed search term as q, and omits q when the term is blank', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 0 }) });
+
+    await fetchMasterDataTable('resources', { query: '  Nithya  ' });
+    expect(fetch).toHaveBeenLastCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=0&q=Nithya$/));
+
+    await fetchMasterDataTable('resources', { query: '   ' });
+    expect(fetch).toHaveBeenLastCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=0$/));
+  });
+
   it('throws the backend error message on a non-2xx response', async () => {
     fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: { message: 'Nope.' } }) });
 

@@ -76,3 +76,20 @@ SQL safety was checked: identifiers come only from the descriptor and the names 
 - [ ] The landing page "Enter the Application" button opens the Control Center, because it is first in navigation. This matches the layout before #40. Confirm it is intended.
 - [ ] Counts load when the Dashboard opens and are not auto-refreshed.
 - [ ] The backend must be deployed for the Dashboard to show counts. Until then every table shows a dash and the page names them.
+
+---
+
+## FEAT-24: Search bar on every master-data table
+
+**Verdict: PASS (WARN below).** No separate gate agents were run for this
+change. It is a read-only list filter. It was checked by hand against the live
+database (the real generated SQL returns `Nithyashri S` for `Nithyasri`) and
+by the suites: backend 237, mcp-server 53, frontend 185, build OK.
+
+- SQL safety: table, column and lookup identifiers come only from the fixed
+  descriptors; the search term is always a bound parameter, trimmed and capped
+  at 100 characters, and tests assert it is never interpolated.
+- WARN: `?q=` scans the table on each request (no trigram index). Fine at
+  today's size (the largest table has about 2,760 rows) and worth an index if
+  tables grow by an order of magnitude.
+- WARN: the MCP list tools do not take a search term yet.

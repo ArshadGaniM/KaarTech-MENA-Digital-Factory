@@ -194,8 +194,11 @@ export const MASTER_DATA_TABLES = [
 // is what the visible table view fetches a page at a time. Returns
 // { rows, total } rather than a bare array so a caller can compute page
 // count without a second request.
-export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {}) {
+// `query` (FEAT-24) filters on any cell, exact or near-miss, across the whole
+// table — not just the page on screen.
+export async function fetchMasterDataTable(route, { limit = 20, offset = 0, query = '' } = {}) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (query.trim() !== '') params.set('q', query.trim());
   const url = `${BACKEND_URL}/v1/${route}?${params}`;
   const res = await fetch(url);
   let parseError = null;

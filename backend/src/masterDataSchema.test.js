@@ -738,3 +738,31 @@ test("validateAllocation reports a duplicate position and an overflow together, 
   const never = { query: async () => { throw new Error("must not query"); } };
   await validateAllocation(never, rangedTable, {});
 });
+
+// FEAT-24: search SQL covers every cell, including live lookups.
+import { searchSql, searchTermOf } from "./masterDataSchema.js";
+
+test("searchSql searches the id, code, every field, lookup columns and audit names", () => {
+  const { where, rank } = searchSql(
+    {
+      tableName: "positions",
+      hasCode: true,
+      fields: [{ column: "name" }, { column: "team_code" }, { column: "competencies" }],
+      lookups: [{ table: "teams", localColumn: "team_code", foreignColumn: "code", projections: [{ column: "name" }] }],
+    },
+    1
+  );
+  for (const part of ["positions.id::text", "positions.code", "positions.name::text", "positions.competencies::text", "lookup_0.name::text", "positions.created_by", "positions.updated_by"]) {
+    assert.ok(where.includes(part), part);
+  }
+  assert.match(where, /char_length\(\$1\) >= 4/);
+  assert.match(rank, /word_similarity\(\$1/);
+});
+
+test("searchTermOf trims, caps at 100 characters, and returns null when empty or not a string", () => {
+  assert.equal(searchTermOf({ q: "  abc " }), "abc");
+  assert.equal(searchTermOf({ q: "a".repeat(150) }).length, 100);
+  assert.equal(searchTermOf({ q: "   " }), null);
+  assert.equal(searchTermOf({ q: ["a", "b"] }), null);
+  assert.equal(searchTermOf({}), null);
+});

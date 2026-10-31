@@ -315,3 +315,45 @@ export function normalizeLists(table, body) {
     if (names.length > 0) body[field.key] = names.join(", ");
   }
 }
+
+// FEAT-24: the text every cell of a row would show — business code, id, each
+// stored field, each live lookup column and the audit names — joined into one
+// string so a single search term can match any cell. Identifiers come only
+// from the fixed table descriptor; the term itself is always a bound parameter.
+function searchableTextSql(table) {
+  const t = table.tableName;
+  const parts = [`${t}.id::text`];
+  if (table.hasCode) parts.push(`${t}.code`);
+  for (const field of table.fields) parts.push(`${t}.${field.column}::text`);
+  for (const lookup of buildLookupPlan(table)) {
+    for (const projection of lookup.projections) parts.push(`${lookup.alias}.${projection.column}::text`);
+  }
+  parts.push(`${t}.created_by`, `${t}.updated_by`);
+  return `concat_ws(' ', ${parts.join(", ")})`;
+}
+
+// A term shorter than this only matches as plain text: trigram similarity on a
+// couple of letters matches almost everything.
+const MIN_FUZZY_LENGTH = 4;
+const FUZZY_THRESHOLD = 0.55;
+
+// The SQL that filters and ranks rows for a search term bound at `$param`.
+// A row matches if the term appears in it as text (any case), or — for a term
+// long enough to be meaningful — if some word in it is a near miss
+// (pg_trgm word similarity), so "Nithyasri" still finds "Nithyashri S".
+// Exact hits rank before near misses. Returns null for an empty term.
+export function searchSql(table, param) {
+  const text = searchableTextSql(table);
+  const exact = `position(lower($${param}) in lower(${text})) > 0`;
+  const fuzzy = `(char_length($${param}) >= ${MIN_FUZZY_LENGTH} and extensions.word_similarity($${param}, ${text}) >= ${FUZZY_THRESHOLD})`;
+  return {
+    where: `(${exact} or ${fuzzy})`,
+    rank: `(case when ${exact} then 0 else 1 end), extensions.word_similarity($${param}, ${text}) desc`,
+  };
+}
+
+// The search term from a request, trimmed and capped — null when there is none.
+export function searchTermOf(query) {
+  const raw = typeof query?.q === "string" ? query.q.trim().slice(0, 100) : "";
+  return raw === "" ? null : raw;
+}

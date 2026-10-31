@@ -12,7 +12,8 @@ export const PAGE_SIZE = 20;
 // undo-delete: neither changes how many rows there are, so jumping back to
 // page 1 (what `refetch` does, correctly, after an add or delete that can
 // empty the page you're on) would just lose the user's place.
-export function useMasterDataTable(route) {
+// `query` (FEAT-24) is the search term; changing it starts again at page 1.
+export function useMasterDataTable(route, query = '') {
   const [data, setData] = useState(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -32,8 +33,8 @@ export function useMasterDataTable(route) {
   // triggered a second, correct fetch — a wasted request on every
   // route switch and every refetch while on page 2+. Resetting here
   // instead means the fetch effect never observes the stale page at all.
-  const [resetKey, setResetKey] = useState(() => `${route}:${refreshToken}`);
-  const currentResetKey = `${route}:${refreshToken}`;
+  const [resetKey, setResetKey] = useState(() => `${route}:${refreshToken}:${query}`);
+  const currentResetKey = `${route}:${refreshToken}:${query}`;
   if (resetKey !== currentResetKey) {
     setResetKey(currentResetKey);
     setPage(1);
@@ -44,7 +45,7 @@ export function useMasterDataTable(route) {
     setIsLoading(true);
     setError(null);
 
-    fetchMasterDataTable(route, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })
+    fetchMasterDataTable(route, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, query })
       .then(({ rows, total: rowTotal }) => {
         if (cancelled) return;
         setData(rows);
@@ -60,7 +61,7 @@ export function useMasterDataTable(route) {
     return () => {
       cancelled = true;
     };
-  }, [route, page, refreshToken, reloadToken]);
+  }, [route, query, page, refreshToken, reloadToken]);
 
   const refetch = useCallback(() => setRefreshToken((token) => token + 1), []);
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
