@@ -269,3 +269,32 @@ test("the real project-assignments entry's fields resolve both FK routes correct
   assert.deepEqual(projectIdField.references, { table: "projects", route: "projects" });
   assert.deepEqual(teamIdField.references, { table: "teams", route: "teams" });
 });
+
+test("a whole-number field with limits exposes integer, min and max, and a plain number field exposes none of them", () => {
+  const [entry] = buildEntityRelationships([
+    {
+      route: "floors",
+      tableName: "floors",
+      resourceName: "floor",
+      fields: [
+        { key: "floorNumber", column: "floor_number", required: true, type: "number", integer: true, min: 1, max: 1000 },
+        { key: "years", column: "years", required: false, type: "number" },
+      ],
+    },
+  ]);
+  const byKey = Object.fromEntries(entry.fields.map((f) => [f.key, f]));
+  assert.deepEqual([byKey.floorNumber.integer, byKey.floorNumber.min, byKey.floorNumber.max], [true, 1, 1000]);
+  assert.ok(!("integer" in byKey.years) && !("min" in byKey.years) && !("max" in byKey.years));
+});
+
+test("the departments descriptor exposes floorNumber as a required whole number from 1 to 1000", () => {
+  const departments = buildEntityRelationships(MASTER_DATA_TABLES).find((e) => e.route === "departments");
+  const floor = departments.fields.find((f) => f.key === "floorNumber");
+  assert.deepEqual({ type: floor.type, required: floor.required, integer: floor.integer, min: floor.min, max: floor.max }, {
+    type: "number",
+    required: true,
+    integer: true,
+    min: 1,
+    max: 1000,
+  });
+});

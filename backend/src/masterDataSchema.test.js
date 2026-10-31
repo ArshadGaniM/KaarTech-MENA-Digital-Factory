@@ -766,3 +766,25 @@ test("searchTermOf trims, caps at 100 characters, and returns null when empty or
   assert.equal(searchTermOf({ q: ["a", "b"] }), null);
   assert.equal(searchTermOf({}), null);
 });
+
+test("validateBody enforces integer, min and max on a whole-number field, on create and on a partial update", () => {
+  const table = { fields: [{ key: "floorNumber", column: "floor_number", required: true, type: "number", integer: true, min: 1, max: 1000 }] };
+  const errorOf = (body, opts) => {
+    try {
+      validateBody(table, body, opts);
+      return null;
+    } catch (err) {
+      return err.details.floorNumber ?? null;
+    }
+  };
+  assert.equal(errorOf({ floorNumber: 5 }), null);
+  assert.equal(errorOf({ floorNumber: 1 }), null);
+  assert.equal(errorOf({ floorNumber: 1000 }), null);
+  assert.match(errorOf({ floorNumber: 2.5 }), /whole number/);
+  assert.match(errorOf({ floorNumber: 0 }), /at least 1/);
+  assert.match(errorOf({ floorNumber: 1001 }), /at most 1000/);
+  assert.match(errorOf({ floorNumber: 3000000000 }), /at most 1000/);
+  assert.match(errorOf({ floorNumber: 2.5 }, { partial: true }), /whole number/);
+  assert.equal(errorOf({}, { partial: true }), null);
+  assert.ok(errorOf({}));
+});

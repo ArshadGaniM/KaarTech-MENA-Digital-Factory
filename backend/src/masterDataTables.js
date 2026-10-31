@@ -107,6 +107,10 @@ export const MASTER_DATA_TABLES = [
     hasCode: true,
     fields: [
       { key: "name", column: "name", required: true, type: "string" },
+      // FEAT-25: the floor this department occupies in the Control Center
+      // building. Required, a whole number from 1 (ground floor) up to 1000,
+      // and unique among live departments (DB unique index).
+      { key: "floorNumber", column: "floor_number", required: true, type: "number", integer: true, min: 1, max: 1000 },
       // FEAT-20: free-text, both optional — existing departments predate
       // them and stay valid with neither set.
       { key: "input", column: "input", required: false, type: "string", maxLength: 2000 },

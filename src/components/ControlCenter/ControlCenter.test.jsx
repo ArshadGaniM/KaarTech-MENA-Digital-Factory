@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ControlCenter from './ControlCenter';
-import { FLOORS } from './factoryLayout';
 import { useControlCenter } from '../../hooks/useControlCenter';
 import { useTeamDetail } from '../../hooks/useTeamDetail';
 import { currentMonth } from '../../lib/months';
@@ -27,12 +26,21 @@ const team = (overrides) => ({
   ...overrides,
 });
 
+// Departments arrive top floor first, as the backend sends them.
+const DEPARTMENTS = [
+  { code: 'DEPT-001', floorNumber: 13 },
+  { code: 'DEPT-002', floorNumber: 10 },
+  { code: 'DEPT-003', floorNumber: 8 },
+  { code: 'DEPT-013', floorNumber: 1 },
+];
+
 const snapshot = (teamsByCode = {}) => ({
   month: '2026-10',
-  departments: FLOORS.map((floor) => ({
-    code: floor.departmentCode,
-    name: `Name of ${floor.departmentCode}`,
-    teams: teamsByCode[floor.departmentCode] ?? [],
+  departments: DEPARTMENTS.map(({ code, floorNumber }) => ({
+    code,
+    floorNumber,
+    name: `Name of ${code}`,
+    teams: teamsByCode[code] ?? [],
   })),
 });
 
@@ -73,22 +81,29 @@ describe('ControlCenter', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('no departments');
   });
 
-  it('shows one floor per department in sequence, named from the data, and marks a missing department', () => {
-    const data = snapshot();
-    data.departments = data.departments.filter((d) => d.code !== 'DEPT-009');
-    useControlCenter.mockReturnValue(loaded(data));
+  it('shows one floor per department, top floor first, numbered and named from the data', () => {
+    useControlCenter.mockReturnValue(loaded());
     render(<ControlCenter />);
 
     const names = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
-    expect(names).toHaveLength(FLOORS.length);
-    expect(names[0]).toBe('Name of DEPT-002');
-    expect(names[1]).toBe('DEPT-009 (department not found)');
+    expect(names).toEqual(DEPARTMENTS.map(({ code }) => `Name of ${code}`));
+    expect(screen.getAllByText(/^F\d+$/).map((label) => label.textContent)).toEqual(['F13', 'F10', 'F8', 'F1']);
+  });
+
+  it('shows a department added later without any code change', () => {
+    const data = snapshot();
+    data.departments.splice(1, 0, { code: 'DEPT-099', floorNumber: 12, name: 'Brand New Services', teams: [] });
+    useControlCenter.mockReturnValue(loaded(data));
+    render(<ControlCenter />);
+
+    expect(screen.getByRole('heading', { name: 'Brand New Services' })).toBeInTheDocument();
+    expect(screen.getByText('F12')).toBeInTheDocument();
   });
 
   it('says a floor has no teams yet', () => {
     useControlCenter.mockReturnValue(loaded());
     render(<ControlCenter />);
-    expect(screen.getAllByText('No teams yet')).toHaveLength(FLOORS.length);
+    expect(screen.getAllByText('No teams yet')).toHaveLength(DEPARTMENTS.length);
   });
 
   it('puts every team of a floor on screen and groups them by competency', () => {
@@ -137,7 +152,7 @@ describe('ControlCenter', () => {
 
     await user.click(screen.getByRole('button', { name: /Alpha, TEAM-001/ }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', currentMonth());
+    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', currentMonth(), loaded().updatedAt.getTime());
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
