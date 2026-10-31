@@ -29,6 +29,7 @@ Round 1 returned FAIL from security (unauthenticated stream with no cap, full-ta
 - `DATABASE_SSL_CA` turns on certificate verification for all database connections. Unset keeps the old behaviour.
 - The change feed ends its client on stop, uses TCP keep-alive, announces a change after a reconnect and logs when disabled.
 - With `FRONTEND_URL` unset and `NODE_ENV=production`, CORS allows no other origin. The live API was checked and has `FRONTEND_URL` set, so production behaviour is unchanged.
+- The stream heartbeat timer no longer keeps the process alive on shutdown (debugger WARN).
 - Tests for month boundaries, the stream cap, caching, reconnects, month switching and the new components.
 
 ## Open (not blocking)

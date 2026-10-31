@@ -84,7 +84,8 @@ export function createControlCenterRouter({
       stopHeartbeatIfIdle();
     };
     streams.add(res);
-    heartbeat ??= setInterval(() => streams.forEach((open) => open.write(": keep-alive\n\n")), HEARTBEAT_MS);
+    // unref: an idle heartbeat must not keep the process alive on shutdown.
+    heartbeat ??= setInterval(() => streams.forEach((open) => open.write(": keep-alive\n\n")), HEARTBEAT_MS).unref();
     req.on("close", cleanup);
     res.on("error", cleanup);
   });
