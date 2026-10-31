@@ -28,6 +28,10 @@ npm run dev
 | PATCH | `/v1/team-members/:id` | Any subset of the POST fields | Needs `x-internal-api-key` |
 | DELETE | `/v1/team-members/:id` | — | Hard delete. Needs `x-internal-api-key` |
 
+### Initiative plan actuals: `/v1/initiative-plan/actuals`
+
+Actual progress against the locked initiative plan (the plan itself is read-only and lives in the frontend). `GET /v1/initiative-plan/actuals` lists the recorded actuals (open read). `PUT /v1/initiative-plan/actuals/:key` records or replaces one (`actualStartWeek` and `actualEndWeek` whole weeks 1 to 65 or null, end not before start and not without a start, `actualPoc` whole number 0 to 100; needs `x-internal-api-key`) and `DELETE` clears it (204, or 404 if none). `:key` is the plan's Sl. No: `1.0` for a group, `1a` for an activity; anything else is a 404. Table `initiative_plan_actuals` (created by migration `0026_create_project_plan_actuals.sql` as `project_plan_actuals`, renamed by `0027_rename_project_plan_actuals.sql`).
+
 ### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`, `/v1/project-assignments`
 
 All twelve routes share the same shape (`src/masterDataRouter.js`), but each

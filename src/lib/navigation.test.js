@@ -46,3 +46,10 @@ describe('navigation registry', () => {
     expect(tableItems.map((item) => item.label)).toEqual(MASTER_DATA_TABLES.map((table) => table.label));
   });
 });
+
+describe('NAV_ITEMS and the portal', () => {
+  it('leaves the Initiative Plan to the portal, so the application has no entry or hash for it', () => {
+    expect(NAV_ITEMS.some((item) => item.id === 'initiative-plan')).toBe(false);
+    expect(APP_SHELL_HASHES).not.toContain('#charter');
+  });
+});
