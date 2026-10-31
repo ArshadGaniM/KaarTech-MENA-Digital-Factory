@@ -65,3 +65,6 @@ The backend `npm test` glob is `src/*.test.js`. A first copy of the team-members
 
 ### Validate the raw query string, and build the error object from pairs
 Express's default query parser silently removes a `__proto__` key, turns `a[b]=c` into an object and a repeated key into an array, so a validator that reads `req.query` can pass a request it should reject, and what it sees changes with the parser setting. Read the raw query string with `URLSearchParams`, collect `[key, message]` pairs, and build the 422 details with `Object.fromEntries`, because assigning to a key named `__proto__` on a plain object is also silently dropped. Test it under the `extended`, `simple` and `false` parser settings.
+
+### The project plan is the owner's, and it is locked
+The Project Plan section shows the owner's plan sheet. The owner said it must never change in wording, names, descriptions or dates unless they explicitly confirm, more than once. It is kept in `src/data/projectPlan.js`, frozen, with a hash lock test, and `.claude/rules/project-plan.md` states the rule. Do not fix a spelling in it (the sheet says "Measruing"), and do not edit it to match progress: track actuals beside it.

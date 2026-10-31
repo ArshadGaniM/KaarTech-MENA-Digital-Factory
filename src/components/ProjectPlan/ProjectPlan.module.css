@@ -1,0 +1,221 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.scroll {
+  overflow: auto;
+  max-height: calc(100vh - var(--shell-topbar-height) - 140px);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.table th,
+.table td {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 4px 8px;
+  background: var(--color-bg);
+}
+
+.table th.head,
+.table th.monthHead,
+.table th.weekHead {
+  position: sticky;
+  z-index: 3;
+  background: var(--color-accent-dark);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  text-align: center;
+}
+
+.table th.monthHead {
+  top: 0;
+}
+
+.table th.weekHead {
+  top: 28px;
+  min-width: 22px;
+  width: 22px;
+  padding: 4px 0;
+}
+
+.table th.head {
+  top: 0;
+}
+
+.weekLabel {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* The four left columns and POC stay put while the weeks scroll. */
+.table .colSl {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 56px;
+  width: 56px;
+  text-align: center;
+}
+
+.table .colCategory {
+  position: sticky;
+  left: 56px;
+  z-index: 1;
+  min-width: 90px;
+  width: 90px;
+}
+
+.table .colActivity {
+  position: sticky;
+  left: 146px;
+  z-index: 1;
+  min-width: 380px;
+  width: 380px;
+}
+
+.table .colStatus {
+  position: sticky;
+  left: 526px;
+  z-index: 1;
+  min-width: 100px;
+  width: 100px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.table th.colPoc {
+  position: sticky;
+  right: 0;
+  min-width: 64px;
+  width: 64px;
+}
+
+.table td.poc {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  min-width: 64px;
+}
+
+.table th.colSl,
+.table th.colCategory,
+.table th.colActivity,
+.table th.colStatus {
+  z-index: 4;
+}
+
+.ownerRow td {
+  background: var(--color-accent-dark);
+  color: var(--color-on-primary);
+  font-weight: 600;
+}
+
+.ownerLabel {
+  text-align: center;
+}
+
+.groupRow td {
+  font-weight: 600;
+}
+
+.groupTitle {
+  color: var(--color-accent-dark);
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.weekCell {
+  min-width: 22px;
+  width: 22px;
+  padding: 0;
+}
+
+.poc {
+  text-align: center;
+  font-weight: 600;
+}
+
+.pocDone {
+  background: var(--color-status-full);
+  color: var(--color-status-full-ink);
+}
+
+.pocPartial {
+  background: var(--color-status-partial);
+  color: var(--color-status-partial-ink);
+}
+
+.pocNone {
+  background: var(--color-status-unused);
+  color: var(--color-status-unused-ink);
+}
+
+td.completed,
+td.colStatus.completed,
+.swatch.completed {
+  background: var(--color-plan-completed);
+  color: var(--color-plan-completed-ink);
+}
+
+td.inProgress,
+.swatch.inProgress {
+  background: var(--color-plan-progress);
+  color: var(--color-plan-progress-ink);
+}
+
+td.yetToStart,
+.swatch.yetToStart {
+  background: var(--color-plan-pending);
+  color: var(--color-plan-pending-ink);
+}
