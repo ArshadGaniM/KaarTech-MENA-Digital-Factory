@@ -11,6 +11,14 @@
   --color-border: #e5e5e7;
   --color-on-primary: #ffffff;
   --color-row-hover: #fdecee;
+  --color-status-full: #c8f0c0;
+  --color-status-full-ink: #1f6b2a;
+  --color-status-partial: #fcefcb;
+  --color-status-partial-ink: #8a5a00;
+  --color-status-unused: #f9d0d0;
+  --color-status-unused-ink: #9e0c24;
+  --color-status-unstaffed: #ebebee;
+  --color-status-unstaffed-ink: #5f6368;
 
   --font-sans: 'Poppins', system-ui, Roboto, sans-serif;
   --space-1: 8px;

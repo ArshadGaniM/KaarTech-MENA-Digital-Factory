@@ -94,6 +94,13 @@ Response includes `total`; master-data list routes also include `activeTotal`, w
 - Final event: `data: [DONE]\n\n`.
 - Set `Cache-Control: no-cache` on streaming responses.
 
+**Documented deviation:** `GET /v1/control-center/stream` carries no delta
+payload and never sends `[DONE]`. It is a change signal, not a response body:
+it sends named `event: changed` messages with `data: {}`, and the client
+refetches the data. It stays open until the client leaves, with a
+`: keep-alive` comment every 25 seconds. Do not "fix" it back to the
+delta format.
+
 ## Versioning
 - Prefix with `/v1/` once the API stabilises; never break existing endpoints —
   add new fields, don't remove or rename.

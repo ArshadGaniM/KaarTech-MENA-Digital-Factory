@@ -33,7 +33,7 @@ function AppShell({ initialHash = '' }) {
       </a>
       <Sidebar items={NAV_ITEMS} activeId={activeViewId} onSelect={setActiveViewId} />
       <div className={styles.workspace}>
-        <TopBar title={activeItem.label} />
+        <TopBar title={activeItem.kind === 'control-center' ? undefined : activeItem.label} />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
           {activeItem.kind === 'table' ? (
             <MasterDataTable
