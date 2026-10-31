@@ -1,3 +1,4 @@
+import { ApiError } from "./errors.js";
 import express from "express";
 import cors from "cors";
 import { teamMembersRouter } from "./routes/teamMembers.js";
@@ -5,6 +6,8 @@ import { createMasterDataRouter } from "./masterDataRouter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 import { buildEntityRelationships } from "./entityRelationships.js";
 import { parseAllowedOrigins } from "./corsOrigins.js";
+import { createControlCenterRouter } from "./controlCenterRouter.js";
+import { createChangeFeed } from "./changeFeed.js";
 
 const app = express();
 
@@ -25,6 +28,16 @@ app.get("/v1/schema/entity-relationships", (req, res) => {
   res.json({ data: buildEntityRelationships(MASTER_DATA_TABLES) });
 });
 
+const changeFeed = createChangeFeed();
+changeFeed.start();
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.on(signal, () => {
+    changeFeed.stop();
+    process.exit(0);
+  });
+}
+app.use("/v1/control-center", createControlCenterRouter({ changeFeed }));
+
 for (const table of MASTER_DATA_TABLES) {
   app.use(`/v1/${table.route}`, createMasterDataRouter(table));
 }
@@ -36,7 +49,7 @@ app.use((req, res) => {
 // Never expose stack traces, internal paths, or SQL errors to the client (api.md).
 app.use((err, req, res, _next) => {
   const status = err.status || 500;
-  const code = err.code || "internal_error";
+  const code = err instanceof ApiError ? err.code : "internal_error";
   const message = status === 500 ? "An unexpected error occurred." : err.message;
   if (status === 500) console.error(err);
   res.status(status).json({ error: { code, message, details: err.details || {} } });
@@ -45,4 +58,7 @@ app.use((err, req, res, _next) => {
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
   console.log(`Backend listening on port ${port}`);
+  if (!process.env.INTERNAL_API_KEY) {
+    console.warn("INTERNAL_API_KEY is not set: every write route will answer 401 until it is.");
+  }
 });

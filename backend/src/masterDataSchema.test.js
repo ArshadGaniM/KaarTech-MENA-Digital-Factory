@@ -688,3 +688,104 @@ test("validateCrossFields rejects a PATCH moving the start date past the CURRENT
     }
   );
 });
+
+// FEAT-21: ranged numeric fields and the per-group allocation rule.
+import { validateAllocation, allocationSelectSql } from "./masterDataSchema.js";
+
+const rangedTable = {
+  tableName: "resource_deployment",
+  fields: [{ key: "pct", column: "pct", required: true, type: "number", numeric: true, min: 0.01, max: 100 }],
+};
+
+test("validateBody enforces a number field's inclusive min and max", () => {
+  for (const ok of [0.01, 50, 100]) assert.doesNotThrow(() => validateBody(rangedTable, { pct: ok }));
+  for (const [bad, message] of [[0, /at least 0\.01/], [0.009, /at least/], [100.01, /at most 100/]]) {
+    assert.throws(() => validateBody(rangedTable, { pct: bad }), (err) => message.test(err.details.pct));
+  }
+  assert.throws(() => validateBody(rangedTable, { pct: "50" }), (err) => /must be a number/.test(err.details.pct));
+});
+
+test("toResponse turns a numeric field's pg string into a number, leaves null alone, and totals default to null", () => {
+  const table = { ...rangedTable, allocationRule: {} };
+  const base = { id: "x", created_by: "a", created_at: "t", updated_by: "a", updated_at: "t", deleted_at: null };
+  assert.equal(toResponse(table, { ...base, pct: "50.00", employee_total_allocation: "100.00" }).pct, 50);
+  assert.equal(toResponse(table, { ...base, pct: "50.00", employee_total_allocation: "100.00" }).employeeTotalAllocation, 100);
+  assert.equal(toResponse(table, { ...base, pct: null }).pct, null);
+  assert.equal(toResponse(table, { ...base, pct: "1" }).employeeTotalAllocation, null);
+  assert.equal("employeeTotalAllocation" in toResponse(rangedTable, { ...base, pct: "1" }), false);
+});
+
+test("allocationSelectSql is empty without a rule and filters soft-deleted rows with one", () => {
+  assert.deepEqual(allocationSelectSql(rangedTable), []);
+  const [sql] = allocationSelectSql({
+    tableName: "resource_deployment",
+    allocationRule: { groupColumn: "employee_id", valueColumn: "allocation_percentage" },
+  });
+  assert.match(sql, /deleted_at is null/);
+  assert.match(sql, /as employee_total_allocation/);
+});
+
+test("validateAllocation reports a duplicate position and an overflow together, and skips tables without a rule", async () => {
+  const rule = {
+    groupKey: "employeeId", groupColumn: "employee_id", uniqueKey: "positionId", uniqueColumn: "position_code",
+    valueKey: "allocationPercentage", valueColumn: "allocation_percentage", total: 100,
+  };
+  const pool = { query: async () => ({ rows: [{ unique_value: "POS-1", value: "70.10" }] }) };
+  await assert.rejects(
+    validateAllocation(pool, { tableName: "t", allocationRule: rule }, { employee_id: 1, position_code: "POS-1", allocation_percentage: 40 }),
+    (err) => err.details.positionId && /at most 29\.9%/.test(err.details.allocationPercentage)
+  );
+  const never = { query: async () => { throw new Error("must not query"); } };
+  await validateAllocation(never, rangedTable, {});
+});
+
+// FEAT-24: search SQL covers every cell, including live lookups.
+import { searchSql, searchTermOf } from "./masterDataSchema.js";
+
+test("searchSql searches the id, code, every field, lookup columns and audit names", () => {
+  const { where, rank } = searchSql(
+    {
+      tableName: "positions",
+      hasCode: true,
+      fields: [{ column: "name" }, { column: "team_code" }, { column: "competencies" }],
+      lookups: [{ table: "teams", localColumn: "team_code", foreignColumn: "code", projections: [{ column: "name" }] }],
+    },
+    1
+  );
+  for (const part of ["positions.id::text", "positions.code", "positions.name::text", "positions.competencies::text", "lookup_0.name::text", "positions.created_by", "positions.updated_by"]) {
+    assert.ok(where.includes(part), part);
+  }
+  assert.match(where, /char_length\(\$1\) >= 4/);
+  assert.match(where, /\$1 !~ '\[0-9\]'/);
+  assert.match(rank, /word_similarity\(\$1/);
+});
+
+test("searchTermOf trims, caps at 100 characters, and returns null when empty or not a string", () => {
+  assert.equal(searchTermOf({ q: "  abc " }), "abc");
+  assert.equal(searchTermOf({ q: "a".repeat(150) }).length, 100);
+  assert.equal(searchTermOf({ q: "   " }), null);
+  assert.equal(searchTermOf({ q: ["a", "b"] }), null);
+  assert.equal(searchTermOf({}), null);
+});
+
+test("validateBody enforces integer, min and max on a whole-number field, on create and on a partial update", () => {
+  const table = { fields: [{ key: "floorNumber", column: "floor_number", required: true, type: "number", integer: true, min: 1, max: 1000 }] };
+  const errorOf = (body, opts) => {
+    try {
+      validateBody(table, body, opts);
+      return null;
+    } catch (err) {
+      return err.details.floorNumber ?? null;
+    }
+  };
+  assert.equal(errorOf({ floorNumber: 5 }), null);
+  assert.equal(errorOf({ floorNumber: 1 }), null);
+  assert.equal(errorOf({ floorNumber: 1000 }), null);
+  assert.match(errorOf({ floorNumber: 2.5 }), /whole number/);
+  assert.match(errorOf({ floorNumber: 0 }), /at least 1/);
+  assert.match(errorOf({ floorNumber: 1001 }), /at most 1000/);
+  assert.match(errorOf({ floorNumber: 3000000000 }), /at most 1000/);
+  assert.match(errorOf({ floorNumber: 2.5 }, { partial: true }), /whole number/);
+  assert.equal(errorOf({}, { partial: true }), null);
+  assert.ok(errorOf({}));
+});

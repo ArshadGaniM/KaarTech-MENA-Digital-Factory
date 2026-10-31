@@ -1,89 +1,160 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ControlCenter from './ControlCenter';
-import { useTableCounts } from '../../hooks/useTableCounts';
+import { useControlCenter } from '../../hooks/useControlCenter';
+import { useTeamDetail } from '../../hooks/useTeamDetail';
+import { currentMonth } from '../../lib/months';
 
-vi.mock('../../hooks/useTableCounts');
+vi.mock('../../hooks/useControlCenter');
+vi.mock('../../hooks/useTeamDetail');
 
-const failure = () => new Error('boom');
-const rows = [
-  { route: 'resources', label: 'Resources', count: 1234, error: null },
-  { route: 'practices', label: 'Practices', count: 6, error: null },
-  { route: 'teams', label: 'Teams', count: 0, error: null },
-  { route: 'projects', label: 'Projects', count: null, error: failure() },
-  { route: 'roles', label: 'Roles', count: null, error: failure() },
-  { route: 'skills', label: 'Skills', count: null, error: failure() },
-  // A failed table with a stale zero count must still read as unreachable.
-  { route: 'tools', label: 'Tools', count: 0, error: failure() },
+const team = (overrides) => ({
+  code: 'TEAM-001',
+  name: 'Alpha',
+  primaryCompetency: 'FICO',
+  competencies: ['FICO'],
+  memberCount: 2,
+  seatCount: 3,
+  vacantSeatCount: 1,
+  availableHours: 480,
+  allocatedHours: 320,
+  utilizedHours: 160,
+  vacantHours: 160,
+  utilizationPercent: 50,
+  status: 'partial',
+  ...overrides,
+});
+
+// Departments arrive top floor first, as the backend sends them.
+const DEPARTMENTS = [
+  { code: 'DEPT-001', floorNumber: 13 },
+  { code: 'DEPT-002', floorNumber: 10 },
+  { code: 'DEPT-003', floorNumber: 8 },
+  { code: 'DEPT-013', floorNumber: 1 },
 ];
 
-describe('ControlCenter', () => {
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
+const snapshot = (teamsByCode = {}) => ({
+  month: '2026-10',
+  departments: DEPARTMENTS.map(({ code, floorNumber }) => ({
+    code,
+    floorNumber,
+    name: `Name of ${code}`,
+    teams: teamsByCode[code] ?? [],
+  })),
+});
 
-  it('shows a polite status region while loading', () => {
-    useTableCounts.mockReturnValue({ data: null, isLoading: true, error: null });
-    render(<ControlCenter onNavigate={() => {}} />);
+const loaded = (data = snapshot()) => ({ data, isLoading: false, error: null, updatedAt: new Date(2026, 9, 30, 14, 3, 22) });
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  useTeamDetail.mockReturnValue({ data: null, isLoading: true, error: null });
+});
+
+describe('ControlCenter', () => {
+  it('shows a polite status while the first load runs', () => {
+    useControlCenter.mockReturnValue({ data: null, isLoading: true, error: null, updatedAt: null });
+    render(<ControlCenter />);
     expect(screen.getByRole('status')).toHaveTextContent('Loading…');
   });
 
-  it('shows an alert when loading fails', () => {
-    useTableCounts.mockReturnValue({ data: null, isLoading: false, error: new Error('Backend unreachable') });
-    render(<ControlCenter onNavigate={() => {}} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+  it('shows an alert, and keeps the month picker, when the load fails with no data', () => {
+    useControlCenter.mockReturnValue({ data: null, isLoading: false, error: new Error('Backend unreachable'), updatedAt: null });
+    render(<ControlCenter />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load the factory: Backend unreachable');
+    expect(screen.getByRole('button', { name: 'Next month' })).toBeInTheDocument();
+    expect(screen.getByText('Not live')).toBeInTheDocument();
   });
 
-  it('summarises healthy, empty and unreachable tables', () => {
-    useTableCounts.mockReturnValue({ data: rows, isLoading: false, error: null });
-    render(<ControlCenter onNavigate={() => {}} />);
-
-    const tile = (label) => screen.getByText(label).closest('li');
-    expect(within(tile('Healthy tables')).getByText('2')).toBeInTheDocument();
-    expect(within(tile('Tables with no records')).getByText('1')).toBeInTheDocument();
-    expect(within(tile('Unreachable tables')).getByText('4')).toBeInTheDocument();
-    expect(within(tile('Total records (excludes 4 unreachable)')).getByText('1,240')).toBeInTheDocument();
+  it('keeps showing the last data, and says it is not live, when a refresh fails', () => {
+    useControlCenter.mockReturnValue({ ...loaded(), error: new Error('Backend unreachable') });
+    render(<ControlCenter />);
+    expect(screen.getByRole('alert')).toHaveTextContent('showing the last data');
+    expect(screen.getByText(/Not live, last updated 14:03:22/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Live,/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
   });
 
-  it('labels each table row with its status', () => {
-    useTableCounts.mockReturnValue({ data: rows, isLoading: false, error: null });
-    render(<ControlCenter onNavigate={() => {}} />);
-
-    expect(within(screen.getByRole('row', { name: /Resources/ })).getByText('Healthy')).toBeInTheDocument();
-    expect(within(screen.getByRole('row', { name: /Teams/ })).getByText('No records')).toBeInTheDocument();
-    const projects = screen.getByRole('row', { name: /Projects/ });
-    expect(within(projects).getByText('Unreachable')).toBeInTheDocument();
-    expect(within(projects).getByText('—')).toBeInTheDocument();
-    expect(within(screen.getByRole('row', { name: /Tools/ })).getByText('Unreachable')).toBeInTheDocument();
+  it('raises an alert when the backend returns no departments at all', () => {
+    useControlCenter.mockReturnValue(loaded({ month: '2026-10', departments: [] }));
+    render(<ControlCenter />);
+    expect(screen.getByRole('alert')).toHaveTextContent('no departments');
   });
 
-  it('formats record counts with a thousands separator', () => {
-    useTableCounts.mockReturnValue({ data: rows, isLoading: false, error: null });
-    render(<ControlCenter onNavigate={() => {}} />);
+  it('shows one floor per department, top floor first, numbered and named from the data', () => {
+    useControlCenter.mockReturnValue(loaded());
+    render(<ControlCenter />);
 
-    expect(within(screen.getByRole('row', { name: /Resources/ })).getByText('1,234')).toBeInTheDocument();
+    const names = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
+    expect(names).toEqual(DEPARTMENTS.map(({ code }) => `Name of ${code}`));
+    expect(screen.getAllByText(/^F\d+$/).map((label) => label.textContent)).toEqual(['F13', 'F10', 'F8', 'F1']);
   });
 
-  it('raises an alert when some tables are unreachable and keeps the plain total label otherwise', () => {
-    useTableCounts.mockReturnValue({ data: rows, isLoading: false, error: null });
-    const { unmount } = render(<ControlCenter onNavigate={() => {}} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('4 of 7 tables could not be reached.');
-    unmount();
+  it('shows a department added later without any code change', () => {
+    const data = snapshot();
+    data.departments.splice(1, 0, { code: 'DEPT-099', floorNumber: 12, name: 'Brand New Services', teams: [] });
+    useControlCenter.mockReturnValue(loaded(data));
+    render(<ControlCenter />);
 
-    useTableCounts.mockReturnValue({ data: rows.slice(0, 3), isLoading: false, error: null });
-    render(<ControlCenter onNavigate={() => {}} />);
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('Total records')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Brand New Services' })).toBeInTheDocument();
+    expect(screen.getByText('F12')).toBeInTheDocument();
   });
 
-  it('navigates to a table when its Open button is clicked', async () => {
-    const onNavigate = vi.fn();
-    useTableCounts.mockReturnValue({ data: rows, isLoading: false, error: null });
-    render(<ControlCenter onNavigate={onNavigate} />);
+  it('says a floor has no teams yet', () => {
+    useControlCenter.mockReturnValue(loaded());
+    render(<ControlCenter />);
+    expect(screen.getAllByText('No teams yet')).toHaveLength(DEPARTMENTS.length);
+  });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Open Teams' }));
+  it('puts every team of a floor on screen and groups them by competency', () => {
+    useControlCenter.mockReturnValue(
+      loaded(
+        snapshot({
+          'DEPT-003': [
+            team({ code: 'TEAM-010', name: 'Ten', competencies: ['ABAP'] }),
+            team({ code: 'TEAM-011', name: 'Eleven', competencies: ['ABAP'] }),
+            team({ code: 'TEAM-012', name: 'Twelve', competencies: ['FICO'] }),
+          ],
+        })
+      )
+    );
+    render(<ControlCenter />);
 
-    expect(onNavigate).toHaveBeenCalledWith('teams');
+    const abap = screen.getByRole('list', { name: 'Name of DEPT-003, ABAP teams' });
+    expect(within(abap).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByRole('list', { name: 'Name of DEPT-003, FICO teams' })).toBeInTheDocument();
+  });
+
+  it('asks for the selected month, and changes it from the picker', async () => {
+    const user = userEvent.setup();
+    useControlCenter.mockReturnValue(loaded());
+    render(<ControlCenter />);
+    expect(useControlCenter).toHaveBeenLastCalledWith(currentMonth());
+
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(useControlCenter).not.toHaveBeenLastCalledWith(currentMonth());
+  });
+
+  it('shows when the data was last updated, or that it is updating', () => {
+    useControlCenter.mockReturnValue(loaded());
+    const { rerender } = render(<ControlCenter />);
+    expect(screen.getByText(/Live, updated 14:03:22/)).toBeInTheDocument();
+
+    useControlCenter.mockReturnValue({ ...loaded(), isLoading: true });
+    rerender(<ControlCenter />);
+    expect(screen.getByText('Updating…')).toBeInTheDocument();
+  });
+
+  it('opens a team popup from its card and closes it with Escape', async () => {
+    const user = userEvent.setup();
+    useControlCenter.mockReturnValue(loaded(snapshot({ 'DEPT-002': [team({})] })));
+    render(<ControlCenter />);
+
+    await user.click(screen.getByRole('button', { name: /Alpha, TEAM-001/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', currentMonth(), loaded().updatedAt.getTime());
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

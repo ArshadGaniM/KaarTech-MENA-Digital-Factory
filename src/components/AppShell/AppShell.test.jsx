@@ -10,10 +10,15 @@ import { NAV_ITEMS } from '../../lib/navigation';
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ data: [], total: 0 }),
-    })
+    vi.fn((url) =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve(
+            String(url).includes('/v1/control-center') ? { data: { departments: [] } } : { data: [], total: 0, activeTotal: 0 }
+          ),
+      })
+    )
   );
 });
 
@@ -44,7 +49,9 @@ describe('AppShell', () => {
     render(<AppShell />);
 
     expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByRole('heading', { name: 'Factory status' })).toBeInTheDocument();
+    // The Control Center drops the top bar's title; its own page heading names it.
+    expect(screen.queryByRole('heading', { name: controlCenter.label })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
@@ -79,12 +86,12 @@ describe('AppShell', () => {
     expect(await screen.findByRole('columnheader', { name: secondTable.columns[0].label })).toBeInTheDocument();
   });
 
-  it('shows an empty Organization Structure page under its own heading', () => {
+  it('shows the Organization Structure page under its own heading', async () => {
     render(<AppShell initialHash={organizationStructure.hash} />);
 
     expect(screen.getByRole('button', { name: organizationStructure.label })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { name: organizationStructure.label })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: organizationStructure.label })).toBeEmptyDOMElement();
+    expect(await screen.findByRole('region', { name: organizationStructure.label })).toBeInTheDocument();
   });
 
   it('shows the Dashboard overview for the Dashboard section itself', async () => {
@@ -92,16 +99,6 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('button', { name: dashboard.label })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
-  });
-
-  it('opens a table from its Control Center row', async () => {
-    const user = userEvent.setup();
-    render(<AppShell initialHash={controlCenter.hash} />);
-
-    await user.click(await screen.findByRole('button', { name: `Open ${firstTable.label}` }));
-
-    expect(screen.getByRole('button', { name: firstTable.label })).toHaveAttribute('aria-current', 'page');
-    expect(await screen.findByRole('columnheader', { name: firstTable.columns[0].label })).toBeInTheDocument();
   });
 
   it('renders a skip link targeting the main content region', () => {

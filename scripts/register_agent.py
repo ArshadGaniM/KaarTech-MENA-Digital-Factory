@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Upsert an agent's metadata into this project's own agent inventory.
 
-No backend exists yet in this project (CLAUDE.md §0), so this currently
-writes to a local JSON inventory file (.claude/agents/registry.json) instead
-of calling a live API. Swap the `upsert` function for a real API/DB call
-once a backend exists (see CLAUDE.md §14, Method A/B).
+Writes to a local JSON inventory file (.claude/agents/registry.json). The
+Express backend has no agents table, so there is no live API to call (see
+CLAUDE.md §14).
 
 Usage:
     python scripts/register_agent.py --file .claude/agents/dev-team/tester.md --category development_team

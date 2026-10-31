@@ -3,7 +3,7 @@
 Express + `pg` (Postgres/Supabase) API following the conventions in
 `../.claude/rules/api.md` and `../.claude/rules/database.md`: response
 bodies are always `{ data }` / `{ data, total, activeTotal }` (list routes: `total` counts soft-deleted rows for pagination, `activeTotal` leaves them out) / `{ error }`, never raw
-ORM/query rows.
+database rows.
 
 ## Setup
 
@@ -24,9 +24,9 @@ npm run dev
 |---|---|---|---|
 | GET | `/v1/team-members` | — | Paginated (`?limit`, `?offset`) |
 | GET | `/v1/team-members/:id` | — | |
-| POST | `/v1/team-members` | `{ fullName, role?, department?, email?, avatarUrl?, status? }` | |
-| PATCH | `/v1/team-members/:id` | Any subset of the POST fields | |
-| DELETE | `/v1/team-members/:id` | — | Hard delete |
+| POST | `/v1/team-members` | `{ fullName, role?, department?, email?, avatarUrl?, status? }` | Needs `x-internal-api-key` |
+| PATCH | `/v1/team-members/:id` | Any subset of the POST fields | Needs `x-internal-api-key` |
+| DELETE | `/v1/team-members/:id` | — | Hard delete. Needs `x-internal-api-key` |
 
 ### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`, `/v1/project-assignments`
 
@@ -38,7 +38,8 @@ same data at runtime rather than reading source.
 
 | Method | Path | Body | Auth | Notes |
 |---|---|---|---|---|
-| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. |
+| GET | `/v1/<table>/summary?groupBy=<field>` | — | none | Grouped counts of **live** rows, for dashboard charts: `{ data: [{ value, count }], total }`, largest group first, at most 100 groups. `total` counts every matching live row, including rows in groups cut off by that limit, so it can be larger than the sum of `data`. A `value` of `null` is rows where the field is not set. `groupBy` must be a short text or enum field of the table (long free text such as `skill` is refused). Any other groupable field may be added as an equality filter, for example `?groupBy=designation&locationType=Offshore`. An unknown `groupBy` or filter name is a 422. |
+| GET | `/v1/<table>` | — | none | Paginated (`?limit`, max 100; `?offset`). **Includes** soft-deleted rows — see `markedDeleted` below. Returns `total` (all rows, for pagination) and `activeTotal` (live rows only). Optional `?q=` (up to 100 characters) keeps only rows where any cell — id, code, any field, a looked-up name or the audit names — contains the text or has a word that nearly matches it (a near miss such as `Nithyasri` finds `Nithyashri S`; fuzzy matching needs 4 or more characters and no digits, so codes such as `TEAM-05` match as text only). Exact hits sort first, and `total`/`activeTotal` then count the matches. |
 | GET | `/v1/<table>/:id` | — | none | 404 only if the id doesn't exist — returns a soft-deleted row too. |
 | POST | `/v1/<table>` | table's required fields + optional `updatedBy` | `x-internal-api-key` | 201 with the created record. |
 | PATCH | `/v1/<table>/:id` | any subset of the table's fields + optional `updatedBy` | `x-internal-api-key` | 404 if soft-deleted or missing (can't edit a soft-deleted row). |
@@ -51,11 +52,11 @@ Per-table fields, as of this writing:
 |---|---|
 | `competencies` | `name` (required) |
 | `resource-cost` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
-| `resource-deployment` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName` (**read-only**, live-looked-up from the referenced resource), `positionId` (required, string — must reference an existing `positions.code`, enforced), `positionName` (**read-only**, live-looked-up from the referenced position) — the first table with two independent FK/lookup pairs at once |
+| `resource-deployment` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName` (**read-only**, live-looked-up from the referenced resource), `positionId` (required, string — must reference an existing `positions.code`, enforced), `positionName` (**read-only**, live-looked-up from the referenced position) — the first table with two independent FK/lookup pairs at once, `allocationPercentage` (required, number above 0 up to 100 — a resource can have several rows, one per position; the live rows of one resource may not add up to more than 100 and may not repeat a position, enforced with a 422 on create, edit and restore), `employeeTotalAllocation` (**read-only**, the sum of that resource's live rows, so a resource short of 100 is visible) |
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
-| `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team) — plus an auto-generated `code` (`POS-001`, ...) |
+| `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `competencies` (optional, comma-separated competency names up to 500 characters, e.g. `MM, SRM` — each must match an existing, non-deleted `competencies.name`, otherwise a 422 names the unknown ones) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
-| `departments` | `name` (required), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
+| `departments` | `name` (required), `floorNumber` (required, whole number from 1 to 1000, unique among live departments: 1 is the ground floor of the Control Center building and higher numbers are higher up; a number already in use is a 422 naming `floorNumber` (to swap two floors, move one department to a spare number first), and so is restoring a deleted department whose floor was taken meanwhile), `input` / `output` (both optional free text, up to 2,000 characters each) — plus an auto-generated `code` (`DEPT-001`, ...) |
 | `delivery-centers` | `name` (required), `locationType` (required, `onshore` \| `offshore`), `city` (required), `country` (required) — plus an auto-generated `code` (`DC-001`, ...) |
 | `modules` | `moduleCode` (required, human-assigned — distinct from the auto-generated `code`), `name` (required), `practiceId` (optional, a `practices.id` — **not** FK-validated against `practices` at the app layer; can be set/changed later via PATCH. The DB column is still typed `uuid`, so a non-UUID value is rejected with a 422 `validation_error`, not a raw 500 — see below) — plus an auto-generated `code` (`MOD-001`, ...) |
 | `resources` | `employeeId` (required, **caller-supplied and unique — not auto-generated**, unlike every other table's identifier), `name` (required), `employmentStatus` (required), `employmentType` (required), `subDivision` (required), `position` (required), `locationType` (required, `Onsite` \| `Offshore`), `designation` (required), `geBatch` (required), `kaarExperience` (required, number), `totalExperience` (required, number), `orgChart`/`region`/`onsiteLocation`/`offshoreLocation`/`sapExperience` (optional), `skill` (optional, up to 20000 characters — see the field types note below) |
@@ -63,7 +64,7 @@ Per-table fields, as of this writing:
 | `project-assignments` | `projectId` (required, string — pick-list only, must reference an existing `projects.project_id`, enforced), `projectName`/`projectProfitCenterCode` (**read-only**, live-looked-up from the referenced project), `teamId` (required, string — pick-list only, must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `departmentId`/`departmentName` (**read-only**, live-looked-up **transitively** through the referenced team's own `departmentCode` — Project Assignments → Teams → Departments, not a direct column/single-hop join on this table), `projectAssignmentStartDate`/`projectAssignmentEndDate` (both required, `date` type — `projectAssignmentEndDate` must not be earlier than `projectAssignmentStartDate`, enforced) — the first table with a chained lookup and cross-field validation |
 
 **Field types beyond `string`/`enum`:** a field's `type` can also be
-`"number"` (a finite JS number — no length/enum checks apply), `"date"`
+`"number"` (a finite JS number; optional `integer: true`, `min` and `max` limit it, as on `departments.floorNumber`), `"date"`
 (a string that must parse via `Date.parse` — any ISO 8601 date or
 datetime string, e.g. `project-assignments.projectAssignmentStartDate`),
 and any `"string"` field can set `maxLength` to override the default
@@ -122,6 +123,46 @@ a non-UUID string still can't be written — also return a 422
 `validation_error` naming the field, not a raw 500. See
 `isInvalidTextRepresentation`/`invalidValueError` in `src/errors.js`.
 
+### `/v1/control-center`
+
+Read-only (no auth, like every GET) data for the frontend's Control Center
+page. Code in `src/controlCenter.js` and `src/controlCenterRouter.js`.
+
+| Route | Returns |
+|---|---|
+| `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, floorNumber, teams: [...] }] } }`, top floor first (highest `floorNumber`), one entry per live department. Each team carries its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by main competency, then code. |
+| `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. 404 `team_not_found` for an unknown code. |
+| `GET /v1/control-center/stream` | Server-sent events. Sends `retry: 5000`, then one `event: changed` (`data: {}`) per burst of writes to the tables below, and a `: keep-alive` comment every 25 s. |
+
+`month` defaults to the current UTC month. A value that is not `YYYY-MM`
+is a 422 `validation_error`.
+
+Hour rules, all measured in the selected month:
+
+- A **seat** is a live Consultant or Lead Consultant position. Module Lead
+  positions are never counted.
+- **Available hours** = seats x 160.
+- **Allocated hours** = for each seat with someone deployed, 160 scaled by the
+  deployment's `allocation_percentage` (a seat never exceeds 160).
+- **Utilized hours** = allocated hours x the share of the month's days that
+  fall inside any of the team's project assignments (overlaps count once).
+- `status`: `unstaffed` (no allocated hours), `full` (utilized equals
+  allocated), `unused` (nothing utilized), otherwise `partial`.
+
+An open team popup refetches its team every time the page refreshes, so it follows the same changes. It keeps showing its last data while the refetch runs, and says so when a refresh fails instead of claiming to be live.
+
+The stream route is unauthenticated, so at most 100 streams may be open at
+once. Past that it answers 503 `too_many_streams`. The snapshot and team
+routes share one set of table queries for a second and drop it as soon as a
+change arrives, so many open pages cost one load, not one each.
+
+The stream is fed by `LISTEN control_center_changed` on its own connection
+(`src/changeFeed.js`). The channel is notified by migration `0023`'s
+triggers. Without that migration nothing is notified, and the frontend falls
+back to refreshing every 30 seconds. `LISTEN` works on the session-mode
+pooler (`:5432`) this API already uses, but not on the transaction-mode
+pooler (`:6543`).
+
 ### `/v1/schema/entity-relationships`
 
 `GET /v1/schema/entity-relationships` (no auth, no params) returns
@@ -175,7 +216,7 @@ as public API shape — one entry per **writable** field, in declared order.
 An auto-generated `hasCode` column and every `lookups` projection are
 never in `table.fields` to begin with, so they never appear here either —
 this is the complete, and only, list of fields a client should render an
-input for. `maxLength`/`values` are present only when the field actually
+input for. `maxLength`/`values`/`integer`/`min`/`max` are present only when the field actually
 sets them (never `null`). A `references` field additionally resolves its
 target table's own REST `route` (by matching `tableName` against every
 other entry in this same response) — the frontend fetches
@@ -207,13 +248,14 @@ on update, only `updatedBy` changes. Capped at 255 characters (both in
 `validateActor()`/`validateBody()` and as a DB `CHECK` constraint,
 `migrations/0006`).
 
-**Why GET is unauthenticated but writes require a key:** the frontend's
-dashboard is a public browser bundle — it can never safely hold a
-real secret, so reads stay open. Writes go only through the
-[master-data MCP server](../mcp-server/README.md), a trusted server-side
-client that sends `INTERNAL_API_KEY` on every call.
+**Why GET is unauthenticated but writes require a key:** the frontend is a
+public browser bundle, so reads stay open. Writes need `INTERNAL_API_KEY` in the
+`x-internal-api-key` header. The [master-data MCP server](../mcp-server/README.md)
+sends it from a trusted server-side client. The frontend's add, edit and delete
+forms send it too, as `VITE_INTERNAL_API_KEY`, which is visible in the built bundle.
+That is a known limit while there is no login system (CLAUDE.md §20).
 
-Reused across all six routers is the shared factory
+Reused across every master-data router is the shared factory
 `createMasterDataRouter(table)` in `src/masterDataRouter.js`: it builds its
 SQL column lists, `INSERT`/`UPDATE` statements, and validation from
 `table.fields` rather than hardcoding a single `name` column, so a table
@@ -246,6 +288,12 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0017_create_projects.sql` | New table `projects`, created directly with its full real shape in one migration (same reasoning as `positions`, 0015 — the table starts empty). No `name` column and no `hasCode` trigger — all three business columns (`project_id`, `project_name`, `project_profit_center_code`) are manually entered, none auto-generated. `project_id` is caller-supplied and DB-enforced-unique (`projects_project_id_unique`), same mechanism as `resources.employee_id` (0012), not the `code`-sequence-and-trigger pattern every other table uses. No foreign keys — the first table since FEAT-5 with zero FK relationships. |
 | `0018_create_project_assignments.sql` | New table `project_assignments`, created directly with its full real shape in one migration (table starts empty). No `name`/`hasCode` — `project_id` (FK to `projects.project_id`, `fk_project_assignments_projects`, `ix_project_assignments_project_id` index) and `team_code` (FK to `teams.code`, `fk_project_assignments_teams`, `ix_project_assignments_team_code` index) are both pick-list-only references, the second table (after `resource_deployment`/0016) with two FK constraints at once. `project_assignment_start_date`/`project_assignment_end_date` are plain `date` columns with a DB-layer `CHECK (project_assignment_end_date >= project_assignment_start_date)` mirroring the app-layer cross-field validation as defense-in-depth. No `department_code` column — department fields are resolved entirely through the chained lookup via `teams.department_code`, so there's nothing to store for them here. |
 | `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
+| `0020_add_resource_deployment_allocation.sql` | `resource_deployment.allocation_percentage numeric(5,2) not null` with a `ck_resource_deployment_allocation_percentage` check (above 0, up to 100). Existing rows backfilled to 100; the default is dropped afterwards so new rows must state a percentage. |
+| `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule. The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
+| `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
+| `0023_control_center_notify.sql` | `notify_control_center_changed()` plus a statement-level `trg_control_center_notify` trigger on `departments`, `teams`, `positions`, `competencies`, `resource_deployment`, `project_assignments`, `projects` and `resources`. Each insert, update or delete sends one `NOTIFY control_center_changed`, which the backend turns into the Control Center stream's `changed` event. Not applied automatically. |
+| `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `public` schema, because the backend's role cannot use the `extensions` schema), used by the list routes' fuzzy `?q=` search. |
+| `0025_add_department_floor_number.sql` | `departments.floor_number integer not null` with `ck_departments_floor_number_range` (1 to 1000) and the partial unique index `ux_departments_floor_number_live` (live rows only, so deleting a department frees its floor; the name carries the column so the API's unique-violation handler can name the field). Backfilled for the thirteen departments as laid out by the owner, any other row parked at 101 and up. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):
@@ -282,6 +330,13 @@ replaces `0001`'s `deleted_at` indexes rather than rewriting that file).
 
 ## Production database connection
 
+`FRONTEND_URL` is the list of origins allowed to call this API. In production (`NODE_ENV=production`) an unset value allows no other origin. Elsewhere an unset value allows any origin.
+
+`DATABASE_SSL_CA` (optional): the database provider's CA certificate as PEM
+text. When set, every connection, including the Control Center's `LISTEN`
+connection, verifies the server certificate against it. When unset the
+connections stay encrypted but unverified, as before (`src/dbSsl.js`).
+
 Deployed on Render (`kaartech-mena-digital-factory-api`) as
 `DATABASE_URL`, pointed at Supabase's **session pooler**, not the direct
 connection — the direct host (`db.<ref>.supabase.co:5432`) only resolves
@@ -299,7 +354,8 @@ outright ("only superusers can alter privileged roles"), and handing the
 backend superuser credentials would be worse practice anyway. `backend_app`
 has `BYPASSRLS` (required — with RLS enabled and zero policies on every
 table, a non-bypassing role gets zero rows on every read and a
-`42501 insufficient_privilege` on every write) plus explicit
-`SELECT`/`INSERT`/`UPDATE`/`DELETE` on the 7 application tables.
+`42501 insufficient_privilege` on every write) plus
+`SELECT`/`INSERT`/`UPDATE`/`DELETE` on the application tables. Default privileges
+set in the same migration cover tables created later.
 
 Connection string shape: `postgres://backend_app.<project_ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`

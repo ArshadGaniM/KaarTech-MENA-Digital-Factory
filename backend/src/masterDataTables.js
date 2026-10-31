@@ -107,6 +107,10 @@ export const MASTER_DATA_TABLES = [
     hasCode: true,
     fields: [
       { key: "name", column: "name", required: true, type: "string" },
+      // FEAT-25: the floor this department occupies in the Control Center
+      // building. Required, a whole number from 1 (ground floor) up to 1000,
+      // and unique among live departments (DB unique index).
+      { key: "floorNumber", column: "floor_number", required: true, type: "number", integer: true, min: 1, max: 1000 },
       // FEAT-20: free-text, both optional — existing departments predate
       // them and stay valid with neither set.
       { key: "input", column: "input", required: false, type: "string", maxLength: 2000 },
@@ -206,6 +210,22 @@ export const MASTER_DATA_TABLES = [
     // reasoning as resource_cost (0013): the list query's ORDER BY needs
     // an explicit override since it no longer has one to fall back on.
     sortColumn: "employee_id",
+    // One resource can be deployed to several positions, each with its own
+    // allocation percentage; a resource's live rows must never add up to
+    // more than `total` (enforced on create, edit and restore by
+    // masterDataRouter.js's validateAllocation) and are expected to reach it
+    // (surfaced per row as employeeTotalAllocation so a short resource is
+    // visible — rows are entered one at a time, so a hard "exactly 100"
+    // check could never let the first row in).
+    allocationRule: {
+      groupKey: "employeeId",
+      groupColumn: "employee_id",
+      uniqueKey: "positionId",
+      uniqueColumn: "position_code",
+      valueKey: "allocationPercentage",
+      valueColumn: "allocation_percentage",
+      total: 100,
+    },
     // employeeName/positionName are NOT stored columns — they're live
     // joins against resources/positions at read time (see
     // masterDataSchema.js's lookupJoinSql/lookupSelectSql/toResponse).
@@ -253,6 +273,15 @@ export const MASTER_DATA_TABLES = [
         // key stays `positionId`.
         references: { table: "positions", column: "code" },
       },
+      {
+        key: "allocationPercentage",
+        column: "allocation_percentage",
+        required: true,
+        type: "number",
+        numeric: true,
+        min: 0.01,
+        max: 100,
+      },
     ],
   },
   {
@@ -283,6 +312,19 @@ export const MASTER_DATA_TABLES = [
         // non-deleted Teams row exists. References teams' own
         // auto-generated `code` column, not `id`.
         references: { table: "teams", column: "code" },
+      },
+      {
+        key: "competencies",
+        column: "competencies",
+        required: false,
+        type: "string",
+        maxLength: 500,
+        // Comma-separated competency names, each of which must be an
+        // existing, non-deleted Competencies row (checked by
+        // validateReferences, which reports the unknown names). A position
+        // often needs more than one (e.g. "MM, SRM"), hence a list in one
+        // column rather than a single foreign key.
+        listReferences: { table: "competencies", column: "name" },
       },
     ],
   },

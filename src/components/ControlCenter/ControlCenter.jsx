@@ -1,116 +1,77 @@
-import PropTypes from 'prop-types';
-import { useTableCounts } from '../../hooks/useTableCounts';
+import { useState } from 'react';
+import FactoryFloor from './FactoryFloor';
+import MonthPicker from './MonthPicker';
+import TeamDialog from './TeamDialog';
+import { useControlCenter } from '../../hooks/useControlCenter';
+import { currentMonth } from '../../lib/months';
 import styles from './ControlCenter.module.css';
 
-const numberFormat = new Intl.NumberFormat('en-US');
-
-function tableStatus(table) {
-  if (table.error !== null) return { key: 'error', label: 'Unreachable' };
-  if (table.count === 0) return { key: 'empty', label: 'No records' };
-  return { key: 'healthy', label: 'Healthy' };
+// What the status line says: not live when the latest try failed, busy while
+// loading, otherwise live with the time of the last update.
+function liveStatus({ data, error, isLoading, updatedAt }) {
+  const time = updatedAt?.toLocaleTimeString('en-GB');
+  if (error) return { dotClass: styles.liveDotError, text: data ? `Not live, last updated ${time}` : 'Not live' };
+  if (isLoading) return { dotClass: styles.liveDotBusy, text: data ? 'Updating…' : 'Loading…' };
+  return { dotClass: styles.liveDot, text: `Live, updated ${time}` };
 }
 
-function ControlCenter({ onNavigate }) {
-  const { data, isLoading, error } = useTableCounts();
-
-  if (isLoading) {
-    return (
-      <p className={styles.status} role="status" aria-live="polite">
-        Loading…
-      </p>
-    );
-  }
-  if (error) {
-    return (
-      <p className={styles.statusError} role="alert">
-        Could not load the control center: {error.message}
-      </p>
-    );
-  }
-
-  const rows = data.map((table) => ({ ...table, status: tableStatus(table) }));
-  const countOf = (key) => rows.filter((row) => row.status.key === key).length;
-  const unreachableCount = countOf('error');
-  const totalRecords = rows.reduce((sum, row) => sum + (row.count ?? 0), 0);
-
-  const summary = [
-    { label: 'Healthy tables', value: countOf('healthy') },
-    { label: 'Tables with no records', value: countOf('empty') },
-    { label: 'Unreachable tables', value: unreachableCount },
-    {
-      label: unreachableCount > 0 ? `Total records (excludes ${unreachableCount} unreachable)` : 'Total records',
-      value: totalRecords,
-    },
-  ];
+function ControlCenter() {
+  const [month, setMonth] = useState(() => currentMonth());
+  const [openTeam, setOpenTeam] = useState(null);
+  const { data, isLoading, error, updatedAt } = useControlCenter(month);
+  const live = liveStatus({ data, error, isLoading, updatedAt });
 
   return (
     <div className={styles.controlCenter}>
-      {unreachableCount > 0 && (
+      <div className={styles.toolbar}>
+        <MonthPicker month={month} onChange={setMonth} />
+        <p className={styles.live} role="status" aria-live="polite">
+          <span className={live.dotClass} aria-hidden="true" />
+          {live.text}
+        </p>
+      </div>
+      {error && (
         <p className={styles.statusError} role="alert">
-          {unreachableCount} of {rows.length} tables could not be reached.
+          {data ? `Could not refresh, showing the last data: ${error.message}` : `Could not load the factory: ${error.message}`}
+        </p>
+      )}
+      {data && data.departments.length === 0 && (
+        <p className={styles.statusError} role="alert">
+          The backend returned no departments, so no floor can be filled in.
         </p>
       )}
 
-      <section aria-labelledby="control-center-summary" className={styles.section}>
-        <h2 id="control-center-summary" className={styles.sectionTitle}>
-          Factory status
-        </h2>
-        <ul className={styles.tiles}>
-          {summary.map((tile) => (
-            <li key={tile.label} className={styles.tile}>
-              <span className={styles.tileLabel}>{tile.label}</span>
-              <span className={styles.tileValue}>{numberFormat.format(tile.value)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="control-center-tables" className={styles.section}>
-        <h2 id="control-center-tables" className={styles.sectionTitle}>
-          Master data
-        </h2>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th scope="col">Table</th>
-              <th scope="col" className={styles.numeric}>
-                Records
-              </th>
-              <th scope="col">Status</th>
-              <th scope="col">
-                <span className={styles.srOnly}>Action</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.route}>
-                <th scope="row">{row.label}</th>
-                <td className={styles.numeric}>{row.count === null ? '—' : numberFormat.format(row.count)}</td>
-                <td>
-                  <span className={styles[`badge_${row.status.key}`]}>{row.status.label}</span>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className={styles.openButton}
-                    aria-label={`Open ${row.label}`}
-                    onClick={() => onNavigate(row.route)}
-                  >
-                    Open
-                  </button>
-                </td>
-              </tr>
+      {data && (
+        <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-labelledby="factory-title">
+          <h1 id="factory-title" className={styles.roof}>
+            MENA Digital Factory
+          </h1>
+          <ol className={styles.floors}>
+            {data.departments.map((department, i) => (
+              <FactoryFloor
+                key={department.code}
+                level={department.floorNumber}
+                order={i}
+                name={department.name}
+                teams={department.teams}
+                onOpenTeam={setOpenTeam}
+              />
             ))}
-          </tbody>
-        </table>
-      </section>
+          </ol>
+        </section>
+      )}
+
+      {openTeam && (
+        <TeamDialog
+          code={openTeam}
+          month={month}
+          updatedAt={updatedAt}
+          pageError={error}
+          onClose={() => setOpenTeam(null)}
+        />
+      )}
     </div>
   );
 }
-
-ControlCenter.propTypes = {
-  onNavigate: PropTypes.func.isRequired,
-};
 
 export default ControlCenter;

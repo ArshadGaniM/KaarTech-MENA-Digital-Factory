@@ -300,3 +300,71 @@ registerDeleteTests({
   tableName: "positions",
   resourceName: "position",
 });
+
+// FEAT-22: a position's competencies are a comma-separated list of names that
+// must exist in the Competencies table.
+function competencyMock(t, known) {
+  let inserted = null;
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.startsWith("select 1 from teams where code")) return { rows: [{}] };
+    if (sql.includes("from competencies where name = any")) {
+      return { rows: params[0].filter((n) => known.includes(n)).map((name) => ({ name })) };
+    }
+    if (sql.startsWith("insert into positions")) {
+      inserted = params;
+      return { rows: [baseRow({ competencies: params[2] })] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+  return () => inserted;
+}
+
+function postPosition(body) {
+  return fetch(`${baseUrl}/v1/positions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify(body),
+  });
+}
+
+test("POST /v1/positions accepts a competency list whose names all exist", async (t) => {
+  const inserted = competencyMock(t, ["MM", "SRM"]);
+
+  const res = await postPosition({ name: "Consultant", teamCode: "TEAM-002", competencies: "MM, SRM" });
+
+  assert.equal(res.status, 201);
+  assert.equal((await res.json()).data.competencies, "MM, SRM");
+  assert.ok(inserted());
+});
+
+test("POST /v1/positions rejects a competency list naming one that does not exist, and never inserts", async (t) => {
+  const inserted = competencyMock(t, ["MM"]);
+
+  const res = await postPosition({ name: "Consultant", teamCode: "TEAM-002", competencies: "MM, SRM, XYZ" });
+
+  assert.equal(res.status, 422);
+  const message = (await res.json()).error.details.competencies;
+  assert.match(message, /SRM, XYZ/);
+  assert.doesNotMatch(message, /MM,/);
+  assert.equal(inserted(), null);
+});
+
+test("POST /v1/positions treats competencies as optional, and a blank list as none", async (t) => {
+  competencyMock(t, []);
+
+  assert.equal((await postPosition({ name: "Consultant", teamCode: "TEAM-002" })).status, 201);
+  assert.equal((await postPosition({ name: "Consultant", teamCode: "TEAM-002", competencies: null })).status, 201);
+});
+
+test("POST /v1/positions rejects a list with no names in it, and stores a canonical list otherwise", async (t) => {
+  const inserted = competencyMock(t, ["MM", "SRM"]);
+
+  const blank = await postPosition({ name: "Consultant", teamCode: "TEAM-002", competencies: " , ," });
+  assert.equal(blank.status, 422);
+  assert.match((await blank.json()).error.details.competencies, /at least one/);
+  assert.equal(inserted(), null);
+
+  const res = await postPosition({ name: "Consultant", teamCode: "TEAM-002", competencies: "MM,SRM , MM" });
+  assert.equal(res.status, 201);
+  assert.equal(inserted()[2], "MM, SRM");
+});

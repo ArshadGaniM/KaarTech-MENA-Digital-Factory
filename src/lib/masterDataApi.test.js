@@ -7,6 +7,7 @@ import {
   restoreRecord,
   fetchMasterDataTable,
   fetchAllMasterDataTableRows,
+  fetchGroupSummary,
 } from './masterDataApi';
 
 function columnsFor(route) {
@@ -28,9 +29,21 @@ describe('MASTER_DATA_TABLES column definitions', () => {
   );
 
   // FEAT-20: departments gained two optional free-text fields.
-  it('gives departments Input and Output columns between the name and the audit columns', () => {
+  it('gives departments Floor Number, Input and Output columns between the name and the audit columns', () => {
     const keys = columnsFor('departments').map((column) => column.key);
-    expect(keys.slice(0, 4)).toEqual(['code', 'name', 'input', 'output']);
+    expect(keys.slice(0, 5)).toEqual(['code', 'name', 'floorNumber', 'input', 'output']);
+  });
+
+  // FEAT-21: a resource can hold several deployments, each with a share.
+  it('gives resource-deployment Allocation % and Employee Total % columns after the position columns', () => {
+    const keys = columnsFor('resource-deployment').map((column) => column.key);
+    expect(keys.slice(3, 7)).toEqual(['positionId', 'positionName', 'allocationPercentage', 'employeeTotalAllocation']);
+  });
+
+  // FEAT-22: positions record the competencies they need.
+  it('gives positions a Competencies column after the team columns', () => {
+    const keys = columnsFor('positions').map((column) => column.key);
+    expect(keys.slice(2, 5)).toEqual(['teamCode', 'teamName', 'competencies']);
   });
 
   // Tables with a business identity (auto-generated code or caller-supplied
@@ -131,6 +144,17 @@ describe('fetchMasterDataTable', () => {
     await fetchMasterDataTable('resources', { limit: 20, offset: 40 });
 
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=40$/));
+  });
+
+  // FEAT-24
+  it('sends a trimmed search term as q, and omits q when the term is blank', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [], total: 0 }) });
+
+    await fetchMasterDataTable('resources', { query: '  Nithya  ' });
+    expect(fetch).toHaveBeenLastCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=0&q=Nithya$/));
+
+    await fetchMasterDataTable('resources', { query: '   ' });
+    expect(fetch).toHaveBeenLastCalledWith(expect.stringMatching(/\/v1\/resources\?limit=20&offset=0$/));
   });
 
   it('throws the backend error message on a non-2xx response', async () => {
@@ -310,5 +334,79 @@ describe('updateRecord / restoreRecord / createRecord', () => {
     fetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.reject(new Error('not json')) });
 
     await expect(updateRecord('departments', 'row-1', {})).rejects.toThrow(/could not be read/);
+  });
+});
+
+describe('fetchGroupSummary', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('requests the summary route with groupBy and only the filters that have a value', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ value: 'Onsite', count: 3 }, { value: null, count: 1 }], total: 4 }),
+    });
+
+    const result = await fetchGroupSummary('resources', 'designation', { locationType: 'Offshore', skill: null });
+
+    const url = new URL(fetch.mock.calls[0][0]);
+    expect(url.pathname).toBe('/v1/resources/summary');
+    expect(url.searchParams.get('groupBy')).toBe('designation');
+    expect(url.searchParams.get('locationType')).toBe('Offshore');
+    expect(url.searchParams.has('skill')).toBe(false);
+    expect(result).toEqual({
+      groups: [
+        { value: 'Onsite', count: 3 },
+        { value: null, count: 1 },
+      ],
+      total: 4,
+    });
+  });
+
+  it("throws the backend's own message on an error response", async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: { message: 'groupBy must be one of: name.' } }),
+    });
+
+    await expect(fetchGroupSummary('resources', 'nope')).rejects.toThrow('groupBy must be one of: name.');
+  });
+
+  it("includes the HTTP status when an error body is not JSON, such as a proxy 502", async () => {
+    fetch.mockResolvedValue({ ok: false, status: 502, json: () => Promise.reject(new SyntaxError('Unexpected token <')) });
+
+    await expect(fetchGroupSummary('resources', 'designation')).rejects.toThrow('HTTP 502');
+  });
+
+  it.each([
+    ['missing', { data: [{ value: 'a', count: 3 }] }],
+    ['negative', { data: [{ value: 'a', count: 3 }], total: -1 }],
+    ['a string', { data: [{ value: 'a', count: 3 }], total: '3' }],
+  ])('rejects a response whose total is %s instead of summing the groups', async (_label, payload) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) });
+
+    await expect(fetchGroupSummary('resources', 'designation')).rejects.toThrow(/malformed/);
+  });
+
+  it('keeps the backend total even when it is larger than the groups it sent', async () => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ value: 'a', count: 3 }], total: 500 }) });
+
+    expect((await fetchGroupSummary('resources', 'designation')).total).toBe(500);
+  });
+
+  it.each([
+    ['not an array', { data: 'x', total: 1 }],
+    ['a negative count', { data: [{ value: 'a', count: -1 }], total: 1 }],
+    ['a non-numeric count', { data: [{ value: 'a', count: '3' }], total: 1 }],
+    ['no body data', {}],
+  ])('rejects a malformed response (%s)', async (_label, payload) => {
+    fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) });
+
+    await expect(fetchGroupSummary('resources', 'designation')).rejects.toThrow(/malformed/);
   });
 });

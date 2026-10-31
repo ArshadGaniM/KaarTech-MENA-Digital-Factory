@@ -1,38 +1,36 @@
-# Gate Report: Control Center section
+# Gate Report: key check on team-members writes
 
-**Verdict: WARN** (zero FAIL, zero Critical, security PASS clean)
+Verdict: ⚠️ WARN (no FAIL, no Critical, security PASS on the second audit)
 
-**Branch:** `claude/sleepy-hopper-bpow3i` to `main`
-**Scope:** `git diff origin/main..HEAD`. New `ControlCenter` view, placed first in the section list with Dashboard second. `Header` uses a `DASHBOARD_HASH` constant.
-**Checks run after the fixes below:** frontend 172/172 tests, `vite build` clean, no lint warnings in changed files.
+Scope: `backend/src/routes/teamMembers.js`, `backend/src/auth.js`, `backend/src/index.js`, `backend/src/auth.test.js`, the new `backend/src/teamMembers.route.test.js`, `backend/README.md` and `.claude/rules/api.md`.
+Checks: backend 322 of 322 tests pass. Without the guard, 6 of the new tests fail.
+
+What changed:
+- POST, PATCH and DELETE on `/v1/team-members` now need the `x-internal-api-key` header, like every other write route. GET stays open. Before this, anyone could create, edit or permanently delete team members. Nothing in the frontend or the MCP server calls these routes, so no client breaks.
+- The key comparison is constant-time. Both values are hashed with SHA-256 and compared with `timingSafeEqual`, and a header that is not a string is rejected.
+- The backend logs a warning at startup when `INTERNAL_API_KEY` is unset. Before, every write answered 401 with nothing in the logs.
+- `api.md` and the README now say all writes need the key. The "known gap" note is gone.
+
+Deploy: the Render API needs a redeploy after this merges. `INTERNAL_API_KEY` is already set there.
 
 ## Agent results
 
-| Agent | Verdict | Summary |
+| Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | PASS | No Critical. Three warnings, fixed below. |
-| security-auditor | PASS | No injection, XSS, secrets or new network surface. |
-| debugger | PASS | Null counts, id lookups and fallback view verified. Tests and build run. |
-| test-writer | PASS | About 90% of changed lines covered (estimate, no coverage tool run). |
-| refactorer | WARN | Duplication with Dashboard (open, optional). |
-| doc-writer | WARN | Stale README and comment, fixed below. |
-| silent-failure-hunter | WARN | Partial total and missing alert, fixed below. |
-| pr-test-analyzer | WARN | Test gaps, mostly fixed below. |
+| code-reviewer | PASS | Guard runs after body parsing and before validation and queries. Docs match the code. |
+| security-auditor | WARN, then PASS | First run: every write route is guarded, but the key comparison used `!==`. Fixed with `timingSafeEqual`. Re-audit: no bypass or throw path, the warning leaks nothing. |
+| debugger | PASS | Full suite passes, no leaked handles, mocks restored. |
+| test-writer | PASS | Changed lines 100% covered. Added tests for 422 and for PATCH on a missing member. |
+| refactorer | WARN | The auth tests repeat part of `registerAuthGateTests`. Kept, because the helper builds master-data servers and does not cover wrong keys. |
+| doc-writer | WARN | The old report listed the gap as open. This report replaces it. |
+| silent-failure-hunter | WARN | Unset server key was unlogged. Fixed with the startup warning. |
+| pr-test-analyzer | PASS | Tests assert status, code and that no query ran. |
 
-Subagent verification rule (CLAUDE.md §8): no agent made a negative file-existence claim that needed a cross-check. Six agents first failed on a nonexistent `deep`/`fast` model alias and were re-run on `sonnet`.
+Subagent file-existence claims: none that needed a cross-check.
 
-## Fixed in this push
+## Open WARN items
 
-- "Total records" now says how many tables it excludes, and a page alert appears when any table is unreachable.
-- `mcp-server/README.md` lists the three non-table sections. The `navigation.js` comment no longer tracks ordinals.
-- `Header` reads `DASHBOARD_HASH` instead of a module-load `.find`.
-- Tests: distinct per-status counts, the dash for a null count, number formatting, the alert, mock reset, and an AppShell test that opens a table from Control Center.
-
-## Open (not blocking)
-
-- [ ] Control Center repeats Dashboard's loading/error text, number formatting and tile styles. Share them in a follow-up.
-- [ ] Per-table error cause is not shown in the UI.
-- [ ] `resolveViewId('')` may warn on an empty hash (pre-existing).
-- [ ] `.numeric` uses `!important` in `ControlCenter.module.css`.
-
-Hero "Enter the Application" now opens Control Center. This is intended.
+- [ ] A client built without `VITE_INTERNAL_API_KEY` sends an empty key and gets a plain 401 (frontend and MCP client).
+- [ ] `GET /:id` on team members has no test, and `DELETE`/`GET` with a malformed id return a logged 500.
+- [ ] The shared key is still visible in the frontend bundle. Real login is the fix (CLAUDE.md §20).
+- [ ] A whitespace-only `INTERNAL_API_KEY` counts as set.

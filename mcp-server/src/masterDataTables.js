@@ -103,6 +103,7 @@ export const MASTER_DATA_TABLES = [
     hasCode: true,
     fields: [
       { key: "name", label: "name", required: true, type: "string" },
+      { key: "floorNumber", label: "floor number (1 to 1000, 1 is the ground floor, must be unused by another department)", required: true, type: "number", integer: true, min: 1, max: 1000 },
       { key: "input", label: "input", required: false, type: "string", maxLength: 2000 },
       { key: "output", label: "output", required: false, type: "string", maxLength: 2000 },
     ],
@@ -175,6 +176,15 @@ export const MASTER_DATA_TABLES = [
         required: true,
         type: "string",
       },
+      {
+        key: "allocationPercentage",
+        label:
+          "share of the resource's time spent on this position, above 0 and up to 100. One resource " +
+          "can have several rows (one per position); their percentages must not add up to more than " +
+          "100 and should reach 100, and the same position cannot be used twice for a resource",
+        required: true,
+        type: "number",
+      },
     ],
   },
   {
@@ -195,6 +205,15 @@ export const MASTER_DATA_TABLES = [
           "request with a validation error if no such Team exists",
         required: true,
         type: "string",
+      },
+      {
+        key: "competencies",
+        label:
+          "comma-separated competency names the position needs, e.g. \"MM, SRM\" — each must match an " +
+          "existing, non-deleted Competency name; the backend rejects the request naming any that do not",
+        required: false,
+        type: "string",
+        maxLength: 500,
       },
     ],
   },

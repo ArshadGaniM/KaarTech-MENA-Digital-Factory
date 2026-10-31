@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
 // columns drives what MasterDataTable renders — kept in display order,
 // separate from the backend's field list since this is presentation-only
@@ -95,6 +95,7 @@ export const MASTER_DATA_TABLES = [
     columns: [
       { key: "code", label: "Department Code" },
       { key: "name", label: "Department Name" },
+      { key: "floorNumber", label: "Floor Number" },
       { key: "input", label: "Input" },
       { key: "output", label: "Output" },
       ...AUDIT_COLUMNS,
@@ -140,6 +141,8 @@ export const MASTER_DATA_TABLES = [
       { key: "employeeName", label: "Employee Name" },
       { key: "positionId", label: "Position ID" },
       { key: "positionName", label: "Position Name" },
+      { key: "allocationPercentage", label: "Allocation %" },
+      { key: "employeeTotalAllocation", label: "Employee Total %" },
       ...AUDIT_COLUMNS,
     ],
   },
@@ -152,6 +155,7 @@ export const MASTER_DATA_TABLES = [
       { key: "name", label: "Position Name" },
       { key: "teamCode", label: "Team Code" },
       { key: "teamName", label: "Team Name" },
+      { key: "competencies", label: "Competencies" },
       ...AUDIT_COLUMNS,
     ],
   },
@@ -191,8 +195,11 @@ export const MASTER_DATA_TABLES = [
 // is what the visible table view fetches a page at a time. Returns
 // { rows, total } rather than a bare array so a caller can compute page
 // count without a second request.
-export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {}) {
+// `query` (FEAT-24) filters on any cell, exact or near-miss, across the whole
+// table — not just the page on screen.
+export async function fetchMasterDataTable(route, { limit = 20, offset = 0, query = '' } = {}) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (query.trim() !== '') params.set('q', query.trim());
   const url = `${BACKEND_URL}/v1/${route}?${params}`;
   const res = await fetch(url);
   let parseError = null;
@@ -224,9 +231,37 @@ export async function fetchMasterDataTable(route, { limit = 20, offset = 0 } = {
   if (total === null) {
     throw new Error(`${route} returned a malformed response: invalid total "${payload.total}".`);
   }
-  // Absent on a backend that predates activeTotal; callers fall back to total.
+  // Absent on a backend that predates activeTotal; callers must not treat it as zero or fall back to total.
   const activeTotal = Number.isFinite(payload.activeTotal) && payload.activeTotal >= 0 ? payload.activeTotal : undefined;
   return { rows: payload.data, total, activeTotal };
+}
+
+// Grouped counts of live rows (GET /v1/<route>/summary), for dashboard
+// charts. `filters` narrows by equality on other groupable fields; entries
+// with no value are left out, so a cleared filter is simply absent. A group
+// whose `value` is null holds rows where that field is not set.
+export async function fetchGroupSummary(route, groupBy, filters = {}) {
+  const params = new URLSearchParams({ groupBy });
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) params.set(key, value);
+  });
+  const res = await fetch(`${BACKEND_URL}/v1/${route}/summary?${params}`);
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(payload?.error?.message || `Failed to load the ${route} summary (HTTP ${res.status})`);
+  }
+  const groups = payload?.data;
+  // `total` is required: summing the groups instead would quietly understate
+  // it when the backend cuts the group list off, or hide an old backend.
+  const valid =
+    Array.isArray(groups) &&
+    groups.every((group) => Number.isFinite(group?.count) && group.count >= 0) &&
+    Number.isFinite(payload.total) &&
+    payload.total >= 0;
+  if (!valid) {
+    throw new Error(`${route} summary returned a malformed response.`);
+  }
+  return { groups: groups.map(({ value, count }) => ({ value: value ?? null, count })), total: payload.total };
 }
 
 // Pages through the backend's own max page size until every row has been

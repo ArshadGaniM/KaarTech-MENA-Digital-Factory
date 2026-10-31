@@ -23,7 +23,7 @@ describe('useMasterDataTable', () => {
     expect(result.current.page).toBe(1);
     expect(result.current.totalPages).toBe(1);
     expect(result.current.error).toBeNull();
-    expect(fetchMasterDataTable).toHaveBeenCalledWith('practices', { limit: PAGE_SIZE, offset: 0 });
+    expect(fetchMasterDataTable).toHaveBeenCalledWith('practices', { limit: PAGE_SIZE, offset: 0, query: '' });
   });
 
   it('surfaces a fetch failure as `error`', async () => {
@@ -72,7 +72,7 @@ describe('useMasterDataTable', () => {
 
     await waitFor(() => expect(result.current.page).toBe(2));
     await waitFor(() =>
-      expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: PAGE_SIZE })
+      expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: PAGE_SIZE, query: '' })
     );
   });
 
@@ -113,7 +113,7 @@ describe('useMasterDataTable', () => {
     });
 
     await waitFor(() => expect(fetchMasterDataTable.mock.calls.length).toBe(callsBefore + 1));
-    expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: 2 * PAGE_SIZE });
+    expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: 2 * PAGE_SIZE, query: '' });
     expect(result.current.page).toBe(3);
   });
 
@@ -132,5 +132,26 @@ describe('useMasterDataTable', () => {
     });
 
     await waitFor(() => expect(result.current.page).toBe(1));
+  });
+
+  // FEAT-24: a search term is sent with every request, and changing it goes back to page 1.
+  it('passes the search term to the fetch and goes back to page 1 when it changes', async () => {
+    fetchMasterDataTable.mockResolvedValue({ rows: [{ id: '1' }], total: 45 });
+
+    const { result, rerender } = renderHook(({ query }) => useMasterDataTable('resources', query), {
+      initialProps: { query: '' },
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => {
+      result.current.setPage(3);
+    });
+    await waitFor(() => expect(result.current.page).toBe(3));
+
+    rerender({ query: 'nithya' });
+
+    await waitFor(() => expect(result.current.page).toBe(1));
+    await waitFor(() =>
+      expect(fetchMasterDataTable).toHaveBeenLastCalledWith('resources', { limit: PAGE_SIZE, offset: 0, query: 'nithya' })
+    );
   });
 });

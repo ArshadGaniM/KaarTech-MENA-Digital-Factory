@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { notFound } from "../errors.js";
+import { requireInternalApiKey } from "../auth.js";
 import { toResponse, validateBody } from "../teamMemberSchema.js";
 
 export const teamMembersRouter = Router();
@@ -34,7 +35,7 @@ teamMembersRouter.get("/:id", async (req, res, next) => {
   }
 });
 
-teamMembersRouter.post("/", async (req, res, next) => {
+teamMembersRouter.post("/", requireInternalApiKey, async (req, res, next) => {
   try {
     validateBody(req.body);
     const { fullName, role = null, department = null, email = null, avatarUrl = null, status = "active" } = req.body;
@@ -49,7 +50,7 @@ teamMembersRouter.post("/", async (req, res, next) => {
   }
 });
 
-teamMembersRouter.patch("/:id", async (req, res, next) => {
+teamMembersRouter.patch("/:id", requireInternalApiKey, async (req, res, next) => {
   try {
     validateBody(req.body, { partial: true });
     const existing = await pool.query("select * from team_members where id = $1", [req.params.id]);
@@ -77,7 +78,7 @@ teamMembersRouter.patch("/:id", async (req, res, next) => {
   }
 });
 
-teamMembersRouter.delete("/:id", async (req, res, next) => {
+teamMembersRouter.delete("/:id", requireInternalApiKey, async (req, res, next) => {
   try {
     const result = await pool.query("delete from team_members where id = $1 returning id", [req.params.id]);
     if (result.rows.length === 0) throw notFound("team_member", req.params.id);
