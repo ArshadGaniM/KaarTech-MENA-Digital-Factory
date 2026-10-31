@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useMasterDataTable } from '../../hooks/useMasterDataTable';
 import { useColumnWidths } from '../../hooks/useColumnWidths';
@@ -11,6 +11,8 @@ const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
 const ACTIONS_COLUMN_WIDTH = 190;
+// How long typing must pause before the search runs, so a request is not sent per keystroke.
+const SEARCH_DEBOUNCE_MS = 300;
 
 function capitalize(value) {
   return typeof value === 'string' ? value.replace(/\b\w/g, (letter) => letter.toUpperCase()) : value;
@@ -23,7 +25,22 @@ function formatCell(column, value) {
 }
 
 function MasterDataTable({ route, columns, singularLabel }) {
-  const { data, total, page, totalPages, setPage, isLoading, error, refetch, reload } = useMasterDataTable(route);
+  // FEAT-24: `searchText` is what the box shows; `searchTerm` is what has been
+  // sent to the backend once typing paused. Switching table clears both.
+  const [searchText, setSearchText] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchRoute, setSearchRoute] = useState(route);
+  if (searchRoute !== route) {
+    setSearchRoute(route);
+    setSearchText('');
+    setSearchTerm('');
+  }
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchText.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  const { data, total, page, totalPages, setPage, isLoading, error, refetch, reload } = useMasterDataTable(route, searchTerm);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // FEAT-19: the row being edited (null = the edit modal is closed).
@@ -107,6 +124,22 @@ function MasterDataTable({ route, columns, singularLabel }) {
   return (
     <div className={styles.wrapper}>
       <div className={styles.toolbar}>
+        <div className={styles.searchBox}>
+          <input
+            type="search"
+            className={styles.searchInput}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder={`Search ${singularLabel.toLowerCase()} records`}
+            aria-label={`Search ${singularLabel.toLowerCase()} records`}
+            maxLength={100}
+          />
+          {searchText !== '' && (
+            <button type="button" className={styles.searchClear} onClick={() => setSearchText('')}>
+              Clear
+            </button>
+          )}
+        </div>
         <button type="button" className={styles.addButton} onClick={() => setIsAddOpen(true)}>
           Add {singularLabel}
         </button>
@@ -158,7 +191,7 @@ function MasterDataTable({ route, columns, singularLabel }) {
               {data.length === 0 ? (
                 <tr>
                   <td className={styles.status} colSpan={columns.length + 1}>
-                    No records yet. Add one above.
+                    {searchTerm ? `No records match "${searchTerm}".` : 'No records yet. Add one above.'}
                   </td>
                 </tr>
               ) : (

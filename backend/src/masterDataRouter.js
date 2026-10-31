@@ -22,6 +22,8 @@ import {
   allocationSelectSql,
   validateAllocation,
   normalizeLists,
+  searchSql,
+  searchTermOf,
 } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
 
@@ -127,20 +129,29 @@ export function createMasterDataRouter(table) {
       const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
       const offset = Math.max(Number(req.query.offset) || 0, 0);
 
+      const term = searchTermOf(req.query);
+      const search = term ? searchSql(table, 1) : null;
+      // With a search term, $1 is the term and the page bounds follow it.
+      const [limitParam, offsetParam] = term ? [2, 3] : [1, 2];
+
       const [rows, count] = await Promise.all([
         // Active rows always sort before soft-deleted ones, so deleted rows
         // (which are never removed and only accumulate) can't crowd active
         // rows out of the page once the table holds more than `limit` rows.
+        // A search ranks exact hits before near misses within that.
         pool.query(
           `select ${selectList} from ${tableName} ${joinSql}
-           order by (${tableName}.deleted_at is not null), ${tableName}.${sortColumn} asc
-           limit $1 offset $2`,
-          [limit, offset]
+           ${search ? `where ${search.where}` : ""}
+           order by (${tableName}.deleted_at is not null)${search ? `, ${search.rank}` : ""}, ${tableName}.${sortColumn} asc
+           limit $${limitParam} offset $${offsetParam}`,
+          term ? [term, limit, offset] : [limit, offset]
         ),
         pool.query(
           `select count(*)::int as total,
-                  (count(*) filter (where deleted_at is null))::int as "activeTotal"
-           from ${tableName}`
+                  (count(*) filter (where ${tableName}.deleted_at is null))::int as "activeTotal"
+           from ${tableName} ${joinSql}
+           ${search ? `where ${search.where}` : ""}`,
+          term ? [term] : []
         ),
       ]);
 
