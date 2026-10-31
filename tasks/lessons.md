@@ -36,7 +36,10 @@ just "does an artifact with an acceptable verdict exist somewhere."
 
 ## Merging main into a branch can trigger the auto-merge early
 
-- The auto-PR workflow merges a push when `tasks/last-gate-report.md` and at least one other file changed in that push. Merging `origin/main` into a feature branch brings in other sessions' gate reports, so the push looks "fresh" even though this branch's gate has not run. PR 47 merged that way while the gate was still running.
-- While a gate is running, do not push a merge of `main` that changes the report. Run the gate against the merged code first and push the report last, or keep the work on a branch the workflow does not watch until the gate is done.
-- A "keep my version" merge (`--strategy=ours`) deletes work that landed on `main` in the meantime. Always use a real merge and resolve conflicts by hand.
-- Apply a required-column migration before the code that reads it is deployed, deploy the backend, then let the frontend follow. Render does not redeploy on every merge, so trigger it and poll the API for the new fields.
+- The auto-PR workflow merges a push when `tasks/last-gate-report.md` and at least one other file changed in that push. A merge of `origin/main` into a feature branch can bring in another session's gate report, so the push looks fresh before this branch's gate has run. PR 47 (https://github.com/ArshadGaniM/KaarTech-MENA-Digital-Factory/pull/47) was merged this way while its gate was still running.
+- While a gate is running, do not push a merge of `main` that changes the report file. Run the gate on the merged code, and push the new gate report last.
+- Merge `main` with a real merge and resolve conflicts by hand. `git merge origin/main --strategy=ours` (CLAUDE.md §9.3 Step 0) keeps the branch's files and ignores main's changes, so a later squash of the branch reverts work that landed on `main` in the meantime. Use it only when the branch already holds everything on `main` that should stay. Whether Step 0 itself should change is the owner's call.
+
+## Deploy order when a migration adds a required column
+
+- Apply the migration to the database first, deploy the backend second, and let the frontend follow. Render hosts the API and did not redeploy on every merge to `main` in this project, so trigger the deploy and poll the API until it returns the new field.
