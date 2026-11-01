@@ -40,11 +40,10 @@
 - Files live in `backend/migrations/`, numbered `NNNN_short_name.sql`, in order.
 - **Never edit an existing migration.** Once committed, it is immutable. Add a new one.
 - Write the SQL by hand and keep it small. Say in the header comment why it exists.
-- Apply a migration to the live database before the backend deploy that reads it
-  (CLAUDE.md §21). A safe, additive migration has the owner's standing yes (1 Nov 2026).
-  Anything that drops, renames, deletes or rewrites existing data needs a fresh yes. A migration that adds a required column
-  needs a backfill in the same file.
-- Check the migration against a copy of the data when it changes existing rows.
+- Apply a migration to the live database before the backend deploy that reads it. What
+  needs the owner's yes and what does not is set in CLAUDE.md §21.
+  A migration that adds a required column needs a backfill in the same file.
+- Check the migration against a copy of the data when it changes existing rows or adds a constraint.
 - Destructive changes (column removal, table drop) are two-phase:
   1. Phase 1: deprecate (stop writing to the column, deploy)
   2. Phase 2: remove (second migration, deploy after confirming no reads remain)

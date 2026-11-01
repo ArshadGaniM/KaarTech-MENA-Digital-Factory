@@ -71,3 +71,6 @@ The Project Plan section shows the owner's plan sheet. The owner said it must ne
 
 ### Week 1 of the project plan starts on 1 July 2026
 The owner gave this on 31 October 2026 and asked for it to be used. It is stored as `PLAN_START_DATE` in the locked plan file (hash updated in the same change) and every calendar date in the Project Plan section is worked out from it, in UTC, with 7-day weeks. The sheet's month headings are kept as the owner wrote them even where a week's calendar dates fall in the neighbouring month.
+
+### Standing yes for safe migrations (owner, 1 Nov 2026)
+The owner asked, in their own words, for a standing yes for safe migrations, after being asked why each one needed approval. The rule is in CLAUDE.md §21 step 1. Safe means add-only, with any fill touching only the new column, checked against live data, one transaction or a written reverse statement. A migration that drops, replaces, renames, deletes, or changes stored values still needs a yes each time. The owner can withdraw the standing yes at any point.

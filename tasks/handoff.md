@@ -93,3 +93,8 @@
 - What should this web app actually do? No business domain has been defined yet.
 - Should any of the 40 ingested sources go through an actual security/quality
   review before being trusted as active tooling?
+
+## Migrations applied
+Add one line per migration applied to the live database: number, date, safe or owner-approved (CLAUDE.md §21 step 1).
+- 0033, 0034 (1 Nov 2026): owner-approved.
+- 0035 (1 Nov 2026): owner-approved. It dropped a unique index, so it was not safe under the standing yes.
