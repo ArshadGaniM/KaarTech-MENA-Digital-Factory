@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Analytics from './Analytics';
 import { fetchPeople, fetchSeats } from '../../lib/analyticsApi';
@@ -205,7 +205,8 @@ describe('Allocation tab', () => {
     renderTab('allocation');
     await screen.findByText('4 of 4 people');
 
-    expect(fetchSeats).toHaveBeenCalledWith(addMonths(month, -2), addMonths(month, 6));
+    // The request starts in an effect after the first render, so wait for it.
+    await waitFor(() => expect(fetchSeats).toHaveBeenCalledWith(addMonths(month, -2), addMonths(month, 6)));
   });
 
   it('counts people by how fully they are deployed', async () => {

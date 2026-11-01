@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPeople, buildSeats, buildStructure, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
+import { buildPeople, buildSeats, buildStructure, HEALTH_SQL, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
 
 const rows = {
   departments: [{ code: "DEPT-1", name: "Design Services", floorNumber: 3 }],
@@ -123,4 +123,47 @@ test("buildStructure keeps the position fields and returns nothing for no positi
   const [row] = buildStructure([positionRow("T1", "Lead Consultant", "FICO", { filled: true })], []);
   assert.deepEqual({ ...row, competencies: undefined }, { departmentName: "Design", floorNumber: 3, teamCode: "T1", teamName: "T1", positionName: "Lead Consultant", filled: true, practiceName: null, competencies: undefined });
   assert.deepEqual(buildStructure([], []), []);
+});
+
+const costRows = {
+  ...rows,
+  deployments: [
+    { employeeId: 1, employeeName: "Ann", positionCode: "POS-3", allocationPercentage: 100, start: "2026-01-01", end: "2026-12-31" },
+    { employeeId: 2, employeeName: "Bo", positionCode: "POS-2", allocationPercentage: 50, start: "2026-01-01", end: "2026-12-31" },
+  ],
+  resources: [
+    { employeeId: 1, designation: "Consultant", locationType: "Offshore" },
+    { employeeId: 2, designation: "Consultant", locationType: "Onsite" },
+  ],
+  actualCosts: [{ employeeId: 1, offshoreCost: 1000, onsiteCost: 3000 }],
+  plannedCosts: [{ designation: "Consultant", offshoreCost: 800, onsiteCost: 2000 }, { designation: "Senior Consultant", offshoreCost: 900, onsiteCost: 2500 }],
+};
+
+test("a seat's cost follows the Control Center rule: actual cost, else the designation's planned cost, scaled by allocation", () => {
+  const seats = buildSeats(costRows, "2026-10", "2026-10", "2026-10-20").filter((s) => s.teamCode === "TEAM-1");
+  const lead = seats.find((s) => s.positionName === "Lead Consultant");
+  const consultant = seats.find((s) => s.positionName === "Consultant");
+  assert.equal(lead.offshoreCost, 1000);
+  assert.equal(lead.onsiteCost, 0);
+  assert.equal(lead.actualPeople, 1);
+  assert.equal(consultant.onsiteCost, 1000);
+  assert.equal(consultant.plannedPeople, 1);
+});
+
+test("a vacant seat costs nothing and counts no people", () => {
+  const vacant = buildSeats(costRows, "2026-10", "2026-10", "2026-10-20").find((s) => s.teamCode === "TEAM-2");
+  assert.deepEqual([vacant.onsiteCost, vacant.offshoreCost, vacant.actualPeople, vacant.plannedPeople, vacant.defaultPeople, vacant.missingPeople], [0, 0, 0, 0, 0, 0]);
+});
+
+test("a designation with no planned cost falls back to the Senior Consultant cost and is counted as default", () => {
+  const odd = { ...costRows, resources: [{ employeeId: 2, designation: "Intern", locationType: "Onsite" }, costRows.resources[0]] };
+  const seat = buildSeats(odd, "2026-10", "2026-10", "2026-10-20").find((s) => s.positionName === "Consultant" && s.teamCode === "TEAM-1");
+  assert.equal(seat.defaultPeople, 1);
+  assert.equal(seat.onsiteCost, 1250);
+});
+
+test("the health query covers every master-data table and the checked resource columns, with no request data", () => {
+  for (const route of ["practices", "resources", "project-assignments", "resource-deployment"]) assert.ok(HEALTH_SQL.includes(`'${route}'`), route);
+  assert.ok(HEALTH_SQL.includes("'region'"));
+  assert.equal(HEALTH_SQL.includes("$1"), false);
 });

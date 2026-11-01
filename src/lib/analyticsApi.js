@@ -23,3 +23,6 @@ export const fetchCatalog = () => getRows('/v1/analytics/catalog');
 
 // One row per live project assignment.
 export const fetchAssignments = () => getRows('/v1/analytics/assignments');
+
+// Row counts, weekly additions and blank fields per master-data table.
+export const fetchHealth = () => getRows('/v1/analytics/health');

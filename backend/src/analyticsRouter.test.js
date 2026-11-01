@@ -16,6 +16,7 @@ const fakeQuery = async (sql) => {
   if (sql.includes("from resources r")) {
     return { rows: [{ employeeId: 1, skill: "FI, MM", allocation: 100, locationType: "Offshore" }] };
   }
+  if (sql.includes("blank_check_marker") || sql.includes("select 'count' as kind")) return { rows: [{ kind: "count", table: "practices", live: 10, deleted: 3 }] };
   if (sql.includes("from project_assignments")) return { rows: [{ teamCode: "TEAM-1", projectName: "Roll out", start: "2026-01-01", end: "2026-12-31" }] };
   if (sql.includes("'competency' as kind")) return { rows: [{ kind: "competency", name: "FICO", practiceName: "Finance" }, { kind: "department", name: "Design", floorNumber: 3 }, { kind: "team", name: "Alpha", teamCode: "TEAM-1", departmentName: "Design" }] };
   if (sql.includes("c.name, p.name as \"practiceName\"")) return { rows: [{ name: "FICO", practiceName: "Finance" }] };
@@ -127,4 +128,21 @@ test("the structure, catalog and assignments routes answer 500 without the cause
     assert.equal(res.status, 500, path);
     assert.equal(text.includes("secret detail"), false, path);
   }
+});
+
+test("GET /v1/analytics/health returns the rows and answers 500 without the cause when the database fails", async () => {
+  const ok = await (await fetch(`${baseUrl}/v1/analytics/health`)).json();
+  assert.equal(ok.total, 1);
+  assert.equal(ok.data[0].kind, "count");
+
+  const failing = express();
+  failing.use("/v1/analytics", createAnalyticsRouter({ query: async () => { throw new Error("secret detail"); } }));
+  failing.use((err, req, res, _next) => res.status(500).json({ error: { message: "An unexpected error occurred." } }));
+  const s = http.createServer(failing);
+  await new Promise((resolve) => s.listen(0, resolve));
+  const res = await fetch(`http://127.0.0.1:${s.address().port}/v1/analytics/health`);
+  const text = await res.text();
+  await new Promise((resolve) => s.close(resolve));
+  assert.equal(res.status, 500);
+  assert.equal(text.includes("secret detail"), false);
 });

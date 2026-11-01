@@ -8,9 +8,11 @@
 //    month, using the Control Center's hour rules.
 //  - structure, catalog and assignments: the teams, departments, practices and
 //    project assignments behind the Structure and Projects tabs.
-import { COUNTED_POSITIONS, HOURS_PER_PERSON, competenciesOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, seatHours } from "./controlCenter.js";
+import { COUNTED_POSITIONS, HOURS_PER_PERSON, buildCostContext, competenciesOf, costOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, seatHours } from "./controlCenter.js";
+import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 
 export const MAX_MONTHS = 24;
+const round2 = (n) => Math.round(n * 100) / 100;
 const MAX_SKILLS = 5;
 const MAX_SKILL_LENGTH = 40;
 
@@ -70,7 +72,8 @@ export function validateRange(from, to) {
   return problems;
 }
 
-export function buildSeats({ departments, teams, positions, deployments, assignments, competencies = [] }, from, to, today) {
+export function buildSeats({ departments, teams, positions, deployments, assignments, competencies = [], resources = [], actualCosts = [], plannedCosts = [] }, from, to, today) {
+  const costs = buildCostContext({ resources, actualCosts, plannedCosts });
   const departmentByCode = new Map(departments.map((d) => [d.code, d]));
   const practiceByCompetency = new Map(competencies.map((c) => [c.name, c.practiceName]));
   const positionsByTeam = indexBy(positions, "teamCode");
@@ -92,6 +95,10 @@ export function buildSeats({ departments, teams, positions, deployments, assignm
         .map((position) => {
           const occupants = active.get(position.code) ?? [];
           const allocatedHours = seatHours(occupants);
+          // Costs are monthly, in USD, by the Control Center's rules.
+          const people = occupants.map((d) => costOf(costs, d.employeeId, d.allocationPercentage));
+          const costOfSide = (side) => people.filter((c) => c.locationType === side).reduce((sum, c) => sum + c.allocatedResourceCost, 0);
+          const peopleBySource = (source) => people.filter((c) => c.costSource === source).length;
           return {
             month,
             departmentName: department?.name ?? null,
@@ -103,6 +110,12 @@ export function buildSeats({ departments, teams, positions, deployments, assignm
             availableHours: HOURS_PER_PERSON,
             allocatedHours: round1(allocatedHours),
             utilizedHours: round1(allocatedHours * share),
+            onsiteCost: round2(costOfSide("Onsite")),
+            offshoreCost: round2(costOfSide("Offshore")),
+            actualPeople: peopleBySource("Actual"),
+            plannedPeople: peopleBySource("Planned"),
+            defaultPeople: peopleBySource("Default"),
+            missingPeople: peopleBySource("Missing"),
           };
         });
     });
@@ -152,32 +165,40 @@ export function buildStructure(positions, competencyRows) {
   }));
 }
 
-// Competencies, modules, departments, practices and teams as one list, told
+// Competencies, modules, departments, practices, teams and costs as one list, told
 // apart by `kind`, so the page loads its reference data in one request. Teams
 // are here as well as in the structure rows because a team with no position has
 // no structure row, yet it still has no project to show.
 export const CATALOG_SQL = `
   select 'competency' as kind, c.name, p.name as "practiceName", null::int as "floorNumber", null::text as input, null::text as output,
-         null::text as "teamCode", null::text as "departmentName"
+         null::text as "teamCode", null::text as "departmentName", null::text as grade, null::float as "offshoreCost", null::float as "onsiteCost"
     from competencies c
     left join practices p on p.code = c.practice_code and p.deleted_at is null
    where c.deleted_at is null
   union all
-  select 'module', m.name, p.name, null, null, null, null, null
+  select 'module', m.name, p.name, null, null, null, null, null, null, null, null
     from modules m
     left join practices p on p.id::text = m.practice_id::text and p.deleted_at is null
    where m.deleted_at is null
   union all
-  select 'department', d.name, null, d.floor_number, d.input, d.output, null, null
+  select 'department', d.name, null, d.floor_number, d.input, d.output, null, null, null, null, null
     from departments d where d.deleted_at is null
   union all
-  select 'practice', p.name, null, null, null, null, null, null
+  select 'practice', p.name, null, null, null, null, null, null, null, null, null
     from practices p where p.deleted_at is null
   union all
-  select 'team', t.name, null, null, null, null, t.code, d.name
+  select 'team', t.name, null, null, null, null, t.code, d.name, null, null, null
     from teams t
     left join departments d on d.code = t.department_code and d.deleted_at is null
    where t.deleted_at is null
+  union all
+  select 'plannedCost', c.designation, null, null, null, null, null, null, c.grade, c.offshore_cost::float, c.onsite_cost::float
+    from planned_resource_costs c where c.deleted_at is null
+  union all
+  select 'actualCost', r.designation, null, null, null, null, null, null, null, c.offshore_cost::float, c.onsite_cost::float
+    from resource_cost c
+    join resources r on r.employee_id = c.employee_id and r.deleted_at is null
+   where c.deleted_at is null
   order by 1, 2`;
 
 // An assignment of a deleted team is left out, as the structure rows leave out
@@ -193,3 +214,27 @@ export const ASSIGNMENTS_SQL = `
     left join projects p on p.project_id = pa.project_id and p.deleted_at is null
    where pa.deleted_at is null and t.code is not null
    order by pa.project_assignment_start_date, pa.team_code`;
+
+// Resource columns checked for blanks. Fixed names, never from a request.
+const BLANK_CHECKED = ["org_chart", "employment_status", "employment_type", "region", "sub_division", "position", "onsite_location", "offshore_location", "location_type", "designation", "skill", "ge_batch"];
+export const HEALTH_WEEKS = 12;
+
+// Per master-data table: how many rows are live and deleted, how many were
+// added in each of the last weeks, and for resources how many live rows leave a
+// field blank. Table and column names come from the descriptors and the fixed
+// list above, so interpolating them is safe.
+export const HEALTH_SQL = [
+  ...MASTER_DATA_TABLES.flatMap((table) => [
+    `select 'count' as kind, '${table.route}' as "table", null::text as field, count(*) filter (where deleted_at is null)::int as live,
+            count(*) filter (where deleted_at is not null)::int as deleted, null::int as blank, null::date as week, null::int as added
+       from ${table.tableName}`,
+    `select 'week', '${table.route}', null, null, null, null, date_trunc('week', created_at)::date, count(*)::int
+       from ${table.tableName}
+      where created_at >= date_trunc('week', now()) - interval '${HEALTH_WEEKS - 1} weeks'
+      group by 7`,
+  ]),
+  ...BLANK_CHECKED.map(
+    (column) => `select 'blank', 'resources', '${column}', count(*)::int, null, count(*) filter (where coalesce(trim(${column}::text), '') = '')::int, null, null
+       from resources where deleted_at is null`
+  ),
+].join("\n union all\n");
