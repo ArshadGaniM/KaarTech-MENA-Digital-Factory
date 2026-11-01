@@ -40,6 +40,19 @@
   --color-allocation-partial: var(--color-status-partial-ink);
   --color-allocation-none: var(--color-status-unstaffed-ink);
   --color-allocation-over: var(--color-accent);
+  --color-practice-1: #3b6fd4;
+  --color-practice-2: #1f9d8b;
+  --color-practice-3: #7c5cd6;
+  --color-practice-4: #d9822b;
+  --color-practice-5: #7a8f2f;
+  --color-practice-6: #c2417a;
+  --color-practice-7: #2a9fc9;
+  --color-practice-8: #9a6b3f;
+  --color-practice-9: #4f9d52;
+  --color-practice-10: #5d6676;
+  --color-practice-none: #9aa0a6;
+  --color-scrim: rgb(10 10 14 / 50%);
+  --shadow-card: 0 1px 2px rgb(20 20 30 / 6%), 0 8px 24px rgb(20 20 30 / 6%);
 
   --font-sans: 'Poppins', system-ui, Roboto, sans-serif;
   --space-1: 8px;

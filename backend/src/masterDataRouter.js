@@ -152,11 +152,13 @@ export function createMasterDataRouter(table) {
         // Active rows always sort before soft-deleted ones, so deleted rows
         // (which are never removed and only accumulate) can't crowd active
         // rows out of the page once the table holds more than `limit` rows.
-        // A search ranks exact hits before near misses within that.
+        // A search ranks exact hits before near misses within that. id is the
+        // last tiebreaker: many rows share a sort value (324 positions are
+        // named "Consultant"), and without it pages overlap and drop rows.
         pool.query(
           `select ${selectList} from ${tableName} ${joinSql}
            ${search ? `where ${search.where}` : ""}
-           order by (${tableName}.deleted_at is not null)${search ? `, ${search.rank}` : ""}, ${tableName}.${sortColumn} asc
+           order by (${tableName}.deleted_at is not null)${search ? `, ${search.rank}` : ""}, ${tableName}.${sortColumn} asc, ${tableName}.id asc
            limit $${limitParam} offset $${offsetParam}`,
           term ? [term, limit, offset] : [limit, offset]
         ),

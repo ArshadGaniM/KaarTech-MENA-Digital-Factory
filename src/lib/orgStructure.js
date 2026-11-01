@@ -45,7 +45,6 @@ function moduleLeadsOf(positions, deploymentsByPosition) {
   const people = positions
     .filter((position) => roleOf(position.name) === 'moduleLead')
     .flatMap((position) => deploymentsByPosition.get(position.code) ?? [])
-    .filter((deployment) => deployment.employeeId != null)
     .map((deployment) => ({
       personKey: String(deployment.employeeId),
       name: deployment.employeeName ?? `Employee ${deployment.employeeId}`,
@@ -55,8 +54,20 @@ function moduleLeadsOf(positions, deploymentsByPosition) {
   return unique.length > 0 ? unique : [{ personKey: 'unallocated', name: TBD, isUnallocated: true }];
 }
 
-// Every node carries a `key` that is unique in the whole tree, so the page
-// and "Expand all" never build their own.
+// Module Lead first: its seat is the one the owner is waiting to fill.
+const ROLE_ORDER = ['moduleLead', 'leadConsultant', 'consultant', 'other'];
+
+// One entry per seat, in ROLE_ORDER.
+function seatStatesOf(positions, deploymentsByPosition) {
+  return positions
+    .map((position) => ({ role: roleOf(position.name), filled: deploymentsByPosition.has(position.code) }))
+    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
+}
+
+const sumOf = (list, field) => list.reduce((sum, item) => sum + item[field], 0);
+
+// Every practice and lead carries a `key` that is unique in the whole tree,
+// for React lists.
 function buildPracticeGroups(departmentCode, departmentTeams, practices) {
   const byCode = Map.groupBy(departmentTeams, (team) => team.practiceCode ?? NO_PRACTICE.code);
   const ordered = [...practices, NO_PRACTICE].filter((practice) => byCode.has(practice.code));
@@ -81,7 +92,9 @@ function buildPracticeGroups(departmentCode, departmentTeams, practices) {
       key: practiceKey,
       code: practice.code,
       name: practice.name,
-      seats: teams.reduce((sum, team) => sum + team.seats, 0),
+      seats: sumOf(teams, 'seats'),
+      filled: sumOf(teams, 'filled'),
+      teamCount: teams.length,
       moduleLeads,
     };
   });
@@ -95,13 +108,22 @@ function buildPracticeGroups(departmentCode, departmentTeams, practices) {
 const isCurrent = (deployment, today) =>
   (!deployment.startDate || deployment.startDate <= today) && (!deployment.endDate || deployment.endDate >= today);
 
+// Takes the camelCase rows the API returns for each table. Returns
+// { deliveryManager, totalSeats, filledSeats, totalTeams, totalDepartments,
+//   projectManagers: [{ id, title, name, seats, filled, teamCount,
+//     departments: [{ code, name, floorNumber, seats, filled, teamCount,
+//       practices: [{ key, code, name, seats, filled, teamCount,
+//         moduleLeads: [{ key, name, isUnallocated, teams: [team] }] }] }] }] }
+// where a team is { code, name, seats, filled, seatStates, competencies,
+// leadConsultants, consultants, others }.
 export function buildOrgStructure({ departments, teams, positions, competencies, practices, deployments, today = new Date().toISOString().slice(0, 10) }) {
   const livePractices = practices.filter(isLive).sort((a, b) => a.code.localeCompare(b.code));
   const livePracticeCodes = new Set(livePractices.map((practice) => practice.code));
   // practiceId holds the practice's code (competencies.practice_code).
   const practiceByCompetency = new Map(competencies.filter(isLive).map((c) => [c.name, c.practiceId]));
   const deploymentsByPosition = Map.groupBy(
-    deployments.filter((deployment) => isLive(deployment) && isCurrent(deployment, today)),
+    // A deployment with no employee is not a person in the seat.
+    deployments.filter((deployment) => isLive(deployment) && deployment.employeeId != null && isCurrent(deployment, today)),
     (deployment) => deployment.positionId
   );
   const positionsByTeam = Map.groupBy(positions.filter(isLive), (position) => position.teamCode);
@@ -113,10 +135,13 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
         const teamPositions = positionsByTeam.get(team.code) ?? [];
         const count = (role) => teamPositions.filter((position) => roleOf(position.name) === role).length;
         const competencyNames = competencyNamesOf(teamPositions);
+        const seatStates = seatStatesOf(teamPositions, deploymentsByPosition);
         return {
           code: team.code,
           name: team.name,
           seats: teamPositions.length,
+          filled: seatStates.filter((seat) => seat.filled).length,
+          seatStates,
           leadConsultants: count('leadConsultant'),
           consultants: count('consultant'),
           others: count('other'),
@@ -128,11 +153,11 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
       return [
         department.code,
         {
-          key: department.code,
           code: department.code,
           name: department.name,
           floorNumber: department.floorNumber,
-          seats: departmentTeams.reduce((sum, team) => sum + team.seats, 0),
+          seats: sumOf(departmentTeams, 'seats'),
+          filled: sumOf(departmentTeams, 'filled'),
           teamCount: departmentTeams.length,
           practices: buildPracticeGroups(department.code, departmentTeams, livePractices),
         },
@@ -143,34 +168,33 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
   // A department with no team has nothing to show, and neither does a manager
   // whose departments are all empty.
   const populated = new Map([...departmentsByCode].filter(([, department]) => department.teamCount > 0));
-  const sumSeats = (list) => list.reduce((sum, department) => sum + department.seats, 0);
+  const managerOf = (id, title, name, managed) => ({
+    id,
+    title,
+    name,
+    seats: sumOf(managed, 'seats'),
+    filled: sumOf(managed, 'filled'),
+    teamCount: sumOf(managed, 'teamCount'),
+    departments: managed,
+  });
   const assigned = new Set(ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes));
 
   const projectManagers = ODC_PROJECT_MANAGERS.map((manager) => {
     const managed = manager.departmentCodes.map((code) => populated.get(code)).filter(Boolean);
-    return { id: manager.id, title: manager.title, name: manager.name, seats: sumSeats(managed), departments: managed };
+    return managerOf(manager.id, manager.title, manager.name, managed);
   }).filter((manager) => manager.departments.length > 0);
 
   const unassigned = [...populated.values()].filter((department) => !assigned.has(department.code));
   if (unassigned.length > 0) {
-    projectManagers.push({ id: 'unassigned', title: 'Unassigned', name: null, seats: sumSeats(unassigned), departments: unassigned });
+    projectManagers.push(managerOf('unassigned', 'Unassigned', null, unassigned));
   }
 
   return {
     deliveryManager: ODC_DELIVERY_MANAGER,
-    totalSeats: projectManagers.reduce((sum, manager) => sum + manager.seats, 0),
+    totalSeats: sumOf(projectManagers, 'seats'),
+    filledSeats: sumOf(projectManagers, 'filled'),
+    totalTeams: sumOf(projectManagers, 'teamCount'),
+    totalDepartments: projectManagers.reduce((sum, manager) => sum + manager.departments.length, 0),
     projectManagers,
   };
-}
-
-// Must return exactly the keys buildOrgStructure stamps on nodes, or
-// "Expand all" silently skips a level.
-export function allNodeKeys(structure) {
-  return structure.projectManagers.flatMap((manager) => [
-    manager.id,
-    ...manager.departments.flatMap((department) => [
-      department.key,
-      ...department.practices.flatMap((practice) => [practice.key, ...practice.moduleLeads.map((lead) => lead.key)]),
-    ]),
-  ]);
 }
