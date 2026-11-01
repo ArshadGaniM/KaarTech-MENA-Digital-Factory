@@ -118,6 +118,24 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
+    // Planned Resource Cost: one monthly cost (USD) per employee designation,
+    // split offshore and onsite. The Control Center applies it to every resource
+    // with that designation when the resource has no Actual Resource Cost.
+    // Designation is the unique key among live rows (migration 0030). Grade is
+    // not unique on purpose (Engineer and Intern are both K1).
+    route: "planned-resource-costs",
+    tableName: "planned_resource_costs",
+    resourceName: "planned_resource_cost",
+    identityField: "designation",
+    sortColumn: "designation",
+    fields: [
+      { key: "designation", column: "designation", required: true, type: "string" },
+      { key: "grade", column: "grade", required: true, type: "string" },
+      { key: "offshoreCost", column: "offshore_cost", required: true, type: "number", min: 0, numeric: true },
+      { key: "onsiteCost", column: "onsite_cost", required: true, type: "number", min: 0, numeric: true },
+    ],
+  },
+  {
     route: "resource-cost",
     tableName: "resource_cost",
     resourceName: "resource_cost",
@@ -450,6 +468,16 @@ export const MASTER_DATA_TABLES = [
     // masterDataSchema.js's validateCrossFields for how a PATCH that only
     // sends one of the two dates is still checked against the other's
     // real, currently-stored value.
+    // A team cannot have two live assignments that share a day (both ends are
+    // inclusive). Checked under a per-team lock, with an exclusion constraint
+    // (migration 0029) behind it.
+    overlapRule: {
+      groupKey: "teamId",
+      groupColumn: "team_code",
+      startKey: "projectAssignmentStartDate",
+      startColumn: "project_assignment_start_date",
+      endColumn: "project_assignment_end_date",
+    },
     crossFieldValidations: [
       {
         type: "dateRange",

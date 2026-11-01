@@ -13,4 +13,6 @@ export const teamShape = PropTypes.shape({
   utilizedHours: PropTypes.number.isRequired,
   utilizationPercent: PropTypes.number.isRequired,
   status: PropTypes.oneOf(Object.keys(STATUS_LABELS)).isRequired,
+  assignmentEndDate: PropTypes.string,
+  allocatedTeamCost: PropTypes.number,
 });

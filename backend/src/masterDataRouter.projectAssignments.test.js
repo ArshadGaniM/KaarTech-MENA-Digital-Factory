@@ -1,4 +1,4 @@
-import { test, before, after } from "node:test";
+import { test, before, after, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "./db.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
@@ -25,8 +25,35 @@ const ASSIGNMENT_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
 let server;
 let baseUrl;
 
+// Writes run on a pooled client inside a transaction holding a per-team
+// advisory lock (withAllocationLock in masterDataRouter.js). The client answers
+// the transaction plumbing and the no-overlap lookup itself (`overlapRows`,
+// recording the parameters it was asked with) and delegates every other
+// statement to whatever pool.query mock the current test installed.
+let overlapRows = [];
+let overlapParams = null;
+let clientStatements = [];
+
 before(async () => {
   ({ server, baseUrl } = await startTestServer(projectAssignmentsTable));
+  mock.method(pool, "connect", async () => ({
+    query: async (sql, params) => {
+      clientStatements.push(sql.split(" ")[0]);
+      if (/^(begin|commit|rollback)$/i.test(sql) || sql.startsWith("select pg_advisory_xact_lock")) return { rows: [] };
+      if (sql.includes("<= $4::date")) {
+        overlapParams = params;
+        return { rows: overlapRows };
+      }
+      return pool.query(sql, params);
+    },
+    release: () => {},
+  }));
+});
+
+afterEach(() => {
+  overlapRows = [];
+  overlapParams = null;
+  clientStatements = [];
 });
 
 after(async () => {
@@ -372,4 +399,105 @@ registerDeleteTests({
   getId: () => ASSIGNMENT_ID,
   tableName: "project_assignments",
   resourceName: "project_assignment",
+});
+
+const writeHeaders = { "Content-Type": "application/json", "x-internal-api-key": "test-secret" };
+
+test("POST /v1/project-assignments is 422 when the team already has an assignment sharing a day, and never inserts", async (t) => {
+  overlapRows = [{ start: "2026-09-01", end: "2026-12-05" }];
+  let insertCalled = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
+    if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
+    if (sql.startsWith("insert into project_assignments")) insertCalled = true;
+    return { rows: [baseRow()] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-12-05", projectAssignmentEndDate: "2027-01-31" }),
+  });
+
+  assert.equal(res.status, 422);
+  const body = await res.json();
+  assert.match(body.error.details.projectAssignmentStartDate, /already has an assignment from 2026-09-01 to 2026-12-05/);
+  assert.equal(insertCalled, false);
+  assert.ok(clientStatements.includes("rollback"));
+  // Asked about this team and these exact dates (both ends inclusive).
+  assert.deepEqual(overlapParams, ["TEAM-001", null, "2026-12-05", "2027-01-31"]);
+});
+
+test("POST /v1/project-assignments inserts when the next assignment starts the day after the last one ends", async (t) => {
+  overlapRows = [];
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
+    if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
+    if (sql.startsWith("insert into project_assignments")) return { rows: [baseRow()] };
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-12-06", projectAssignmentEndDate: "2027-01-31" }),
+  });
+
+  assert.equal(res.status, 201);
+  assert.ok(clientStatements.includes("commit"));
+});
+
+test("PATCH /v1/project-assignments/:id checks the merged dates against the team's other assignments, leaving itself out", async (t) => {
+  overlapRows = [{ start: "2027-01-01", end: "2027-02-28" }];
+  let updateCalled = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from project_assignments where id")) return { rows: [baseRow()] };
+    if (sql.startsWith("update project_assignments")) updateCalled = true;
+    return { rows: [baseRow()] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments/${ASSIGNMENT_ID}`, {
+    method: "PATCH",
+    headers: writeHeaders,
+    body: JSON.stringify({ projectAssignmentEndDate: "2027-01-15" }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.equal(updateCalled, false);
+  assert.deepEqual(overlapParams, ["TEAM-001", ASSIGNMENT_ID, "2026-01-01", "2027-01-15"]);
+});
+
+test("POST /v1/project-assignments/:id/restore is 422 when the restored dates now clash, and never restores", async (t) => {
+  overlapRows = [{ start: "2026-03-01", end: "2026-04-30" }];
+  let updateCalled = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from project_assignments where id")) {
+      return { rows: [baseRow({ deleted_at: "2026-02-01T00:00:00Z" })] };
+    }
+    if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
+    if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
+    if (sql.startsWith("update project_assignments")) updateCalled = true;
+    return { rows: [baseRow()] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments/${ASSIGNMENT_ID}/restore`, { method: "POST", headers: writeHeaders });
+
+  assert.equal(res.status, 422);
+  assert.equal(updateCalled, false);
+});
+
+test("POST /v1/project-assignments maps a database exclusion violation (a race past the check) to a 422, not a 500", async (t) => {
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
+    if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
+    if (sql.startsWith("insert into project_assignments")) {
+      throw Object.assign(new Error("conflicting key value violates exclusion constraint"), { code: "23P01" });
+    }
+    return { rows: [] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, { method: "POST", headers: writeHeaders, body: JSON.stringify(VALID_BODY) });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.projectAssignmentStartDate);
 });

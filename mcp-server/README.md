@@ -79,7 +79,8 @@ user/auth system exists yet). On create this sets both `createdBy` and
 | `practice` | `name` | `name` |
 | `department` | `name`, `floorNumber` (whole number from 1 to 1000, 1 is the ground floor of the Control Center building, must not be used by another live department), `input` / `output` optional free text, up to 2,000 chars each | `name`, `floorNumber`, `input`, `output` |
 | `resource_deployment` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced), `positionId` (string — must reference an existing `position`'s own auto-generated code, enforced), `allocationPercentage` (number, above 0 up to 100 — a resource's rows across positions may not total more than 100) | `employeeId`, `positionId`, `allocationPercentage` (independently settable) |
-| `resource_cost` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
+| `planned_resource_cost` | `designation` (unique), `grade`, `offshoreCost`, `onsiteCost` (monthly USD, 0 or more) | `designation`, `grade`, `offshoreCost`, `onsiteCost` |
+| `resource_cost` (Actual Resource Cost) | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced) | `employeeId`, `offshoreCost`, `onsiteCost` (both numbers, independently settable) |
 | `team` | `name`, `departmentCode` (string — must reference an existing `department`'s own auto-generated code, enforced) | `name`, `departmentCode` |
 | `position` | `name`, `teamCode` (string — must reference an existing `team`'s own auto-generated code, enforced), `competencies` (optional comma-separated competency names, each must exist in `competency`) | `name`, `teamCode`, `competencies` |
 | `module` | `moduleCode`, `name` | `moduleCode`, `name`, `practiceId` |

@@ -122,7 +122,10 @@ FieldControl.propTypes = {
   locked: PropTypes.bool,
 };
 
-function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, onSaved }) {
+// `initialValues` pre-fills an Add form (keyed by field key) and `lockedKeys`
+// names fields the user may not change, for a caller that opens the form on a
+// record's behalf, such as the team popup adding an assignment for that team.
+function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, onSaved, initialValues = {}, lockedKeys = [] }) {
   const isEdit = record != null;
   const title = `${isEdit ? 'Edit' : 'Add'} ${singularLabel}`;
   const submitLabel = isEdit ? 'Save' : 'Add';
@@ -218,7 +221,7 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
   // (even an edit to ''), otherwise the record's own value (edit mode) or
   // empty (add mode).
   function valueOf(field) {
-    return values[field.key] ?? formValueOf(record, field);
+    return values[field.key] ?? (isEdit ? formValueOf(record, field) : String(initialValues[field.key] ?? ''));
   }
 
   // The caller-supplied identity (e.g. employeeId, projectId) is the row's
@@ -295,7 +298,7 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
                   onChange={(value) => handleChange(field.key, value)}
                   pickListOptions={pickLists[field.key]}
                   pickListLoading={field.references ? pickListsLoading : false}
-                  locked={field.key === lockedKey}
+                  locked={field.key === lockedKey || lockedKeys.includes(field.key)}
                 />
                 {fieldErrors[field.key] && <p className={styles.fieldError}>{fieldErrors[field.key]}</p>}
               </div>
@@ -335,6 +338,8 @@ RecordFormModal.propTypes = {
   record: PropTypes.shape({ id: PropTypes.string.isRequired }),
   onClose: PropTypes.func.isRequired,
   onSaved: PropTypes.func.isRequired,
+  initialValues: PropTypes.objectOf(PropTypes.oneOfType([PropTypes.string, PropTypes.number])),
+  lockedKeys: PropTypes.arrayOf(PropTypes.string),
 };
 
 export default RecordFormModal;

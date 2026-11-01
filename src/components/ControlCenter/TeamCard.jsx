@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { formatHours, STATUS_LABELS } from '../../lib/hours';
+import { formatDay, formatUsd } from '../../lib/money';
 import { statusClass } from './statusClass';
 import { teamShape } from './teamShape';
 import styles from './ControlCenter.module.css';
@@ -57,6 +58,18 @@ function TeamCard({ team, onOpen }) {
             <span className={styles.meterFill} style={{ width: `${team.utilizationPercent}%` }} />
           </span>
           <span className={styles.meterValue}>{team.utilizationPercent}%</span>
+        </span>
+        <span className={styles.cardFacts}>
+          <span>
+            <span className={styles.hoursLabel}>Assignment ends</span>
+            <span className={styles.factValue}>
+              {team.assignmentEndDate ? formatDay(team.assignmentEndDate) : 'No current assignment'}
+            </span>
+          </span>
+          <span>
+            <span className={styles.hoursLabel}>Allocated Team Cost</span>
+            <span className={styles.factValue}>{formatUsd(team.allocatedTeamCost ?? 0)}</span>
+          </span>
         </span>
         <span className={styles.statusText}>{STATUS_LABELS[team.status]}</span>
       </button>

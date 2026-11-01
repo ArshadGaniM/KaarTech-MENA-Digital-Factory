@@ -8,9 +8,17 @@
 //  - Allocated hours: for each seat with someone deployed, 160 scaled by the
 //    deployment's allocation percentage (a seat never exceeds 160).
 //  - Utilized hours: the allocated hours scaled by the share of the month
-//    covered by the team's project assignments.
+//    covered by the team's project assignments (shown as planned utilization).
+//  - Costs are monthly, in USD. A person's cost is their Actual Resource Cost
+//    when they have one, else the Planned Resource Cost of their designation,
+//    else the Senior Consultant planned cost. The onsite or offshore figure
+//    follows their location type (no location type counts as offshore). The
+//    allocated resource cost is that cost times the allocation percentage, and
+//    the allocated team cost is the sum over the people in counted seats.
 export const HOURS_PER_PERSON = 160;
 const COUNTED_POSITIONS = new Set(["Consultant", "Lead Consultant"]);
+// A vacant seat, or a position not counted in the team, carries no cost.
+const NO_COST = { plannedResourceCost: null, actualResourceCost: null, allocatedResourceCost: null, costSource: null };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MONTH_PATTERN = /^[12]\d{3}-(0[1-9]|1[0-2])$/;
 
@@ -19,6 +27,9 @@ const toUtcDay = (isoDate) => {
   return Date.UTC(year, month - 1, day);
 };
 const round1 = (n) => Math.round(n * 10) / 10;
+const round2 = (n) => Math.round(n * 100) / 100;
+const DEFAULT_COST_DESIGNATION = "Senior Consultant";
+const designationKey = (text) => (text ?? "").trim().toLowerCase();
 
 export const isValidMonth = (month) => typeof month === "string" && MONTH_PATTERN.test(month);
 
@@ -38,6 +49,82 @@ function coveredDays(assignments, window) {
     for (let day = from; day <= to; day += DAY_MS) covered.add(day);
   }
   return covered.size;
+}
+
+function buildCostContext({ resources = [], actualCosts = [], plannedCosts = [] }) {
+  return {
+    employeeById: new Map(resources.map((r) => [r.employeeId, r])),
+    actualByEmployee: new Map(actualCosts.map((c) => [c.employeeId, c])),
+    plannedByDesignation: new Map(plannedCosts.map((c) => [designationKey(c.designation), c])),
+  };
+}
+
+// One person's monthly cost. `source` says which figure was used: "Actual",
+// "Planned" (their designation's) or "Default" (the Senior Consultant cost).
+function costOf(costs, employeeId, allocationPercentage) {
+  const employee = costs.employeeById.get(employeeId);
+  const side = designationKey(employee?.locationType) === "onsite" ? "onsiteCost" : "offshoreCost";
+  const actual = costs.actualByEmployee.get(employeeId)?.[side] ?? null;
+  const own = costs.plannedByDesignation.get(designationKey(employee?.designation))?.[side] ?? null;
+  const fallback = costs.plannedByDesignation.get(designationKey(DEFAULT_COST_DESIGNATION))?.[side] ?? 0;
+  const planned = own ?? fallback;
+  const source = actual !== null ? "Actual" : own !== null ? "Planned" : "Default";
+  const base = actual ?? planned;
+  return {
+    locationType: side === "onsiteCost" ? "Onsite" : "Offshore",
+    plannedResourceCost: planned,
+    actualResourceCost: actual,
+    allocatedResourceCost: round2((base * allocationPercentage) / 100),
+    costSource: source,
+  };
+}
+
+// The cost figures of one team: every person in a counted seat is costed, and
+// the team cost is their sum. `locationMix` is Onsite or Offshore when everyone
+// is in the same place, Hybrid when mixed, null when nobody is deployed.
+function teamCosts({ teamPositions, deploymentsByPosition, costs }) {
+  const byPerson = new Map();
+  const locations = new Set();
+  let total = 0;
+  for (const seat of teamPositions.filter((p) => COUNTED_POSITIONS.has(p.name))) {
+    for (const d of deploymentsByPosition.get(seat.code) ?? []) {
+      const cost = costOf(costs, d.employeeId, d.allocationPercentage);
+      byPerson.set(`${seat.code}:${d.employeeId}`, cost);
+      locations.add(cost.locationType);
+      total += cost.allocatedResourceCost;
+    }
+  }
+  return {
+    byPerson,
+    allocatedTeamCost: round2(total),
+    locationMix: locations.size === 0 ? null : locations.size > 1 ? "Hybrid" : [...locations][0],
+  };
+}
+
+// The assignment covering `today`, if any. A team's assignments cannot share a
+// day, so at most one matches.
+function currentAssignmentOf(assignments, today) {
+  return assignments.find((a) => a.start <= today && today <= a.end) ?? null;
+}
+
+// Planned utilization and cost for each month the assignment touches, from its
+// start month to its end month. A month's share is the days the assignment
+// covers; the cost is the team's monthly allocated cost scaled by that share.
+function monthlyPlan(assignment, allocatedTeamCost) {
+  if (!assignment) return { months: [], totalCost: 0 };
+  const [startYear, startMonth] = assignment.start.split("-").map(Number);
+  const [endYear, endMonth] = assignment.end.split("-").map(Number);
+  const months = [];
+  let totalCost = 0;
+  for (let index = startYear * 12 + startMonth - 1; index <= endYear * 12 + endMonth - 1; index += 1) {
+    const month = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+    const window = monthWindow(month);
+    const share = coveredDays([assignment], window) / window.days;
+    const cost = allocatedTeamCost * share;
+    totalCost += cost;
+    months.push({ month, utilizationPercent: round2(share * 100), cost: round2(cost) });
+  }
+  return { months, totalCost: round2(totalCost) };
 }
 
 function splitCompetencies(text) {
@@ -122,8 +209,9 @@ function byCompetencyThenCode(a, b) {
   return a.code.localeCompare(b.code);
 }
 
-export function buildControlCenter({ departments, teams, positions, deployments, assignments, month }) {
+export function buildControlCenter({ departments, teams, positions, deployments, assignments, month, today, resources, actualCosts, plannedCosts }) {
   const window = monthWindow(month);
+  const costs = buildCostContext({ resources, actualCosts, plannedCosts });
   const positionsByTeam = indexBy(positions, "teamCode");
   const deploymentsByPosition = indexBy(deployments, "positionCode");
   const assignmentsByTeam = indexBy(assignments, "teamCode");
@@ -132,6 +220,7 @@ export function buildControlCenter({ departments, teams, positions, deployments,
   const buildTeam = (team) => {
     const teamPositions = positionsByTeam.get(team.code) ?? [];
     const competencies = competenciesOf(teamPositions);
+    const teamAssignments = assignmentsByTeam.get(team.code) ?? [];
     return {
       code: team.code,
       name: team.name,
@@ -140,9 +229,11 @@ export function buildControlCenter({ departments, teams, positions, deployments,
       ...teamHours({
         teamPositions,
         deploymentsByPosition,
-        teamAssignments: assignmentsByTeam.get(team.code) ?? [],
+        teamAssignments,
         window,
       }),
+      assignmentEndDate: currentAssignmentOf(teamAssignments, today)?.end ?? null,
+      allocatedTeamCost: teamCosts({ teamPositions, deploymentsByPosition, costs }).allocatedTeamCost,
     };
   };
 
@@ -165,20 +256,23 @@ export function buildControlCenter({ departments, teams, positions, deployments,
 
 // Everything the popup shows for one team: its seats with who sits in them,
 // each person's share in this seat and what they have left overall.
-export function buildTeamDetail({ team, department, positions, deployments, allDeployments, assignments, month }) {
+export function buildTeamDetail({ team, department, positions, deployments, allDeployments, assignments, month, today, resources, actualCosts, plannedCosts }) {
   const window = monthWindow(month);
+  const costs = buildCostContext({ resources, actualCosts, plannedCosts });
   const totalByEmployee = new Map();
   for (const d of allDeployments) {
     totalByEmployee.set(d.employeeId, (totalByEmployee.get(d.employeeId) ?? 0) + d.allocationPercentage);
   }
   const deploymentsByPosition = indexBy(deployments, "positionCode");
+  const teamCost = teamCosts({ teamPositions: positions, deploymentsByPosition, costs });
+  const current = currentAssignmentOf(assignments, today);
 
   const seats = positions.flatMap((position) => {
     const counted = COUNTED_POSITIONS.has(position.name);
     const occupants = deploymentsByPosition.get(position.code) ?? [];
     const base = { positionCode: position.code, positionName: position.name, counted };
     if (occupants.length === 0) {
-      return [{ ...base, employeeId: null, employeeName: null, allocationPercentage: null, availablePercentage: null }];
+      return [{ ...base, employeeId: null, employeeName: null, allocationPercentage: null, availablePercentage: null, ...NO_COST }];
     }
     return occupants.map((d) => ({
       ...base,
@@ -186,6 +280,7 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
       employeeName: d.employeeName,
       allocationPercentage: d.allocationPercentage,
       availablePercentage: Math.max(0, round1(100 - totalByEmployee.get(d.employeeId))),
+      ...(teamCost.byPerson.get(`${position.code}:${d.employeeId}`) ?? NO_COST),
     }));
   });
 
@@ -196,13 +291,21 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
     month,
     competencies: competenciesOf(positions).all,
     seats,
-    projects: assignments.map((a) => ({ projectId: a.projectId, projectName: a.projectName, start: a.start, end: a.end })),
+    // Only the assignment covering today: the Projects list, the card's end date
+    // and the month-by-month panels all follow it.
+    projects: current
+      ? [{ id: current.id, projectId: current.projectId, projectName: current.projectName, start: current.start, end: current.end }]
+      : [],
+    assignmentEndDate: current?.end ?? null,
+    allocatedTeamCost: teamCost.allocatedTeamCost,
+    locationMix: teamCost.locationMix,
+    monthlyPlan: monthlyPlan(current, teamCost.allocatedTeamCost),
     ...teamHours({ teamPositions: positions, deploymentsByPosition, teamAssignments: assignments, window }),
   };
 }
 
 export async function loadControlCenterRows(query) {
-  const [departments, teams, positions, deployments, assignments] = await Promise.all([
+  const [departments, teams, positions, deployments, assignments, resources, actualCosts, plannedCosts] = await Promise.all([
     query('select code, name, floor_number as "floorNumber" from departments where deleted_at is null order by code'),
     query('select code, name, department_code as "departmentCode" from teams where deleted_at is null order by code'),
     query('select code, name, team_code as "teamCode", competencies from positions where deleted_at is null order by code'),
@@ -214,11 +317,25 @@ export async function loadControlCenterRows(query) {
         where rd.deleted_at is null`
     ),
     query(
-      `select pa.team_code as "teamCode", pa.project_id as "projectId", p.project_name as "projectName",
+      `select pa.id, pa.team_code as "teamCode", pa.project_id as "projectId", p.project_name as "projectName",
               pa.project_assignment_start_date::text as start, pa.project_assignment_end_date::text as "end"
          from project_assignments pa
          left join projects p on p.project_id = pa.project_id and p.deleted_at is null
         where pa.deleted_at is null`
+    ),
+    query(
+      `select employee_id as "employeeId", designation, location_type as "locationType"
+         from resources
+        where deleted_at is null
+          and employee_id in (select employee_id from resource_deployment where deleted_at is null)`
+    ),
+    query(
+      `select employee_id as "employeeId", offshore_cost::float as "offshoreCost", onsite_cost::float as "onsiteCost"
+         from resource_cost where deleted_at is null`
+    ),
+    query(
+      `select designation, offshore_cost::float as "offshoreCost", onsite_cost::float as "onsiteCost"
+         from planned_resource_costs where deleted_at is null`
     ),
   ]);
   return {
@@ -227,5 +344,8 @@ export async function loadControlCenterRows(query) {
     positions: positions.rows,
     deployments: deployments.rows,
     assignments: assignments.rows,
+    resources: resources.rows,
+    actualCosts: actualCosts.rows,
+    plannedCosts: plannedCosts.rows,
   };
 }

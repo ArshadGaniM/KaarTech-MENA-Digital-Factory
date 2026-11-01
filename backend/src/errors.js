@@ -35,6 +35,19 @@ export function duplicateFieldError(err, fields) {
   return validationError({ [key]: `${key} must be unique — this value is already in use.` });
 }
 
+// Postgres exclusion_violation (23P01): the backstop for the project assignment
+// no-overlap rule. validateOverlap gives the friendly message first; this only
+// fires if two writes race past it.
+export function isExclusionViolation(err) {
+  return err?.code === "23P01";
+}
+
+export function overlapRaceError(rule) {
+  return validationError({
+    [rule.startKey]: `This ${rule.groupKey === "teamId" ? "team" : "group"} already has an assignment on some of these dates.`,
+  });
+}
+
 // Postgres foreign_key_violation (23503) surfaces as a raw 500 by default.
 // validateReferences() already checks FK existence before every write, so
 // this only fires on the narrow race where the referenced row is deleted

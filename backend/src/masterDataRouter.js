@@ -10,6 +10,8 @@ import {
   referenceNotFoundError,
   isInvalidTextRepresentation,
   invalidValueError,
+  isExclusionViolation,
+  overlapRaceError,
 } from "./errors.js";
 import {
   toResponse,
@@ -21,6 +23,7 @@ import {
   lookupSelectSql,
   allocationSelectSql,
   validateAllocation,
+  validateOverlap,
   normalizeLists,
   searchSql,
   searchTermOf,
@@ -68,7 +71,8 @@ function actorOf(body) {
 // runs, so this only matters for the narrow race where the referenced row
 // is removed between that check and the write — still needs the same 422
 // treatment as a unique-violation rather than a leaked 500.
-function mapWriteError(err, fields, body) {
+function mapWriteError(err, fields, body, table) {
+  if (isExclusionViolation(err) && table?.overlapRule) return overlapRaceError(table.overlapRule);
   if (isUniqueViolation(err)) return duplicateFieldError(err, fields);
   if (isForeignKeyViolation(err)) return referenceNotFoundError(err, fields);
   if (isInvalidTextRepresentation(err)) return invalidValueError(err, fields, body);
@@ -92,16 +96,17 @@ export function createMasterDataRouter(table) {
   // — same reasoning for qualifying deleted_at/sortColumn in ORDER BY.
   const selectList = [`${tableName}.*`, ...lookupColumns, ...allocationSelectSql(table)].join(", ");
 
-  // Rows of one group (resource) are checked and written under a per-group
-  // advisory lock held for the transaction, so two concurrent writes can't
-  // both pass validateAllocation and together exceed the total. Tables
-  // without an allocationRule skip the transaction entirely.
+  // Rows of one group (a resource, or a team) are checked and written under a
+  // per-group advisory lock held for the transaction, so two concurrent writes
+  // can't both pass validateAllocation / validateOverlap and break the rule.
+  // Tables with neither rule skip the transaction entirely.
+  const groupRule = table.allocationRule ?? table.overlapRule;
   async function withAllocationLock(groupValue, fn) {
-    if (!table.allocationRule) return fn(pool);
+    if (!groupRule) return fn(pool);
     const client = await pool.connect();
     try {
       await client.query("begin");
-      await client.query("select pg_advisory_xact_lock(hashtext($1), $2::int)", [tableName, groupValue]);
+      await client.query("select pg_advisory_xact_lock(hashtext($1), hashtext($2::text))", [tableName, groupValue]);
       const out = await fn(client);
       await client.query("commit");
       return out;
@@ -241,8 +246,10 @@ export function createMasterDataRouter(table) {
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
       const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
 
-      const created = await withAllocationLock(req.body[table.allocationRule?.groupKey], async (db) => {
-        await validateAllocation(db, table, Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]])));
+      const created = await withAllocationLock(req.body[groupRule?.groupKey], async (db) => {
+        const candidate = Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]]));
+        await validateAllocation(db, table, candidate);
+        await validateOverlap(db, table, candidate);
         const result = await db.query(
           `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
           values
@@ -251,7 +258,7 @@ export function createMasterDataRouter(table) {
       });
       res.status(201).json({ data: toResponse(table, created) });
     } catch (err) {
-      next(mapWriteError(err, fields, req.body));
+      next(mapWriteError(err, fields, req.body, table));
     }
   });
 
@@ -280,14 +287,11 @@ export function createMasterDataRouter(table) {
       const values = [...merged, actor];
       const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
 
-      const groupIndex = fields.findIndex((f) => f.key === table.allocationRule?.groupKey);
+      const groupIndex = fields.findIndex((f) => f.key === groupRule?.groupKey);
       const updated = await withAllocationLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
-        await validateAllocation(
-          db,
-          table,
-          Object.fromEntries(fields.map((f, i) => [f.column, merged[i]])),
-          req.params.id
-        );
+        const candidate = Object.fromEntries(fields.map((f, i) => [f.column, merged[i]]));
+        await validateAllocation(db, table, candidate, req.params.id);
+        await validateOverlap(db, table, candidate, req.params.id);
         const result = await db.query(
           `update ${tableName} set ${setClause}
            where id = $${values.length + 1} and deleted_at is null returning *`,
@@ -298,7 +302,7 @@ export function createMasterDataRouter(table) {
       });
       res.json({ data: toResponse(table, updated) });
     } catch (err) {
-      next(mapWriteError(err, fields, req.body));
+      next(mapWriteError(err, fields, req.body, table));
     }
   });
 
@@ -350,13 +354,10 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, referenceBody, { partial: true });
 
       const actor = actorOf(req.body);
-      const restored = await withAllocationLock(current[table.allocationRule?.groupColumn], async (db) => {
-        await validateAllocation(
-          db,
-          table,
-          Object.fromEntries(fields.map((f) => [f.column, current[f.column]])),
-          req.params.id
-        );
+      const restored = await withAllocationLock(current[groupRule?.groupColumn], async (db) => {
+        const candidate = Object.fromEntries(fields.map((f) => [f.column, current[f.column]]));
+        await validateAllocation(db, table, candidate, req.params.id);
+        await validateOverlap(db, table, candidate, req.params.id);
         const result = await db.query(
           `update ${tableName} set deleted_at = null, updated_by = $1
            where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
@@ -376,7 +377,7 @@ export function createMasterDataRouter(table) {
       }
       res.json({ data: toResponse(table, restored) });
     } catch (err) {
-      next(mapWriteError(err, fields, req.body));
+      next(mapWriteError(err, fields, req.body, table));
     }
   });
 

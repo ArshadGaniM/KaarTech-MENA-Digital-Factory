@@ -5,7 +5,13 @@
   color: var(--color-on-primary);
   display: flex;
   flex-direction: column;
-  min-height: 100svh;
+  /* Pinned to the window: the page scrolls on its own, and a sidebar taller
+     than the window scrolls on its own. */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100svh;
+  overflow-y: auto;
 }
 
 .brand {
@@ -68,6 +74,8 @@
 @media (max-width: 720px) {
   .sidebar {
     width: 100%;
-    min-height: auto;
+    position: static;
+    height: auto;
+    overflow-y: visible;
   }
 }

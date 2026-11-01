@@ -11,6 +11,9 @@ const tables = {
   positions: [{ code: "POS-2", name: "Lead Consultant", teamCode: "TEAM-001", competencies: "FICO" }],
   deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 }],
   assignments: [],
+  resources: [],
+  actualCosts: [],
+  plannedCosts: [],
 };
 
 function fakeQuery(sql) {
@@ -18,6 +21,9 @@ function fakeQuery(sql) {
     : sql.includes("from teams") ? "teams"
     : sql.includes("from positions") ? "positions"
     : sql.includes("from resource_deployment") ? "deployments"
+    : sql.includes("from planned_resource_costs") ? "plannedCosts"
+    : sql.includes("from resource_cost") ? "actualCosts"
+    : sql.includes("from resources") ? "resources"
     : "assignments";
   return Promise.resolve({ rows: tables[key] });
 }
@@ -125,7 +131,7 @@ test("requests made close together share one set of table queries", async () => 
   await Promise.all([1, 2, 3].map(() => fetch(`${baseUrl}/v1/control-center`).then((r) => r.json())));
   server.closeAllConnections();
   server.close();
-  assert.equal(queries, 5); // five tables, loaded once
+  assert.equal(queries, 8); // eight tables, loaded once
 });
 
 test("a change event makes the next request read the tables again", async () => {
@@ -140,7 +146,7 @@ test("a change event makes the next request read the tables again", async () => 
   await fetch(`${baseUrl}/v1/control-center`);
   server.closeAllConnections();
   server.close();
-  assert.equal(queries, 10);
+  assert.equal(queries, 16);
 });
 
 test("a failed load is not kept: the next request tries again", async () => {
