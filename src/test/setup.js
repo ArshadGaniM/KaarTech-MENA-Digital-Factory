@@ -15,3 +15,13 @@ if (typeof window.matchMedia !== 'function') {
     dispatchEvent: () => false,
   });
 }
+
+// jsdom has no ResizeObserver, which chart containers need. The stub never
+// reports a size, so charts draw nothing here and tests read the data tables.
+if (typeof window.ResizeObserver !== 'function') {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}

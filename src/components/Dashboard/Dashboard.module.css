@@ -192,3 +192,9 @@
     padding: var(--space-2);
   }
 }
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

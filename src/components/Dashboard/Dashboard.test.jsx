@@ -9,6 +9,7 @@ import { useAllocationSummary } from '../../hooks/useAllocationSummary';
 vi.mock('../../hooks/useTableCounts');
 vi.mock('../../hooks/useGroupSummary');
 vi.mock('../../hooks/useAllocationSummary');
+vi.mock('../Analytics', () => ({ default: ({ tab }) => <p>Analytics tab {tab}</p> }));
 
 const counts = (overrides = {}) => {
   const base = {
@@ -239,5 +240,24 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('button', { name: 'Refresh' }));
 
     expect(useAllocationSummary).toHaveBeenLastCalledWith({ bucket: null, position: null }, 1);
+  });
+
+  it('opens on Overview and switches to the Workforce and Allocation tabs', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('region', { name: 'Resources' })).toBeInTheDocument();
+    expect(screen.queryByText(/Analytics tab/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Workforce' }));
+    expect(screen.getByRole('tab', { name: 'Workforce' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('Analytics tab workforce')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Resources' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Allocation' }));
+    expect(await screen.findByText('Analytics tab allocation')).toBeInTheDocument();
   });
 });

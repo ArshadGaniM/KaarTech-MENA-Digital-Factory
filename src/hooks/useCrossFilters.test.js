@@ -59,4 +59,15 @@ describe('useCrossFilters', () => {
 
     expect(result.current.retries).toBe(2);
   });
+
+  it('sets a value outright, even when it is already set', () => {
+    const { result } = renderHook(() => useCrossFilters(NONE));
+
+    act(() => result.current.set('a', 'x'));
+    act(() => result.current.set('a', 'x'));
+    expect(result.current.filters).toEqual({ a: 'x', b: null });
+
+    act(() => result.current.set('a', null));
+    expect(result.current.filters).toEqual({ a: null, b: null });
+  });
 });

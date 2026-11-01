@@ -167,6 +167,15 @@ contains a NUL byte is a 422 `validation_error`. The query string is read raw, s
 parses it. Values are bound parameters. A deployment whose position is soft-deleted still counts
 toward its resource's bucket, but that position's name is never listed.
 
+### `/v1/analytics`
+
+Flat, read-only datasets for the Dashboard's Workforce and Allocation tabs. The page slices them in the browser. The responses are compressed.
+
+| Route | Response |
+|---|---|
+| `GET /v1/analytics/people` | `{ data: [person], total }`. One row per live resource: `employeeId`, `name`, `subDivision`, `region`, `position`, `designation`, `skills` (first five, each cut to 40 characters), `locationType`, `employmentType`, `geBatch`, `totalExperience`, `sapExperience`, `kaarExperience` and `allocation` (the sum of the allocation percentages of deployments running today, 0 for none). |
+| `GET /v1/analytics/seats?from=2026-09&to=2027-05` | `{ data: [seat], total }`. One row per counted seat (Consultant or Lead Consultant) per month, both ends included: `month`, `departmentName`, `teamCode`, `teamName`, `practiceName`, `positionName`, `filled`, `availableHours` (160), `allocatedHours` and `utilizedHours`. Hours follow the Control Center rules. Without `from` and `to` it returns the current month. A bad month, a reversed range, a range over 24 months or a repeated key answers 422. |
+
 ### `/v1/control-center`
 
 Read-only (no auth, like every GET) data for the frontend's Control Center
