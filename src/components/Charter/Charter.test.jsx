@@ -10,9 +10,9 @@ vi.mock('../../lib/initiativePlanApi');
 vi.mock('../../lib/servicesApi');
 
 const SERVICES = [
-  { code: 'DEPT-013', title: 'Digital/AI Transformation Consulting Services', description: '' },
-  { code: 'DEPT-010', title: 'Design Services', description: '' },
-  { code: 'DEPT-001', title: 'L3 Operational Support Services', description: '' },
+  { code: 'DEPT-001', title: 'Digital/AI Transformation Consulting Services', description: '' },
+  { code: 'DEPT-002', title: 'Design Services', description: '' },
+  { code: 'DEPT-013', title: 'L3 Operational Support Services', description: '' },
 ];
 
 beforeEach(() => {
@@ -286,24 +286,25 @@ describe('Charter', () => {
       expect(within(deliverables).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Deliverable name', 'Owner', 'Due date', 'Status']);
     });
 
-    it('has one SOP document row per service, in the services order, due 31 Dec 2026, owner To be confirmed, Yet to Start', async () => {
+    it('has one SOP document row per service, in the services order, due 31 Dec 2026, with the owner given for it, Yet to Start', async () => {
       await open();
       const deliverables = await screen.findByRole('table', { name: 'Deliverables' });
       await within(deliverables).findByText('SOP document: Design Services');
       const rows = within(deliverables).getAllByRole('row').slice(1).map(cellsOf);
 
       expect(rows.slice(0, 3)).toEqual([
-        ['SOP document: Digital/AI Transformation Consulting Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start'],
-        ['SOP document: Design Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start'],
-        ['SOP document: L3 Operational Support Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start'],
+        ['SOP document: Digital/AI Transformation Consulting Services', 'Surya M', '31 Dec 2026', 'Yet to Start'],
+        ['SOP document: Design Services', 'Surya M', '31 Dec 2026', 'Yet to Start'],
+        ['SOP document: L3 Operational Support Services', 'Faizan R', '31 Dec 2026', 'Yet to Start'],
       ]);
     });
 
-    it('adds a deliverable row when a service is added', async () => {
+    it('adds a deliverable row when a service is added, with the owner To be confirmed until one is given', async () => {
       fetchServices.mockResolvedValue([...SERVICES, { code: 'DEPT-099', title: 'New Services', description: '' }]);
       await open();
 
-      expect(await screen.findByText('SOP document: New Services')).toBeInTheDocument();
+      const row = (await screen.findByText('SOP document: New Services')).closest('tr');
+      expect(cellsOf(row)).toEqual(['SOP document: New Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start']);
     });
 
     it('has one rollout strategy row per track, due 28 Feb 2027, after the SOP rows', async () => {
@@ -314,9 +315,9 @@ describe('Charter', () => {
       const rollout = rows.filter((row) => row[0].startsWith('Rollout strategy document'));
 
       expect(rollout).toEqual([
-        ['Rollout strategy document for all MENA projects (Development & Enhancement Projects)', 'To be confirmed', '28 Feb 2027', 'Yet to Start'],
-        ['Rollout strategy document for all MENA projects (SAP Implementation & Rollout Projects)', 'To be confirmed', '28 Feb 2027', 'Yet to Start'],
-        ['Rollout strategy document for all MENA projects (Managed Services Project)', 'To be confirmed', '28 Feb 2027', 'Yet to Start'],
+        ['Rollout strategy document for all MENA projects (Development & Enhancement Projects)', 'Rushikesh Subhash Nikam', '28 Feb 2027', 'Yet to Start'],
+        ['Rollout strategy document for all MENA projects (SAP Implementation & Rollout Projects)', 'Surya M', '28 Feb 2027', 'Yet to Start'],
+        ['Rollout strategy document for all MENA projects (Managed Services Project)', 'Faizan R', '28 Feb 2027', 'Yet to Start'],
       ]);
       expect(rows.slice(-3).map((row) => row[0])).toEqual(rollout.map((row) => row[0]));
     });

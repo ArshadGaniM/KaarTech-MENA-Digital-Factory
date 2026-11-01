@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDeliverables, OWNER_TO_BE_CONFIRMED, ROLLOUT_DUE_DATE, SOP_DUE_DATE } from './deliverables';
+import { buildDeliverables, DELIVERABLE_DETAILS, OWNER_TO_BE_CONFIRMED, ROLLOUT_DUE_DATE, SOP_DUE_DATE } from './deliverables';
 import { STATUS } from './initiativePlan';
 
 const services = [
@@ -30,10 +30,48 @@ describe('buildDeliverables', () => {
     expect(rows.filter((row) => row.id.startsWith('rollout-')).every((row) => row.due === '2027-02-28')).toBe(true);
   });
 
-  it('starts every row as Yet to Start with the owner To be confirmed', () => {
+  it('starts every row as Yet to Start', () => {
     const rows = buildDeliverables({ services, streams });
 
-    expect(rows.every((row) => row.status === STATUS.YET_TO_START && row.owner === OWNER_TO_BE_CONFIRMED)).toBe(true);
+    expect(rows.every((row) => row.status === STATUS.YET_TO_START)).toBe(true);
+  });
+
+  it('leaves the owner To be confirmed for a service or stream that has none given', () => {
+    const rows = buildDeliverables({ services: [{ code: 'DEPT-999', title: 'Brand New Services' }], streams: [...streams, 'Stream D', 'Stream E'] });
+
+    expect(rows.find((row) => row.id === 'sop-DEPT-999').owner).toBe(OWNER_TO_BE_CONFIRMED);
+    expect(rows.find((row) => row.id === 'rollout-5').owner).toBe(OWNER_TO_BE_CONFIRMED);
+  });
+
+  it('gives each service and stream the owner the owner named', () => {
+    const live = [
+      ['DEPT-001', 'Digital/AI Transformation Consulting Services', 'Surya M'],
+      ['DEPT-006', 'Assessment Services', 'Surya M'],
+      ['DEPT-007', 'Audit Services', 'Faizan R'],
+      ['DEPT-002', 'Design Services', 'Surya M'],
+      ['DEPT-009', 'Configuration Services', 'Rushikesh Subhash Nikam'],
+      ['DEPT-003', 'Development Services', 'Rushikesh Subhash Nikam'],
+      ['DEPT-004', 'Quality Assurance & Testing Services', 'Rushikesh Subhash Nikam'],
+      ['DEPT-010', 'Training Services', 'Surya M'],
+      ['DEPT-011', 'Data Migration Services', 'Surya M'],
+      ['DEPT-012', 'System Administration Services', 'Rushikesh Subhash Nikam'],
+      ['DEPT-008', 'L1 Operational Support Services', 'Faizan R'],
+      ['DEPT-005', 'L2 Operational Support Services', 'Faizan R'],
+      ['DEPT-013', 'L3 Operational Support Services', 'Faizan R'],
+    ];
+    const rows = buildDeliverables({ services: live.map(([code, title]) => ({ code, title })), streams });
+
+    for (const [code, title, owner] of live) {
+      expect(rows.find((row) => row.name === `SOP document: ${title}`)).toMatchObject({ id: `sop-${code}`, owner });
+    }
+    expect(rows.filter((row) => row.id.startsWith('rollout-')).map((row) => row.owner)).toEqual(['Rushikesh Subhash Nikam', 'Surya M', 'Faizan R']);
+  });
+
+  it('names an owner who is a stakeholder, spelled as in the Stakeholder Matrix', async () => {
+    const { STAKEHOLDERS } = await import('./stakeholders');
+    const names = new Set(STAKEHOLDERS.map((entry) => entry.name));
+
+    for (const detail of Object.values(DELIVERABLE_DETAILS)) expect(names.has(detail.owner)).toBe(true);
   });
 
   it('gives each row a unique id, and follows the services it is given', () => {
