@@ -13,7 +13,6 @@ import {
   percent,
   seatTotalsBy,
   seatTree,
-  teamLabel,
   seatsByMonth,
   topWithOther,
 } from '../../lib/analyticsData';
@@ -91,7 +90,7 @@ function AllocationTab({ people, filters, onToggle, refreshKey }) {
 
   const seatRowsRaw = seatsResult.data?.rows ?? NO_ROWS;
   // Teams are told apart by code: two teams can share a name.
-  const seats = useMemo(() => seatRowsRaw.map((seat) => ({ ...seat, team: teamLabel(seat.teamCode, seat.teamName) })), [seatRowsRaw]);
+  const seats = useMemo(() => seatRowsRaw.map((seat) => ({ ...seat, team: seat.teamName === seat.teamCode ? seat.teamCode : `${seat.teamName} (${seat.teamCode})` })), [seatRowsRaw]);
   const seatRows = useMemo(() => applyFilters(seats, seatFilters), [seats, seatFilters]);
   const focusSeats = seatRows.filter((seat) => seat.month === focus);
   const months = seatsByMonth(seatRows).map((entry) => ({ ...entry, label: monthLabel(entry.month) }));
