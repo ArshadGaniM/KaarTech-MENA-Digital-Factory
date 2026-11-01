@@ -226,9 +226,9 @@ export const HEALTH_WEEKS = 12;
 export const HEALTH_SQL = [
   ...MASTER_DATA_TABLES.flatMap((table) => [
     `select 'count' as kind, '${table.route}' as "table", null::text as field, count(*) filter (where deleted_at is null)::int as live,
-            count(*) filter (where deleted_at is not null)::int as deleted, null::int as blank, null::date as week, null::int as added
+            count(*) filter (where deleted_at is not null)::int as deleted, null::int as blank, null::text as week, null::int as added
        from ${table.tableName}`,
-    `select 'week', '${table.route}', null, null, null, null, date_trunc('week', created_at)::date, count(*)::int
+    `select 'week', '${table.route}', null, null, null, null, date_trunc('week', created_at)::date::text, count(*)::int
        from ${table.tableName}
       where created_at >= date_trunc('week', now()) - interval '${HEALTH_WEEKS - 1} weeks'
       group by 7`,

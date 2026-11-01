@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CostTab from './CostTab';
@@ -7,6 +7,8 @@ import { currentMonth, shiftMonth } from '../../lib/months';
 
 vi.mock('../../lib/analyticsApi');
 
+// A fixed date keeps the focus month, and so every label below, stable.
+vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 15, 12) });
 const month = currentMonth();
 const seat = (teamCode, over = {}) => ({
   month,
@@ -53,7 +55,10 @@ const renderTab = async () => {
   return user;
 };
 
+afterEach(() => vi.useRealTimers());
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 15, 12) });
   vi.clearAllMocks();
   fetchSeats.mockResolvedValue(SEATS);
   fetchCatalog.mockResolvedValue(CATALOG);
@@ -97,17 +102,17 @@ describe('CostTab', () => {
 
     const table = await tableOf(user, 'Planned against actual cost');
     expect(table.find((row) => row[0] === 'Consultant')).toEqual(['Consultant', '800', '1100']);
-    expect(table.find((row) => row[0] === 'Analyst')).toEqual(['Analyst', '400', '0']);
+    expect(table.find((row) => row[0] === 'Analyst')).toEqual(['Analyst', '400', '–']);
 
     await user.selectOptions(within(card('Planned against actual cost')).getByLabelText('Location'), 'Onsite');
-    expect(cellsOf(within(card('Planned against actual cost')).getByRole('table')).find((row) => row[0] === 'Consultant')).toEqual(['Consultant', '2000', '0']);
+    expect(cellsOf(within(card('Planned against actual cost')).getByRole('table')).find((row) => row[0] === 'Consultant')).toEqual(['Consultant', '2000', '–']);
   });
 
   it('says so when no actual costs are recorded', async () => {
     fetchCatalog.mockResolvedValue(CATALOG.filter((row) => row.kind === 'plannedCost'));
     await renderTab();
 
-    expect(screen.getByText('No actual costs are recorded yet, so every actual shows 0.')).toBeInTheDocument();
+    expect(screen.getByText('No actual costs are recorded yet, so every actual shows a dash.')).toBeInTheDocument();
   });
 
   it('orders planned cost by grade as a number and can show one location', async () => {
@@ -149,6 +154,90 @@ describe('CostTab', () => {
 });
 
 function shortMonth() {
-  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${names[Number(month.slice(5)) - 1]} ${month.slice(2, 4)}`;
+  return 'Nov 26';
 }
+
+describe('CostTab detail', () => {
+  it('matches an actual cost to its designation whatever the case or spaces', async () => {
+    fetchCatalog.mockResolvedValue([{ kind: 'plannedCost', name: 'Senior Consultant', grade: 'K12', offshoreCost: 900, onsiteCost: 2500 }, { kind: 'actualCost', name: ' senior consultant ', offshoreCost: 1200, onsiteCost: null }]);
+    const user = userEvent.setup();
+    render(<CostTab refreshKey={0} />);
+    await screen.findByText(/USD 1,800 in/);
+
+    expect((await tableOf(user, 'Planned against actual cost')).find((row) => row[0] === 'Senior Consultant')).toEqual(['Senior Consultant', '900', '1200']);
+  });
+
+  it('counts a seat with no cost fields as 0 instead of showing NaN', async () => {
+    const bare = { ...seat('T1', { filled: true }) };
+    delete bare.onsiteCost;
+    delete bare.offshoreCost;
+    fetchSeats.mockResolvedValue([bare]);
+    render(<CostTab refreshKey={0} />);
+
+    expect(await screen.findByText(/USD 0 in/)).toBeInTheDocument();
+  });
+
+  const seatsIn = (rows) => rows.map((row) => seat(row.team, { filled: true, allocatedHours: 160, ...row }));
+
+  it('shows a team with people but no cost as 0 instead of dropping it', async () => {
+    fetchSeats.mockResolvedValue(seatsIn([{ team: 'T1', onsiteCost: 500 }, { team: 'T2', missingPeople: 1 }]));
+    const user = userEvent.setup();
+    render(<CostTab refreshKey={0} />);
+    await screen.findByText(/USD 500 in/);
+
+    expect(await tableOf(user, 'Cost by team in Nov 26')).toEqual([['Team', 'USD'], ['T1', '500'], ['T2', '0']]);
+  });
+
+  it('warns how many people are costed by default or have no cost', async () => {
+    fetchSeats.mockResolvedValue(seatsIn([{ team: 'T1', onsiteCost: 500, defaultPeople: 2, missingPeople: 1 }]));
+    render(<CostTab refreshKey={0} />);
+
+    expect(await screen.findByText(/3 people are costed by default or have no cost/)).toBeInTheDocument();
+  });
+
+  it('names the default and no cost sources', async () => {
+    fetchSeats.mockResolvedValue(seatsIn([{ team: 'T1', onsiteCost: 500, defaultPeople: 2, missingPeople: 1 }]));
+    const user = userEvent.setup();
+    render(<CostTab refreshKey={0} />);
+    await screen.findByText(/USD 500 in/);
+
+    expect(await tableOf(user, 'Where the cost figures come from in Nov 26')).toEqual([['Source', 'People'], ['Default (Senior Consultant)', '2'], ['No cost found', '1']]);
+  });
+
+  it('stacks only the six departments that cost the most, biggest first, and leaves the rest out', async () => {
+    fetchSeats.mockResolvedValue(seatsIn([1, 2, 3, 4, 5, 6, 7].map((n) => ({ team: `T${n}`, departmentName: `D${n}`, onsiteCost: (8 - n) * 100 }))));
+    const user = userEvent.setup();
+    render(<CostTab refreshKey={0} />);
+    await screen.findByText(/USD 2,800 in/);
+
+    const table = await tableOf(user, 'Monthly allocated cost');
+    expect(table[0]).toEqual(['Month', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6']);
+    expect(table.find((row) => row[0] === 'Nov 26')).toEqual(['Nov 26', '700', '600', '500', '400', '300', '200']);
+  });
+
+  it('takes the team table from the focus month chosen in the slicer', async () => {
+    const next = shiftMonth(month, 1);
+    fetchSeats.mockResolvedValue([...seatsIn([{ team: 'T1', onsiteCost: 500 }]), ...seatsIn([{ team: 'T9', month: next, onsiteCost: 900 }])]);
+    const user = userEvent.setup();
+    render(<CostTab refreshKey={0} />);
+    await screen.findByText(/USD 500 in/);
+
+    await user.selectOptions(screen.getByLabelText('Focus month'), next);
+
+    expect(await tableOf(user, 'Cost by team in Dec 26')).toEqual([['Team', 'USD'], ['T9', '900']]);
+  });
+
+  it('works out the cost of an hour per department as a ratio of sums', async () => {
+    fetchSeats.mockResolvedValue(seatsIn([{ team: 'T1', departmentName: 'Design', onsiteCost: 1500, allocatedHours: 160 }, { team: 'T2', departmentName: 'Audit', offshoreCost: 300, allocatedHours: 80 }]));
+    const user = userEvent.setup();
+    render(<CostTab refreshKey={0} />);
+    await screen.findByText(/USD 1,800 in/);
+
+    await user.selectOptions(within(card('Cost for each allocated hour')).getByLabelText('One line per'), 'Department');
+    await user.click(within(card('Cost for each allocated hour')).getByRole('button', { name: 'Show table' }));
+
+    const table = cellsOf(within(card('Cost for each allocated hour')).getByRole('table'));
+    expect(table[0]).toEqual(['Month', 'Design', 'Audit']);
+    expect(table.find((row) => row[0] === 'Nov 26')).toEqual(['Nov 26', '9.38', '3.75']);
+  });
+});

@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useAnalyticsHealth } from '../../hooks/useAnalyticsData';
-import { monthLabel, percent } from '../../lib/analyticsData';
+import { monthLabel } from '../../lib/analyticsData';
 import ChartCard from './ChartCard';
 import ControlSelect from './Controls';
 import LoadGate from './LoadGate';
 import { BarsChart, TrendChart } from './charts';
 import styles from './Analytics.module.css';
-
 
 function Charts({ rows }) {
   const [sortBy, setSortBy] = useState('live');
@@ -23,13 +22,21 @@ function Charts({ rows }) {
   const weekly = (() => {
     const byWeek = new Map();
     for (const row of rows.filter((entry) => entry.kind === 'week' && (weeksTable === 'all' || entry.table === weeksTable))) byWeek.set(row.week, (byWeek.get(row.week) ?? 0) + row.added);
-    return [...byWeek].sort((a, b) => a[0].localeCompare(b[0])).map(([week, added]) => ({ week, label: `${monthLabel(week.slice(0, 7))} ${week.slice(8)}`, added }));
+    if (byWeek.size === 0) return [];
+    // A week with nothing added is not in the data, so fill it in as 0.
+    const sorted = [...byWeek.keys()].sort();
+    const out = [];
+    for (let day = Date.parse(`${sorted[0]}T00:00:00Z`); day <= Date.parse(`${sorted[sorted.length - 1]}T00:00:00Z`); day += 7 * 86400000) {
+      const week = new Date(day).toISOString().slice(0, 10);
+      out.push({ week, label: `${monthLabel(week.slice(0, 7))} ${week.slice(8)}`, added: byWeek.get(week) ?? 0 });
+    }
+    return out;
   })();
 
   // 53: how many resources fill in each field.
   const filled = rows
     .filter((row) => row.kind === 'blank')
-    .map((row) => ({ name: row.field, value: percent(row.live - row.blank, row.live) }))
+    .map((row) => ({ name: row.field, value: row.live === 0 ? 0 : Math.floor(((row.live - row.blank) / row.live) * 1000) / 10 }))
     .sort((a, b) => (filledSort === 'least' ? a.value - b.value : b.value - a.value) || a.name.localeCompare(b.name))
     .slice(0, Number(filledTop));
 
@@ -47,7 +54,7 @@ function Charts({ rows }) {
 
       <ChartCard
         title="Rows added each week"
-        summary="The last 12 weeks, counted from the day each row was created. Weeks start on a Monday."
+        summary="The last 12 weeks, counted from the day each row was created. Weeks start on a Monday and the last one may be partial."
         columns={['Week starting', 'Rows added']}
         rows={weekly.map((entry) => [entry.week, entry.added])}
         controls={<ControlSelect label="Table" value={weeksTable} options={[{ value: 'all', label: 'All tables' }, ...tables]} onChange={setWeeksTable} />}
@@ -57,7 +64,7 @@ function Charts({ rows }) {
 
       <ChartCard
         title="How completely resources are filled in"
-        summary="The share of live resources with a value in each field."
+        summary="The share of live resources with a value in each field, rounded down so one missing value never reads as complete."
         columns={['Field', 'Filled %']}
         rows={filled.map((entry) => [entry.name, entry.value])}
         controls={

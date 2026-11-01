@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 import { buildPeople, buildSeats, buildStructure, HEALTH_SQL, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
 
 const rows = {
@@ -166,4 +167,59 @@ test("the health query covers every master-data table and the checked resource c
   for (const route of ["practices", "resources", "project-assignments", "resource-deployment"]) assert.ok(HEALTH_SQL.includes(`'${route}'`), route);
   assert.ok(HEALTH_SQL.includes("'region'"));
   assert.equal(HEALTH_SQL.includes("$1"), false);
+  // node-pg turns a date into a JS Date, which would arrive as a full timestamp.
+  assert.ok(HEALTH_SQL.includes("date_trunc('week', created_at)::date::text"));
+  assert.equal(HEALTH_SQL.includes("null::date"), false);
+});
+
+const poscost = (extra) => ({
+  ...costRows,
+  deployments: [
+    { employeeId: 2, employeeName: "Bo", positionCode: "POS-2", allocationPercentage: 50, start: "2026-01-01", end: "2026-12-31" },
+    { employeeId: 3, employeeName: "Cy", positionCode: "POS-2", allocationPercentage: 100, start: "2026-01-01", end: "2026-12-31" },
+  ],
+  resources: [
+    { employeeId: 2, designation: "Consultant", locationType: "Onsite" },
+    { employeeId: 3, designation: "Consultant", locationType: "Offshore" },
+  ],
+  actualCosts: [{ employeeId: 3, offshoreCost: 1000, onsiteCost: null }],
+  ...extra,
+});
+const consultantSeat = (input) => buildSeats(input, "2026-10", "2026-10", "2026-10-20").find((s) => s.teamCode === "TEAM-1" && s.positionName === "Consultant");
+
+test("a seat with two people sums each person's cost on their own side", () => {
+  const seat = consultantSeat(poscost());
+  assert.equal(seat.onsiteCost, 1000);
+  assert.equal(seat.offshoreCost, 1000);
+  assert.equal(seat.actualPeople, 1);
+  assert.equal(seat.plannedPeople, 1);
+});
+
+test("two people on the same side add up on that side only", () => {
+  const seat = consultantSeat(poscost({ resources: [{ employeeId: 2, designation: "Consultant", locationType: "Onsite" }, { employeeId: 3, designation: "Consultant", locationType: "Onsite" }], actualCosts: [] }));
+  assert.equal(seat.onsiteCost, 3000);
+  assert.equal(seat.offshoreCost, 0);
+});
+
+test("a person with no actual cost, no planned cost and no Senior Consultant row is costed at zero and counted as missing", () => {
+  const seat = consultantSeat(poscost({ plannedCosts: [], actualCosts: [] }));
+  assert.equal(seat.missingPeople, 2);
+  assert.equal(seat.onsiteCost + seat.offshoreCost, 0);
+});
+
+test("an actual cost with no figure for the person's side is ignored and the planned cost is used", () => {
+  const seat = consultantSeat(poscost({ actualCosts: [{ employeeId: 3, offshoreCost: null, onsiteCost: 3000 }] }));
+  assert.equal(seat.actualPeople, 0);
+  assert.equal(seat.offshoreCost, 800);
+});
+
+test("a deployed person with no resource row is costed as offshore at the default cost", () => {
+  const seat = consultantSeat(poscost({ resources: [{ employeeId: 2, designation: "Consultant", locationType: "Onsite" }], actualCosts: [] }));
+  assert.equal(seat.defaultPeople, 1);
+  assert.equal(seat.offshoreCost, 900);
+});
+
+test("the health query cuts each table to the last 12 weeks and covers every table and the 12 blank checks", () => {
+  assert.equal(HEALTH_SQL.match(/interval '11 weeks'/g).length, MASTER_DATA_TABLES.length);
+  assert.equal(HEALTH_SQL.split("union all").length, 2 * MASTER_DATA_TABLES.length + 12);
 });

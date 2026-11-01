@@ -68,7 +68,7 @@ describe('PlanTab', () => {
 
     const table = await tableOf(user, 'Percent complete by group');
     expect(table[1].slice(1)).toEqual(['18', '55']);
-    expect(table[2].slice(1)).toEqual(['0', '0']);
+    expect(table[2].slice(1)).toEqual(['0', '–']);
   });
 
   it('shows weeks planned against weeks taken, and 0 for an activity with no recorded dates', async () => {
@@ -91,4 +91,52 @@ describe('PlanTab', () => {
     expect(table[21][2]).toBe('–');
     expect(Number(table[65][1])).toBeGreaterThan(Number(table[1][1]));
   });
+
+  it('says the plan has not started and shows no recorded point before week 1', async () => {
+    vi.setSystemTime(new Date(2026, 5, 30, 12));
+    const user = await renderTab();
+
+    expect(screen.getAllByText('The plan has not started yet.')).toHaveLength(2);
+    expect(within(card('Activities behind plan')).getByText('Nothing to show for the current slicers.')).toBeInTheDocument();
+    expect((await tableOf(user, 'Plan progress by week')).slice(1).every((row) => row[2] === '–')).toBe(true);
+  });
+
+  it('starts counting on 1 July, and moves to week 2 after seven days', async () => {
+    vi.setSystemTime(new Date(2026, 6, 7, 12));
+    const user = await renderTab();
+    expect(screen.getByText(/This is week 1\./)).toBeInTheDocument();
+    expect((await tableOf(user, 'Plan progress by week'))[1][2]).not.toBe('–');
+  });
+
+  it('flips to week 2 on 8 July', async () => {
+    vi.setSystemTime(new Date(2026, 6, 8, 12));
+    await renderTab();
+
+    expect(screen.getByText(/This is week 2\./)).toBeInTheDocument();
+  });
+
+  it('says the plan has ended and shows no recorded point after week 65', async () => {
+    vi.setSystemTime(new Date(2027, 8, 30, 12));
+    const user = await renderTab();
+
+    expect(screen.getByText(/The plan ended in week 65\. This is week 66/)).toBeInTheDocument();
+    expect((await tableOf(user, 'Plan progress by week')).slice(1).every((row) => row[2] === '–')).toBe(true);
+  });
+
+  it('reaches 100 percent planned progress in the last week and starts low', async () => {
+    const user = await renderTab();
+
+    const table = await tableOf(user, 'Plan progress by week');
+    expect(table[65][1]).toBe('100');
+    expect(Number(table[1][1])).toBeLessThan(20);
+  });
+
+  it('shows 0 weeks taken when only the start week is recorded', async () => {
+    fetchPlanActuals.mockResolvedValue({ '1e': { activityKey: '1e', actualStartWeek: 9, actualEndWeek: null, actualPoc: 10 } });
+    const user = await renderTab();
+    await user.selectOptions(within(card('Weeks planned against weeks taken')).getByLabelText('Group'), '1.0');
+
+    expect((await tableOf(user, 'Weeks planned against weeks taken')).find((row) => row[0].startsWith('1e '))[2]).toBe('0');
+  });
 });
+

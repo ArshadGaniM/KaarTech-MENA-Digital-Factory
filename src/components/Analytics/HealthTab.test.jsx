@@ -57,7 +57,7 @@ describe('HealthTab', () => {
     render(<HealthTab refreshKey={0} />);
     await screen.findByRole('region', { name: 'Rows added each week' });
 
-    expect(await tableOf(user, 'Rows added each week')).toEqual([['Week starting', 'Rows added'], ['2026-09-14', '1088'], ['2026-10-19', '1742']]);
+    expect(await tableOf(user, 'Rows added each week')).toEqual([['Week starting', 'Rows added'], ['2026-09-14', '1088'], ['2026-09-21', '0'], ['2026-09-28', '0'], ['2026-10-05', '0'], ['2026-10-12', '0'], ['2026-10-19', '1742']]);
 
     await user.selectOptions(within(card('Rows added each week')).getByLabelText('Table'), 'teams');
     expect(cellsOf(within(card('Rows added each week')).getByRole('table')).slice(1)).toEqual([['2026-10-19', '91']]);
@@ -68,9 +68,9 @@ describe('HealthTab', () => {
     render(<HealthTab refreshKey={0} />);
     await screen.findByRole('region', { name: 'How completely resources are filled in' });
 
-    expect(await tableOf(user, 'How completely resources are filled in')).toEqual([['Field', 'Filled %'], ['org_chart', '0'], ['designation', '100'], ['region', '100']]);
+    expect(await tableOf(user, 'How completely resources are filled in')).toEqual([['Field', 'Filled %'], ['org_chart', '0'], ['region', '99.9'], ['designation', '100']]);
 
     await user.selectOptions(within(card('How completely resources are filled in')).getByLabelText('Show'), 'Most filled first');
-    expect(cellsOf(within(card('How completely resources are filled in')).getByRole('table'))[3]).toEqual(['org_chart', '0']);
+    expect(cellsOf(within(card('How completely resources are filled in')).getByRole('table'))).toEqual([['Field', 'Filled %'], ['designation', '100'], ['region', '99.9'], ['org_chart', '0']]);
   });
 });

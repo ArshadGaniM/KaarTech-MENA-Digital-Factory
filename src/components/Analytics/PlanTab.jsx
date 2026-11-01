@@ -14,7 +14,7 @@ const keyOf = (group, item) => `${group.slNo.slice(0, group.slNo.indexOf('.'))}$
 const shortName = (text) => (text.length > 44 ? `${text.slice(0, 43)}…` : text);
 const STATUS_ORDER = [STATUS.COMPLETED, STATUS.IN_PROGRESS, STATUS.YET_TO_START];
 const STATUS_COLORS = { [STATUS.COMPLETED]: 'var(--color-plan-completed)', [STATUS.IN_PROGRESS]: 'var(--color-plan-progress)', [STATUS.YET_TO_START]: 'var(--color-plan-pending)' };
-const average = (values) => (values.length === 0 ? 0 : Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10);
+const roundedAverage = (values) => (values.length === 0 ? 0 : Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10);
 
 // Planned progress of one activity in a week: nothing before it starts, linear
 // across its bar, done after it ends.
@@ -37,7 +37,7 @@ function Charts({ actuals, currentWeek }) {
   }));
 
   // 47: how far each group has got.
-  const groups = PLAN_GROUPS.map((group) => ({ name: `${group.slNo} ${shortName(group.activity)}`, 'On the sheet': group.poc, Recorded: effectivePoc(group, actuals[group.slNo] ?? null) }));
+  const groups = PLAN_GROUPS.map((group) => ({ name: `${group.slNo} ${shortName(group.activity)}`, 'On the sheet': group.poc, Recorded: actuals[group.slNo] ? actuals[group.slNo].actualPoc : null }));
 
   // 48: the activities that are behind plan.
   const behind = within(group48)
@@ -47,8 +47,8 @@ function Charts({ actuals, currentWeek }) {
   // 49: planned progress by week, against the progress recorded so far.
   const weeks = Array.from({ length: PLAN_WEEK_COUNT }, (_, i) => i + 1).map((week) => ({
     label: `W${week}`,
-    planned: average(items.map((item) => plannedProgress(item, week))),
-    recorded: week === currentWeek ? average(items.map((item) => effectivePoc(item, item.actual))) : null,
+    planned: roundedAverage(items.map((item) => plannedProgress(item, week))),
+    recorded: week === currentWeek ? roundedAverage(items.map((item) => effectivePoc(item, item.actual))) : null,
   }));
 
   // 50: how many activities are in each state.
@@ -69,16 +69,16 @@ function Charts({ actuals, currentWeek }) {
 
       <ChartCard
         title="Percent complete by group"
-        summary="The sheet's figure, and the recorded figure where one exists."
+        summary="The sheet's figure, and the recorded figure where you have entered one. A dash means none is recorded."
         columns={['Group', 'On the sheet', 'Recorded']}
-        rows={groups.map((entry) => [entry.name, entry['On the sheet'], entry.Recorded])}
+        rows={groups.map((entry) => [entry.name, entry['On the sheet'], entry.Recorded ?? '–'])}
       >
         <BarsChart sideways data={groups} series={[{ key: 'On the sheet', label: 'On the sheet' }, { key: 'Recorded', label: 'Recorded' }]} />
       </ChartCard>
 
       <ChartCard
         title="Plan progress by week"
-        summary={currentWeek >= 1 ? `This is week ${currentWeek}. The recorded line is one point, since progress is not stored week by week.` : 'The plan has not started yet.'}
+        summary={currentWeek > PLAN_WEEK_COUNT ? `The plan ended in week ${PLAN_WEEK_COUNT}. This is week ${currentWeek}, so there is no recorded point.` : currentWeek >= 1 ? `This is week ${currentWeek}. The recorded point averages every activity, using the sheet's figure where none is recorded. Progress is not stored week by week.` : 'The plan has not started yet.'}
         columns={['Week', 'Planned %', 'Recorded %']}
         rows={weeks.map((entry) => [entry.label, entry.planned, entry.recorded ?? '–'])}
       >

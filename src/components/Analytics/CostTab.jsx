@@ -24,7 +24,13 @@ const LABELS = Object.fromEntries(SLICERS.map((slicer) => [slicer.field, slicer.
 const TOP_OPTIONS = ['5', '10', '15', '20'];
 const COST_TYPES = [{ value: 'total', label: 'Total' }, { value: 'onsite', label: 'Onsite' }, { value: 'offshore', label: 'Offshore' }];
 const SOURCE_LABELS = { actualPeople: 'Actual cost', plannedPeople: 'Planned cost', defaultPeople: 'Default (Senior Consultant)', missingPeople: 'No cost found' };
-const costOf = (seat, type) => (type === 'onsite' ? seat.onsiteCost : type === 'offshore' ? seat.offshoreCost : seat.onsiteCost + seat.offshoreCost);
+// A seat from an older backend has no cost fields, so they count as 0.
+const costOf = (seat, type) => {
+  const onsite = seat.onsiteCost ?? 0;
+  const offshore = seat.offshoreCost ?? 0;
+  return type === 'onsite' ? onsite : type === 'offshore' ? offshore : onsite + offshore;
+};
+const designationKey = (name) => name.trim().toLowerCase();
 const usd = (value) => Math.round(value);
 const gradeNumber = (grade) => Number(/(\d+)/.exec(grade ?? '')?.[1] ?? 0);
 const sum = (rows, pick) => rows.reduce((total, row) => total + pick(row), 0);
@@ -60,22 +66,23 @@ function Charts({ seats, catalog, range, filters, onToggle }) {
   // 40: which teams cost the most in the focus month.
   const teams = (() => {
     const totals = new Map();
-    for (const seat of applyFiltersExcept(seats, filters, 'team').filter((row) => row.month === range.focus)) totals.set(seat.team, (totals.get(seat.team) ?? 0) + costOf(seat, 'total'));
-    return [...totals].map(([name, value]) => ({ name, value: usd(value) })).filter((entry) => entry.value > 0).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, Number(teamTop));
+    for (const seat of applyFiltersExcept(seats, filters, 'team').filter((row) => row.month === range.focus && row.filled)) totals.set(seat.team, (totals.get(seat.team) ?? 0) + costOf(seat, 'total'));
+    return [...totals].map(([name, value]) => ({ name, value: usd(value) })).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, Number(teamTop));
   })();
 
   // 41: the planned cost of each designation against what people there really cost.
   const designations = planned.map((row) => row.name);
   const actualOf = (designation) => {
-    const own = actual.filter((row) => row.name === designation && row[side] !== null);
-    return own.length === 0 ? 0 : usd(sum(own, (row) => row[side]) / own.length);
+    const own = actual.filter((row) => designationKey(row.name) === designationKey(designation) && row[side] !== null);
+    return own.length === 0 ? null : usd(sum(own, (row) => row[side]) / own.length);
   };
+  const actualCount = actual.filter((row) => row[side] !== null).length;
   const versus = [...new Set(designations)].map((name) => ({ name, Planned: usd(planned.find((row) => row.name === name)[side]), Actual: actualOf(name) }));
 
   // 42: how the month's cost splits between onsite and offshore.
   const split = [
-    { name: 'Onsite', value: usd(sum(focusRows, (seat) => seat.onsiteCost)) },
-    { name: 'Offshore', value: usd(sum(focusRows, (seat) => seat.offshoreCost)) },
+    { name: 'Onsite', value: usd(sum(focusRows, (seat) => costOf(seat, 'onsite'))) },
+    { name: 'Offshore', value: usd(sum(focusRows, (seat) => costOf(seat, 'offshore'))) },
   ].filter((entry) => entry.value > 0);
 
   // 43: the planned cost at each grade.
@@ -135,9 +142,9 @@ function Charts({ seats, catalog, range, filters, onToggle }) {
 
       <ChartCard
         title="Planned against actual cost"
-        summary={actual.length === 0 ? 'No actual costs are recorded yet, so every actual shows 0.' : `Actual is the average of ${actual.length} recorded costs.`}
+        summary={actualCount === 0 ? 'No actual costs are recorded yet, so every actual shows a dash.' : `Actual is the average of ${actualCount} recorded costs. A dash means none for that designation.`}
         columns={['Designation', 'Planned', 'Actual']}
-        rows={versus.map((entry) => [entry.name, entry.Planned, entry.Actual])}
+        rows={versus.map((entry) => [entry.name, entry.Planned, entry.Actual ?? '–'])}
         controls={<ControlSelect label="Location" value={side} options={[{ value: 'offshoreCost', label: 'Offshore' }, { value: 'onsiteCost', label: 'Onsite' }]} onChange={setSide} />}
       >
         <BarsChart sideways data={versus} series={[{ key: 'Planned', label: 'Planned' }, { key: 'Actual', label: 'Actual' }]} />
@@ -154,7 +161,7 @@ function Charts({ seats, catalog, range, filters, onToggle }) {
 
       <ChartCard
         title={`Where the cost figures come from in ${monthLabel(range.focus)}`}
-        summary="Counts the people in Consultant and Lead Consultant seats."
+        summary="Counts each person once for every Consultant or Lead Consultant seat they hold."
         columns={['Source', 'People']}
         rows={sources.map((entry) => [entry.name, entry.value])}
       >
@@ -194,7 +201,8 @@ function CostTab({ refreshKey }) {
   const seats = useMemo(() => (seatsResult.data?.rows ?? []).map((seat) => ({ ...seat, team: teamLabel(seat.teamCode, seat.teamName) })), [seatsResult.data]);
   const slicers = SLICERS.map((slicer) => ({ ...slicer, values: [...new Set(seats.map((seat) => labelOf(seat[slicer.field])))].sort() }));
   const focusSeats = applyFilters(seats, filters).filter((seat) => seat.month === range.focus);
-  const totalCost = focusSeats.reduce((total, seat) => total + seat.onsiteCost + seat.offshoreCost, 0);
+  const totalCost = focusSeats.reduce((total, seat) => total + costOf(seat, 'total'), 0);
+  const uncertain = focusSeats.reduce((total, seat) => total + (seat.defaultPeople ?? 0) + (seat.missingPeople ?? 0), 0);
 
   return (
     <div className={styles.page}>
@@ -206,7 +214,7 @@ function CostTab({ refreshKey }) {
           labels={LABELS}
           onChange={set}
           onReset={clearAll}
-          matching={`USD ${formatCount(Math.round(totalCost))} in ${monthLabel(range.focus)} across ${formatCount(focusSeats.length)} seats (${percent(focusSeats.filter((seat) => seat.filled).length, focusSeats.length)}% filled)`}
+          matching={`USD ${formatCount(Math.round(totalCost))} in ${monthLabel(range.focus)} across ${formatCount(focusSeats.length)} seats (${percent(focusSeats.filter((seat) => seat.filled).length, focusSeats.length)}% filled)${uncertain > 0 ? `. ${uncertain} people are costed by default or have no cost.` : ''}`}
         />
         <Charts seats={seats} catalog={catalog.data?.rows ?? []} range={range} filters={filters} onToggle={toggle} />
       </LoadGate>
