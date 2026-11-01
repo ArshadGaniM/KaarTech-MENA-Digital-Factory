@@ -89,3 +89,20 @@ test("a search term is capped at 100 characters and never interpolated into the 
   assert.equal(list.params[0].length, 100);
   assert.ok(!list.sql.includes("drop table"));
 });
+
+// Many rows can share a sort value (324 positions are named "Consultant"), and
+// a page boundary inside a run of ties made pages overlap and drop rows. The
+// id tiebreaker keeps the order, and so every page, stable.
+test("GET /v1/practices (list) orders by the sort column and then by id", async (t) => {
+  let listSql;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select count(*)")) return { rows: [{ total: 0, activeTotal: 0 }] };
+    listSql = sql;
+    return { rows: [] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/practices`);
+
+  assert.equal(res.status, 200);
+  assert.match(listSql, /practices\.name asc, practices\.id asc\s+limit/);
+});
