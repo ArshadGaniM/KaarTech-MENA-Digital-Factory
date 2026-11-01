@@ -7,6 +7,7 @@ const personShape = PropTypes.shape({
   designation: PropTypes.string.isRequired,
   role: PropTypes.string.isRequired,
   track: PropTypes.string,
+  vertical: PropTypes.string,
 });
 
 // An open seat has no name yet. It shows its vertical and role in a dashed box.
@@ -16,7 +17,7 @@ function Box({ entry }) {
     <div className={`${styles.box} ${open ? styles.open : ''}`}>
       {open ? (
         <>
-          <span className={styles.openLabel}>{entry.designation}</span>
+          <span className={styles.openLabel}>{entry.vertical} Vertical</span>
           <span className={styles.role}>{entry.role}</span>
         </>
       ) : (
@@ -38,7 +39,7 @@ function TrackOwner({ entry }) {
       <Box entry={entry} />
       <ul className={styles.stack} aria-label={`Co-owners of ${entry.track}`}>
         {coOwners.map((coOwner) => (
-          <li key={coOwner.designation}>
+          <li key={coOwner.vertical}>
             <Box entry={coOwner} />
           </li>
         ))}
@@ -49,35 +50,36 @@ function TrackOwner({ entry }) {
 
 TrackOwner.propTypes = { entry: personShape.isRequired };
 
-// The sponsor leads. The owner and the co-owners report to the sponsor. The track
-// owners report to the owner, and each track owner has one co-owner seat per
-// vertical. Members are not drawn.
+// The sponsor leads. The initiative owners sit side by side under the sponsor,
+// and their lines join into one line. The track owners hang from that one line,
+// so each of them reports to all the owners together, not to one. Each track
+// owner has one co-owner seat per vertical. Members are not drawn.
 function OrgChart() {
   const [sponsor] = withRole(ROLE.sponsor);
-  const [owner] = withRole(ROLE.owner);
+  const owners = withRole(ROLE.owner);
   const trackOwners = TRACKS.map((track) => withRole(ROLE.trackOwner).find((entry) => entry.track === track));
   return (
     <div className={styles.scroll} tabIndex={0} role="region" aria-label="Initiative org structure diagram">
-      <ul className={`${styles.tree} ${styles.root}`}>
-        <li>
-          <Box entry={sponsor} />
-          <ul>
-            <li>
-              <Box entry={owner} />
-              <ul>
-                {trackOwners.map((entry) => (
-                  <TrackOwner key={entry.track} entry={entry} />
-                ))}
-              </ul>
-            </li>
-            {withRole(ROLE.coOwner).map((entry) => (
-              <li key={entry.name}>
-                <Box entry={entry} />
-              </li>
-            ))}
-          </ul>
-        </li>
-      </ul>
+      <div className={styles.tree}>
+        <ul className={styles.top}>
+          <li>
+            <Box entry={sponsor} />
+            <ul className={styles.owners} aria-label="Initiative owners">
+              {owners.map((entry) => (
+                <li key={entry.name}>
+                  <Box entry={entry} />
+                  <span className={styles.join} aria-hidden="true" />
+                </li>
+              ))}
+            </ul>
+          </li>
+        </ul>
+        <ul className={styles.tracks} aria-label="Track owners, reporting to the initiative owners together">
+          {trackOwners.map((entry) => (
+            <TrackOwner key={entry.track} entry={entry} />
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

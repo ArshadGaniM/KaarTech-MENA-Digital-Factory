@@ -64,8 +64,7 @@ function Overview() {
         head={['Item', 'Detail']}
         rows={[
           ['Plan owner', PLAN_OWNER.label],
-          ['Initiative owner', withRole(ROLE.owner).map((entry) => entry.name).join(', ')],
-          ['Initiative co-owners', withRole(ROLE.coOwner).map((entry) => entry.name).join(', ')],
+          ['Initiative owners', withRole(ROLE.owner).map((entry) => entry.name).join(', ')],
           ['Start', dateText(weekStart(1))],
           ['Finish', `${dateText(last)} (Week ${PLAN_WEEK_COUNT})`],
           ['Streams', String(PLAN_GROUPS.length)],

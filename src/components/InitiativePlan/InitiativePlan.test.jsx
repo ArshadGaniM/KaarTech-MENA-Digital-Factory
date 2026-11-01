@@ -191,4 +191,114 @@ describe('InitiativePlan', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('the plan is shown without it');
     expect(screen.getAllByText('Establish SOP Document')).toHaveLength(3);
   });
+
+  describe('full-screen view', () => {
+    const open = async (user, props = {}) => {
+      render(<InitiativePlan today={TODAY} {...props} />);
+      await user.click(screen.getByRole('button', { name: 'View full screen' }));
+      return screen.getByRole('dialog', { name: 'Initiative Plan' });
+    };
+
+    it('opens the whole plan in a full-screen dialog, and the plan stays in the page behind it', async () => {
+      const user = userEvent.setup();
+      const dialog = await open(user);
+
+      expect(within(dialog).getAllByText('Establish SOP Document')).toHaveLength(3);
+      expect(within(dialog).getAllByRole('columnheader').filter((cell) => /^Week \d+/.test(cell.textContent))).toHaveLength(PLAN_WEEK_COUNT);
+      expect(screen.getAllByText('Establish SOP Document')).toHaveLength(6);
+      expect(within(dialog).queryByRole('button', { name: 'View full screen' })).not.toBeInTheDocument();
+    });
+
+    it('closes with the Close button and with Escape, and gives focus back to the button that opened it', async () => {
+      const user = userEvent.setup();
+      await open(user);
+      expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'View full screen' })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: 'View full screen' }));
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('stops the page behind from scrolling while it is open, and lets it scroll again after', async () => {
+      const user = userEvent.setup();
+      await open(user);
+      expect(document.body.style.overflow).toBe('hidden');
+
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('wraps Tab from the last control to Close, and Shift+Tab from Close to the last control', async () => {
+      const user = userEvent.setup();
+      const dialog = await open(user);
+      const controls = Array.from(dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])'));
+      const close = within(dialog).getByRole('button', { name: 'Close' });
+      expect(controls[0]).toBe(close);
+      const last = controls[controls.length - 1];
+
+      last.focus();
+      await user.tab();
+      expect(close).toHaveFocus();
+
+      await user.tab({ shift: true });
+      expect(last).toHaveFocus();
+    });
+
+    it('brings focus back into the dialog when it is outside', async () => {
+      const user = userEvent.setup();
+      const dialog = await open(user);
+      document.activeElement.blur();
+
+      await user.tab();
+      expect(dialog).toContainElement(document.activeElement);
+    });
+
+    it('keeps focus where you put it when the plan re-renders inside the dialog, and still returns it to the opener on close', async () => {
+      const user = userEvent.setup();
+      render(<InitiativePlan today={TODAY} />);
+      await user.click(screen.getByRole('button', { name: 'View full screen' }));
+      const dialog = screen.getByRole('dialog', { name: 'Initiative Plan' });
+
+      // The filter is state in the plan, so clicking it re-renders the plan and the dialog.
+      await user.click(within(dialog).getByRole('button', { name: 'In Progress' }));
+      expect(within(dialog).getByRole('button', { name: 'In Progress' })).toHaveFocus();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(screen.getByRole('button', { name: 'View full screen' })).toHaveFocus();
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('shows the same filter in the dialog and keeps it when the dialog closes', async () => {
+      const user = userEvent.setup();
+      render(<InitiativePlan today={TODAY} />);
+      await user.click(screen.getByRole('button', { name: 'Completed' }));
+      await user.click(screen.getByRole('button', { name: 'View full screen' }));
+      const dialog = screen.getByRole('dialog', { name: 'Initiative Plan' });
+
+      expect(within(dialog).getByRole('button', { name: 'Completed' })).toHaveAttribute('aria-pressed', 'true');
+      await user.click(within(dialog).getByRole('button', { name: 'Yet to Start' }));
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      expect(screen.getByRole('button', { name: 'Yet to Start' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('does not offer to record an actual inside the dialog, and changes no plan data', async () => {
+      const user = userEvent.setup();
+      const before = JSON.stringify(PLAN_GROUPS);
+      const dialog = await open(user);
+
+      expect(within(dialog).queryByRole('button', { name: /actual/i })).not.toBeInTheDocument();
+      expect(JSON.stringify(PLAN_GROUPS)).toBe(before);
+    });
+
+    it('has the same view in read-only mode, as in the Charter', async () => {
+      const user = userEvent.setup();
+      const dialog = await open(user, { readOnly: true });
+
+      expect(within(dialog).getAllByText('Establish SOP Document')).toHaveLength(3);
+    });
+  });
 });
