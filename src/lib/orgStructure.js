@@ -90,12 +90,20 @@ function buildPracticeGroups(departmentCode, departmentTeams, practices) {
 // Headcount means seats: every live position is one seat, whether or not
 // anyone is deployed to it. Only the leadership above departments comes from
 // odcLeadership.js — everything else is derived from the live tables.
-export function buildOrgStructure({ departments, teams, positions, competencies, practices, deployments }) {
+// A deployment counts from startDate to endDate, both days included. Before
+// or after that the seat is empty again, so a handover shows the new lead.
+const isCurrent = (deployment, today) =>
+  (!deployment.startDate || deployment.startDate <= today) && (!deployment.endDate || deployment.endDate >= today);
+
+export function buildOrgStructure({ departments, teams, positions, competencies, practices, deployments, today = new Date().toISOString().slice(0, 10) }) {
   const livePractices = practices.filter(isLive).sort((a, b) => a.code.localeCompare(b.code));
   const livePracticeCodes = new Set(livePractices.map((practice) => practice.code));
   // practiceId holds the practice's code (competencies.practice_code).
   const practiceByCompetency = new Map(competencies.filter(isLive).map((c) => [c.name, c.practiceId]));
-  const deploymentsByPosition = Map.groupBy(deployments.filter(isLive), (deployment) => deployment.positionId);
+  const deploymentsByPosition = Map.groupBy(
+    deployments.filter((deployment) => isLive(deployment) && isCurrent(deployment, today)),
+    (deployment) => deployment.positionId
+  );
   const positionsByTeam = Map.groupBy(positions.filter(isLive), (position) => position.teamCode);
   const teamsByDepartment = Map.groupBy(teams.filter(isLive), (team) => team.departmentCode);
 
@@ -155,7 +163,8 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
   };
 }
 
-// Every node key in the tree, for "Expand all".
+// Must return exactly the keys buildOrgStructure stamps on nodes, or
+// "Expand all" silently skips a level.
 export function allNodeKeys(structure) {
   return structure.projectManagers.flatMap((manager) => [
     manager.id,

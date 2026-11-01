@@ -31,6 +31,8 @@ export function useOrganizationStructure() {
     let latest = 0;
     let jitterTimer = null;
 
+    // Only the newest request may update the page, so a slow older response
+    // cannot overwrite newer data.
     const load = () => {
       const request = ++latest;
       return loadOrgStructure()

@@ -44,7 +44,7 @@ const deployments = [
 ];
 
 const build = (overrides = {}) =>
-  buildOrgStructure({ departments, teams, positions, competencies, practices, deployments, ...overrides });
+  buildOrgStructure({ departments, teams, positions, competencies, practices, deployments, today: '2026-11-01', ...overrides });
 const managerOf = (result, id) => result.projectManagers.find((manager) => manager.id === id);
 
 describe('roleOf', () => {
@@ -140,6 +140,16 @@ describe('buildOrgStructure', () => {
     const keys = allNodeKeys(build());
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toContain('DEPT-009/PRAC-001/7');
+  });
+
+  it('counts a deployment only from its start date to its end date, both days included', () => {
+    const dated = (startDate, endDate) => [{ positionId: 'POS-1', employeeId: 7, employeeName: 'Asha', startDate, endDate, ...live }];
+    const leadsFor = (rows) => managerOf(build({ deployments: rows }), 'pm-3').departments[0].practices[0].moduleLeads;
+
+    expect(leadsFor(dated('2026-08-01', '2027-03-31'))[0].name).toBe('Asha');
+    expect(leadsFor(dated('2026-11-01', '2026-11-01'))[0].name).toBe('Asha');
+    expect(leadsFor(dated('2026-06-01', '2026-10-31'))[0].isUnallocated).toBe(true);
+    expect(leadsFor(dated('2026-11-02', '2027-03-31'))[0].isUnallocated).toBe(true);
   });
 
   it('uses the first practice and warns when a team spans two', () => {
