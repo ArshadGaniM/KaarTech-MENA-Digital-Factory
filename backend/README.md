@@ -72,8 +72,9 @@ Per-table fields, as of this writing:
 
 **Field types beyond `string`/`enum`:** a field's `type` can also be
 `"number"` (a finite JS number; optional `integer: true`, `min` and `max` limit it, as on `departments.floorNumber`), `"date"`
-(a string that must parse via `Date.parse` — any ISO 8601 date or
-datetime string, e.g. `project-assignments.projectAssignmentStartDate`),
+(an ISO 8601 `YYYY-MM-DD` string, optionally with a time and a zone
+offset up to 15:59. Other formats and impossible days get a 422, e.g.
+`project-assignments.projectAssignmentStartDate`),
 and any `"string"` field can set `maxLength` to override the default
 255-char cap (`resources.skill` uses `maxLength: 20000`, since real skill
 lists run past 12,000 characters).

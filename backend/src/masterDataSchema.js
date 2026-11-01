@@ -2,8 +2,9 @@ import { pool } from "./db.js";
 import { validationError } from "./errors.js";
 
 const MAX_TEXT_LENGTH = 255;
-// YYYY-MM-DD, optionally followed by a time and a zone (Z or +03:00).
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+// YYYY-MM-DD, optionally followed by a time and a zone (Z or +03:00). Postgres
+// refuses offsets past 15:59, so the pattern does too.
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-](?:0\d|1[0-5]):?[0-5]\d)?)?$/;
 
 // Builds the LEFT JOIN plan for a table's live-lookup fields (e.g.
 // resource_cost.employeeName/employeeDesignation from resources.name/

@@ -101,6 +101,7 @@ Built with `ApiError` in `backend/src/errors.js`.
 - Validate at the boundary with `validateBody` from the table descriptor, before any
   query runs.
 - Use the descriptor's field constraints for lengths, ranges, patterns and enums.
+- Date fields take ISO 8601 `YYYY-MM-DD`, optionally with a time and a zone offset up to 15:59. Anything else is a 422. The 100% and overlap checks compare the first ten characters.
 - Check that referenced rows exist and are live in `validateReferences`, not in the
   route handler. Restore repeats the check.
 - Check again in the database with a `check` or unique constraint. The API check gives

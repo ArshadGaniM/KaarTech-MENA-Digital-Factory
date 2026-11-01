@@ -731,7 +731,7 @@ test("POST /v1/resource-deployment refuses a date that is not ISO, and never ins
   let wrote = false;
   allocationMock(t, [["POS-001", "100.00", "2026-08-01", "2027-03-31"]], { onWrite: () => (wrote = true) });
 
-  for (const bad of ["01/05/2027", "Jan 1 2027", "1 Jan 2027", "2027/01/05", "2027-1-5", " 2027-01-05", "2027-01-05 ", "20270105"]) {
+  for (const bad of ["01/05/2027", "Jan 1 2027", "1 Jan 2027", "2027/01/05", "2027-1-5", " 2027-01-05", "2027-01-05 ", "20270105", "2027-01-05T10:00:00+16:00", "2027-01-05T10:00:00-23:59"]) {
     const start = await postDeployment(dated({ allocationPercentage: 100, startDate: bad, endDate: "2027-02-05" }));
     assert.equal(start.status, 422, `startDate ${JSON.stringify(bad)}`);
     assert.ok((await start.json()).error.details.startDate, bad);
