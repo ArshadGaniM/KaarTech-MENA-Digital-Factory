@@ -238,3 +238,26 @@ export const HEALTH_SQL = [
        from resources where deleted_at is null`
   ),
 ].join("\n union all\n");
+
+// Every live deployment with where it sits, so the Forecast tab can see who rolls off and when.
+export const DEPLOYMENTS_SQL = `
+  select rd.employee_id as "employeeId", r.name, rd.position_code as "positionCode", p.name as "positionName",
+         t.code as "teamCode", t.name as "teamName", d.name as "departmentName",
+         rd.allocation_percentage::float as "allocationPercentage",
+         rd.start_date::text as start, rd.end_date::text as "end"
+    from resource_deployment rd
+    join resources r on r.employee_id = rd.employee_id and r.deleted_at is null
+    join positions p on p.code = rd.position_code and p.deleted_at is null
+    join teams t on t.code = p.team_code and t.deleted_at is null
+    left join departments d on d.code = t.department_code and d.deleted_at is null
+   where rd.deleted_at is null
+   order by rd.end_date, rd.employee_id`;
+
+// The saved monthly snapshots, oldest first.
+export const SNAPSHOTS_SQL = `
+  select month, team_code as "teamCode", position_name as "positionName", department_name as "departmentName",
+         practice_name as "practiceName", seats, filled_seats as "filledSeats",
+         available_hours::float as "availableHours", allocated_hours::float as "allocatedHours",
+         utilized_hours::float as "utilizedHours", onsite_cost::float as "onsiteCost", offshore_cost::float as "offshoreCost"
+    from analytics_snapshots
+   order by month, team_code, position_name`;

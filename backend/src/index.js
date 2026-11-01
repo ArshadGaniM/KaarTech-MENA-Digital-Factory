@@ -12,6 +12,8 @@ import { createAllocationRouter } from "./allocationRouter.js";
 import { createAnalyticsRouter } from "./analyticsRouter.js";
 import { createInitiativePlanRouter } from "./initiativePlanRouter.js";
 import { createChangeFeed } from "./changeFeed.js";
+import { pool } from "./db.js";
+import { startSnapshotSchedule } from "./snapshots.js";
 
 const app = express();
 
@@ -32,11 +34,14 @@ app.get("/v1/schema/entity-relationships", (req, res) => {
   res.json({ data: buildEntityRelationships(MASTER_DATA_TABLES) });
 });
 
+// Saves the month's seat figures by itself, now and every six hours.
+const snapshots = startSnapshotSchedule({ query: (...args) => pool.query(...args) });
 const changeFeed = createChangeFeed();
 changeFeed.start();
 for (const signal of ["SIGTERM", "SIGINT"]) {
   process.on(signal, () => {
     changeFeed.stop();
+    snapshots.stop();
     process.exit(0);
   });
 }
