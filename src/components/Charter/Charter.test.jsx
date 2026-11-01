@@ -127,7 +127,7 @@ describe('Charter', () => {
     expect(within(chart).queryByText('Initiative Co-owner')).not.toBeInTheDocument();
   });
 
-  it('draws the sponsor, then the three owners side by side, then the three track owners under all of them', async () => {
+  it('lists the owners under the sponsor and the track owners in a separate list after them, not inside any owner', async () => {
     const user = userEvent.setup();
     render(<Charter />);
 
@@ -150,6 +150,7 @@ describe('Charter', () => {
       expect(within(owners).queryByText(name)).not.toBeInTheDocument();
     }
     expect(owners.compareDocumentPosition(tracks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(itemOf('Irfan Ahmed')).not.toContainElement(tracks);
   });
 
   it('gives each track owner four open co-owner boxes, named by vertical', async () => {

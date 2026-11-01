@@ -1,0 +1,14 @@
+/* The space the plan has. It scrolls on a narrow screen and is clipped, because the plan is shrunk to fit, on a wide one. */
+.fitOuter {
+  height: 100%;
+  overflow: auto;
+}
+
+.fitShrunk {
+  overflow: hidden;
+}
+
+.fitInner {
+  width: max-content;
+  transform-origin: 0 0;
+}

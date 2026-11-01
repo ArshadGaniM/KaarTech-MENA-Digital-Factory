@@ -1,61 +1,57 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import PlanFullScreen from './PlanFullScreen';
 
-// jsdom does no layout, so sizes are given by hand: the content is 2400 by 1200
-// and the space for it is 1800 by 1000.
-function mockSizes() {
-  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(2400);
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(1200);
-  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1800);
-  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(1000);
-}
-
-const renderFrame = () =>
+const renderFrame = (onClose = () => {}) =>
   render(
-    <PlanFullScreen title="Plan" onClose={() => {}}>
-      <p>content</p>
+    <PlanFullScreen title="Plan" onClose={onClose}>
+      <button type="button">inside</button>
     </PlanFullScreen>
   );
 
-afterEach(() => {
-  vi.restoreAllMocks();
-  window.innerWidth = 1024;
-});
-
 describe('PlanFullScreen', () => {
-  it('shrinks the content to fit on a wide screen', () => {
-    mockSizes();
-    window.innerWidth = 1920;
+  it('is a modal dialog named by its title, with its content inside', () => {
     renderFrame();
 
-    const inner = screen.getByText('content').parentElement;
-    expect(inner).toHaveAttribute('data-scale', '0.75');
-    expect(inner.style.transform).toBe('scale(0.75)');
-    // Centred: (1800 - 2400 * 0.75) / 2 = 0
-    expect(inner.style.marginLeft).toBe('0px');
+    const dialog = screen.getByRole('dialog', { name: 'Plan' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toContainElement(screen.getByRole('button', { name: 'inside' }));
   });
 
-  it('keeps the full size, to scroll, on a screen narrower than 1200 pixels', () => {
-    mockSizes();
-    window.innerWidth = 1000;
+  it('puts focus on Close when it opens', () => {
     renderFrame();
 
-    const inner = screen.getByText('content').parentElement;
-    expect(inner).toHaveAttribute('data-scale', '1');
-    expect(inner.style.transform).toBe('');
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
   });
 
-  it('keeps the full size when nothing can be measured', () => {
-    window.innerWidth = 1920;
-    renderFrame();
+  it('calls onClose for the Close button and for Escape', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderFrame(onClose);
 
-    expect(screen.getByText('content').parentElement).toHaveAttribute('data-scale', '1');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it('is a modal dialog named by its title', () => {
-    renderFrame();
+  it('calls the latest onClose after a re-render, without moving focus', async () => {
+    const user = userEvent.setup();
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = renderFrame(first);
+    screen.getByRole('button', { name: 'inside' }).focus();
 
-    expect(screen.getByRole('dialog', { name: 'Plan' })).toHaveAttribute('aria-modal', 'true');
+    rerender(
+      <PlanFullScreen title="Plan" onClose={second}>
+        <button type="button">inside</button>
+      </PlanFullScreen>
+    );
+    expect(screen.getByRole('button', { name: 'inside' })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
   });
 });

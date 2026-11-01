@@ -232,15 +232,28 @@ describe('InitiativePlan', () => {
       expect(document.body.style.overflow).toBe('');
     });
 
-    it('keeps Tab inside the dialog', async () => {
+    it('wraps Tab from the last control to Close, and Shift+Tab from Close to the last control', async () => {
       const user = userEvent.setup();
       const dialog = await open(user);
+      const controls = Array.from(dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled])'));
+      const close = within(dialog).getByRole('button', { name: 'Close' });
+      expect(controls[0]).toBe(close);
+      const last = controls[controls.length - 1];
 
-      for (let i = 0; i < 30; i += 1) {
-        await user.tab();
-        expect(dialog).toContainElement(document.activeElement);
-      }
+      last.focus();
+      await user.tab();
+      expect(close).toHaveFocus();
+
       await user.tab({ shift: true });
+      expect(last).toHaveFocus();
+    });
+
+    it('brings focus back into the dialog when it is outside', async () => {
+      const user = userEvent.setup();
+      const dialog = await open(user);
+      document.activeElement.blur();
+
+      await user.tab();
       expect(dialog).toContainElement(document.activeElement);
     });
 
