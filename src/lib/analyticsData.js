@@ -1,3 +1,5 @@
+import { shiftMonth } from './months';
+
 // Pure helpers behind the analytics charts. They take plain rows and return
 // plain rows, so every chart can be checked without drawing anything.
 
@@ -188,7 +190,7 @@ const dayNumber = (isoDate) => {
 };
 
 // The first and last day of a month, as ISO dates. Day 0 of the next month is the last day of this one.
-export const monthStartDay = (month) => `${month}-01`;
+const monthStartDay = (month) => `${month}-01`;
 export const monthEndDay = (month) => {
   const [year, number] = month.split('-').map(Number);
   return new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10);
@@ -229,3 +231,6 @@ export function monthsFromTo(from, to) {
   }
   return months;
 }
+
+// The months a range slicer offers: the 12 before `base` and the 12 from it on.
+export const monthChoices = (base) => Array.from({ length: 24 }, (_, i) => shiftMonth(base, i - 11)).map((month) => ({ value: month, label: monthLabel(month) }));

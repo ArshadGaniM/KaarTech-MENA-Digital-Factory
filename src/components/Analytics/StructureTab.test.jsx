@@ -163,4 +163,82 @@ describe('StructureTab slicers', () => {
 
     expect(within(screen.getByLabelText('Practice')).getByRole('option', { name: 'Not set' })).toBeInTheDocument();
   });
+
+  it('breaks a tie between teams by name, whatever order they arrive in', async () => {
+    fetchStructure.mockResolvedValue([position('B'), position('B'), position('A'), position('A')]);
+    render(<StructureTab refreshKey={0} />);
+    await screen.findByText('4 of 4 positions');
+    const user = userEvent.setup();
+
+    expect(await tableOf(user, 'Team size')).toEqual([['Team', 'Positions'], ['A', '2'], ['B', '2']]);
+  });
+
+  it('shows the position mix of each team, leaving out the positions no listed team holds', async () => {
+    const user = await renderTab();
+
+    expect(await tableOf(user, 'Position mix per team')).toEqual([
+      ['Team', 'Consultant', 'Module Lead'],
+      ['T1', '2', '1'],
+      ['T2', '1', '0'],
+      ['T3', '1', '0'],
+    ]);
+  });
+
+  it('keeps every team in the position mix when one team is picked', async () => {
+    const user = await renderTab();
+
+    await user.selectOptions(screen.getByLabelText('Team'), 'T3');
+
+    expect(await tableOf(user, 'Position mix per team')).toEqual([['Team', 'Consultant', 'Module Lead'], ['T1', '2', '1'], ['T2', '1', '0'], ['T3', '1', '0']]);
+  });
+
+  it('counts teams per practice with the Teams measure, and the department slicer lowers only the teams', async () => {
+    const user = await renderTab();
+    await user.selectOptions(within(card('Practice portfolio')).getByLabelText('Show'), 'Teams');
+
+    expect(await tableOf(user, 'Practice portfolio')).toEqual([['Practice', 'Teams'], ['Finance', '2'], ['Logistics', '0']]);
+
+    await user.selectOptions(screen.getByLabelText('Department'), 'Audit');
+    await user.selectOptions(within(card('Practice portfolio')).getByLabelText('Show'), 'All three');
+    expect(cellsOf(within(card('Practice portfolio')).getByRole('table'))[1]).toEqual(['Finance', '1', '1', '0']);
+  });
+
+  it('orders floors as numbers and sums two departments on one floor', async () => {
+    fetchCatalog.mockResolvedValue([
+      { kind: 'department', name: 'A', floorNumber: 2, input: null, output: null },
+      { kind: 'department', name: 'B', floorNumber: 10, input: null, output: null },
+      { kind: 'department', name: 'C', floorNumber: 9, input: null, output: null },
+      { kind: 'department', name: 'D', floorNumber: 9, input: null, output: null },
+    ]);
+    fetchStructure.mockResolvedValue([position('T1', { departmentName: 'A' }), position('T2', { departmentName: 'C' }), position('T3', { departmentName: 'D' }), position('T4', { departmentName: 'B' })]);
+    render(<StructureTab refreshKey={0} />);
+    await screen.findByText('4 of 4 positions');
+    const user = userEvent.setup();
+
+    expect(await tableOf(user, 'Departments by floor')).toEqual([['Floor', 'Teams'], ['Floor 10', '1'], ['Floor 9', '2'], ['Floor 2', '1']]);
+
+    await user.selectOptions(within(card('Departments by floor')).getByLabelText('Count'), 'Departments');
+    expect(cellsOf(within(card('Departments by floor')).getByRole('table'))[2]).toEqual(['Floor 9', '2']);
+  });
+
+  it('limits the coverage grid to the chosen number of competencies, alphabetical when tied', async () => {
+    const names = ['C07', 'C06', 'C05', 'C04', 'C03', 'C02', 'C01'];
+    fetchStructure.mockResolvedValue(names.map((name, index) => position(`T${index}`, { competencies: [name] })));
+    render(<StructureTab refreshKey={0} />);
+    await screen.findByText('7 of 7 positions');
+    const user = userEvent.setup();
+    await user.selectOptions(within(card('Competency coverage by team')).getByLabelText('Competencies'), '5');
+
+    expect((await tableOf(user, 'Competency coverage by team'))[0]).toEqual(['Team', 'C01', 'C02', 'C03', 'C04', 'C05']);
+  });
+
+  it('counts a competency listed twice by one position once', async () => {
+    fetchStructure.mockResolvedValue([position('T1', { competencies: ['FICO', 'FICO'] })]);
+    render(<StructureTab refreshKey={0} />);
+    await screen.findByText('1 of 1 positions');
+    const user = userEvent.setup();
+
+    expect(await tableOf(user, 'Competency coverage by team')).toEqual([['Team', 'FICO'], ['T1', '1']]);
+  });
 });
+

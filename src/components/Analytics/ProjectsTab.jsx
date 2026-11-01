@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { useAnalyticsAssignments, useAnalyticsStructure } from '../../hooks/useAnalyticsData';
+import { useAnalyticsAssignments, useAnalyticsCatalog, useAnalyticsStructure } from '../../hooks/useAnalyticsData';
 import { useCrossFilters } from '../../hooks/useCrossFilters';
-import { applyFilters, applyFiltersExcept, countBy, histogram, labelOf, monthCoverage, monthLabel, monthsFromTo, overlapsMonth, spanDays, teamLabel } from '../../lib/analyticsData';
+import { applyFilters, applyFiltersExcept, countBy, histogram, labelOf, monthChoices, monthCoverage, monthLabel, monthsFromTo, overlapsMonth, spanDays, teamLabel } from '../../lib/analyticsData';
 import { formatCount } from '../../lib/formatCount';
 import { currentMonth, shiftMonth } from '../../lib/months';
 import ChartCard from './ChartCard';
@@ -23,8 +23,11 @@ const SLICERS = [
 ];
 const LABELS = Object.fromEntries(SLICERS.map((slicer) => [slicer.field, slicer.label]));
 const TOP_OPTIONS = ['5', '10', '15', '20'];
-const MONTH_CHOICES = Array.from({ length: 24 }, (_, i) => i - 11);
-const today = () => new Date().toISOString().slice(0, 10);
+// The local date, to match the local month the slicers start from.
+const today = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
 const addDays = (isoDate, days) => new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
 const distinct = (rows, field) => new Set(rows.map((row) => row[field])).size;
 
@@ -42,7 +45,7 @@ function Charts({ assignments, teams, filters, onToggle, onSet }) {
   const [windowDays, setWindowDays] = useState('90');
   const [idleTop, setIdleTop] = useState('10');
 
-  const monthOptions = MONTH_CHOICES.map((offset) => ({ value: shiftMonth(base, offset), label: monthLabel(shiftMonth(base, offset)) }));
+  const monthOptions = monthChoices(base);
   const months = monthsFromTo(from, to);
   const focus = focusChoice < from ? from : focusChoice > to ? to : focusChoice;
   const rows = useMemo(() => applyFilters(assignments, filters), [assignments, filters]);
@@ -62,15 +65,17 @@ function Charts({ assignments, teams, filters, onToggle, onSet }) {
   const teamsPerProject = (() => {
     const byProject = new Map();
     for (const row of except('project')) {
-      if (!byProject.has(row.project)) byProject.set(row.project, new Set());
-      byProject.get(row.project).add(row.teamCode);
+      const entry = byProject.get(row.projectId) ?? { name: row.project, teams: new Set() };
+      entry.teams.add(row.teamCode);
+      byProject.set(row.projectId, entry);
     }
-    return [...byProject].map(([name, set]) => ({ name, value: set.size })).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, Number(teamsTop));
+    return [...byProject.values()].map((entry) => ({ name: entry.name, value: entry.teams.size })).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)).slice(0, Number(teamsTop));
   })();
 
   // 34: how much of each month each team has a project.
-  const gridTeams = countBy(rows, 'team').slice(0, Number(gridRows)).map((entry) => entry.name);
-  const coverage = new Map(gridTeams.map((team) => [team, Object.fromEntries(months.map((month) => [month, monthCoverage(rows.filter((row) => row.team === team), month)]))]));
+  const gridTeams = countBy(except('team'), 'team').slice(0, Number(gridRows)).map((entry) => entry.name);
+  const byTeam = Map.groupBy(except('team'), (row) => row.team);
+  const coverage = new Map(gridTeams.map((team) => [team, Object.fromEntries(months.map((month) => [month, monthCoverage(byTeam.get(team) ?? [], month)]))]));
 
   // 35: how the work splits by profit center.
   const centers = (() => {
@@ -211,30 +216,35 @@ function ProjectsTab({ refreshKey }) {
   const [retries, setRetries] = useState(0);
   const assigned = useAnalyticsAssignments(refreshKey + retries);
   const structure = useAnalyticsStructure(refreshKey + retries);
+  const catalog = useAnalyticsCatalog(refreshKey + retries);
   const { filters, toggle, set, clearAll } = useCrossFilters(NO_FILTERS);
 
-  // One row per team, with how many positions it holds, so a team with no
-  // assignment can still be listed.
+  // Every live team, with how many positions it holds, so a team with no
+  // assignment (or no position yet) can still be listed.
   const teams = useMemo(() => {
-    const byTeam = new Map();
+    const seats = new Map();
+    const practice = new Map();
     for (const row of structure.data?.rows ?? []) {
-      const entry = byTeam.get(row.teamCode) ?? { teamCode: row.teamCode, team: teamLabel(row.teamCode, row.teamName), departmentName: row.departmentName, practiceName: row.practiceName, seats: 0 };
-      entry.seats += 1;
-      byTeam.set(row.teamCode, entry);
+      seats.set(row.teamCode, (seats.get(row.teamCode) ?? 0) + 1);
+      practice.set(row.teamCode, row.practiceName);
     }
-    return [...byTeam.values()];
-  }, [structure.data]);
+    return (catalog.data?.rows ?? [])
+      .filter((row) => row.kind === 'team')
+      .map((row) => ({ teamCode: row.teamCode, team: teamLabel(row.teamCode, row.name), departmentName: row.departmentName, practiceName: practice.get(row.teamCode) ?? null, seats: seats.get(row.teamCode) ?? 0 }));
+  }, [structure.data, catalog.data]);
 
   const assignments = useMemo(() => {
     const practiceOf = new Map(teams.map((team) => [team.teamCode, team.practiceName]));
     return (assigned.data?.rows ?? []).map((row) => ({ ...row, team: teamLabel(row.teamCode, row.teamName), project: labelOf(row.projectName ?? row.projectId), profitCenter: labelOf(row.profitCenter), practiceName: practiceOf.get(row.teamCode) ?? null }));
   }, [assigned.data, teams]);
 
-  const slicers = SLICERS.map((slicer) => ({ ...slicer, values: [...new Set(assignments.map((row) => labelOf(row[slicer.field])))].sort() }));
+  const visibleTeams = teams.filter((team) => (filters.departmentName === null || labelOf(team.departmentName) === filters.departmentName) && (filters.practiceName === null || labelOf(team.practiceName) === filters.practiceName) && (filters.team === null || team.team === filters.team));
+  // Department, practice and team values come from the teams too, so a team with no assignment can still be picked.
+  const slicers = SLICERS.map((slicer) => ({ ...slicer, values: [...new Set([...assignments, ...(['departmentName', 'practiceName', 'team'].includes(slicer.field) ? teams : [])].map((row) => labelOf(row[slicer.field])))].sort() }));
 
   return (
     <div className={styles.page}>
-      <LoadGate results={[assigned, structure]} what="the projects" onRetry={() => setRetries((count) => count + 1)}>
+      <LoadGate results={[assigned, structure, catalog]} what="the projects" onRetry={() => setRetries((count) => count + 1)}>
         <SlicerBar
           slicers={slicers}
           filters={filters}
@@ -243,7 +253,7 @@ function ProjectsTab({ refreshKey }) {
           onReset={clearAll}
           matching={`${formatCount(applyFilters(assignments, filters).length)} of ${formatCount(assignments.length)} assignments`}
         />
-        <Charts assignments={assignments} teams={teams.filter((team) => (filters.departmentName === null || labelOf(team.departmentName) === filters.departmentName) && (filters.practiceName === null || labelOf(team.practiceName) === filters.practiceName) && (filters.team === null || team.team === filters.team))} filters={filters} onToggle={toggle} onSet={set} />
+        <Charts assignments={assignments} teams={visibleTeams} filters={filters} onToggle={toggle} onSet={set} />
       </LoadGate>
     </div>
   );

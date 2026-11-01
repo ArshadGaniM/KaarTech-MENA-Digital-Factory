@@ -64,22 +64,25 @@ function Charts({ positions, catalog, filters, onToggle, onSet }) {
 
   // 24: how each department is made up.
   const deptRows = except('departmentName');
+  // One row per team, for counting teams.
+  const oneRowPerTeam = [...new Map(deptRows.map((row) => [row.teamCode, row])).values()];
   const deptData = (() => {
     if (deptMeasure === 'positions') return countBy(deptRows, 'departmentName');
     if (deptMeasure === 'seats') return countBy(keep(deptRows, 'seats'), 'departmentName');
-    return countBy([...new Map(deptRows.map((row) => [row.teamCode, row])).values()], 'departmentName');
+    return countBy(oneRowPerTeam, 'departmentName');
   })();
 
   // 25: which positions each team holds.
-  const teamNames = countBy(except('team'), 'team').slice(0, Number(mixTop)).map((entry) => entry.name);
-  const mixNames = countBy(rows, 'positionName').slice(0, 6).map((entry) => entry.name);
+  const teamRows = except('team');
+  const teamNames = countBy(teamRows, 'team').slice(0, Number(mixTop)).map((entry) => entry.name);
+  const mixNames = countBy(teamRows, 'positionName').slice(0, 6).map((entry) => entry.name);
   const mixData = teamNames.map((name) => ({
     name,
-    ...Object.fromEntries(mixNames.map((position) => [position, except('team').filter((row) => row.team === name && row.positionName === position).length])),
+    ...Object.fromEntries(mixNames.map((position) => [position, teamRows.filter((row) => row.team === name && row.positionName === position).length])),
   }));
 
   // 26: which competencies each team covers.
-  const gridTeams = countBy(rows, 'team').slice(0, Number(gridRows)).map((entry) => entry.name);
+  const gridTeams = countBy(teamRows, 'team').slice(0, Number(gridRows)).map((entry) => entry.name);
   const competencyCounts = new Map();
   for (const row of rows) for (const name of new Set(row.competencies)) competencyCounts.set(name, (competencyCounts.get(name) ?? 0) + 1);
   const gridCompetencies = [...competencyCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, Number(gridCols)).map(([name]) => name);
@@ -116,7 +119,7 @@ function Charts({ positions, catalog, filters, onToggle, onSet }) {
 
   // 29: what sits on each floor.
   const floors = (() => {
-    const byDepartment = new Map(countBy(floorMeasure === 'positions' ? deptRows : [...new Map(deptRows.map((row) => [row.teamCode, row])).values()], 'departmentName').map((entry) => [entry.name, entry.value]));
+    const byDepartment = new Map(countBy(floorMeasure === 'positions' ? deptRows : oneRowPerTeam, 'departmentName').map((entry) => [entry.name, entry.value]));
     const totals = new Map();
     for (const department of departments) {
       if (department.floorNumber === null) continue;

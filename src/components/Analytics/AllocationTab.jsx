@@ -9,6 +9,7 @@ import {
   countBy,
   percentBands,
   labelOf,
+  monthChoices,
   monthLabel,
   percent,
   seatTotalsBy,
@@ -43,8 +44,6 @@ const SEAT_SLICERS = [
 const NO_ROWS = [];
 const SEAT_LABELS = Object.fromEntries(SEAT_SLICERS.map((slicer) => [slicer.field, slicer.label]));
 const NO_SEAT_FILTERS = { departmentName: null, team: null, practiceName: null, positionName: null };
-const MONTH_CHOICES = Array.from({ length: 24 }, (_, i) => i - 11);
-const monthOptionsFrom = (base) => MONTH_CHOICES.map((offset) => ({ value: addMonths(base, offset), label: monthLabel(addMonths(base, offset)) }));
 const hours = (value) => Math.round(value);
 
 const clamp = (month, from, to) => (month < from ? from : month > to ? to : month);
@@ -64,7 +63,7 @@ function AllocationTab({ people, filters, onToggle, refreshKey }) {
   // A seat chart with no data yet must say so, not claim the slicers match nothing.
   const seatState = seatsResult.data ? undefined : seatsResult.error ? 'unavailable' : 'loading';
   const focus = clamp(focusChoice, from, to);
-  const monthOptions = useMemo(() => monthOptionsFrom(base), [base]);
+  const monthOptions = useMemo(() => monthChoices(base), [base]);
   const setSeat = (field, value) => setSeatFilters((current) => ({ ...current, [field]: value }));
   const toggleSeat = (field, value) => setSeat(field, seatFilters[field] === value ? null : value);
 

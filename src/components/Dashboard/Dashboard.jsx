@@ -15,7 +15,10 @@ const FEATURED_ROUTES = ['resources', 'projects', 'teams', 'delivery-centers'];
 
 // The charts library is large, so it loads only when a chart tab is opened.
 // A tab left open across a deploy asks for a file that no longer exists.
-const failed = () => ({ default: AnalyticsUnavailable });
+const failed = (error) => {
+  console.error('The charts could not be loaded.', error);
+  return { default: AnalyticsUnavailable };
+};
 const Analytics = lazy(() => import('../Analytics').catch(failed));
 const StructureTab = lazy(() => import('../Analytics/StructureTab').catch(failed));
 const ProjectsTab = lazy(() => import('../Analytics/ProjectsTab').catch(failed));

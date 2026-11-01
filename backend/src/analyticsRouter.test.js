@@ -17,7 +17,7 @@ const fakeQuery = async (sql) => {
     return { rows: [{ employeeId: 1, skill: "FI, MM", allocation: 100, locationType: "Offshore" }] };
   }
   if (sql.includes("from project_assignments")) return { rows: [{ teamCode: "TEAM-1", projectName: "Roll out", start: "2026-01-01", end: "2026-12-31" }] };
-  if (sql.includes("'competency' as kind")) return { rows: [{ kind: "competency", name: "FICO", practiceName: "Finance" }, { kind: "department", name: "Design", floorNumber: 3 }] };
+  if (sql.includes("'competency' as kind")) return { rows: [{ kind: "competency", name: "FICO", practiceName: "Finance" }, { kind: "department", name: "Design", floorNumber: 3 }, { kind: "team", name: "Alpha", teamCode: "TEAM-1", departmentName: "Design" }] };
   if (sql.includes("c.name, p.name as \"practiceName\"")) return { rows: [{ name: "FICO", practiceName: "Finance" }] };
   if (sql.includes("from positions p")) return { rows: [{ teamCode: "TEAM-1", teamName: "Alpha", positionName: "Consultant", competencies: "FICO, MM", filled: true }] };
   if (sql.includes("from departments")) return { rows: [{ code: "DEPT-1", name: "Design", floorNumber: 1 }] };
@@ -108,7 +108,7 @@ test("GET /v1/analytics/structure returns one row per position with the team pra
 
 test("GET /v1/analytics/catalog and /assignments return their rows", async () => {
   const catalog = await (await fetch(`${baseUrl}/v1/analytics/catalog`)).json();
-  assert.deepEqual(catalog.data.map((row) => row.kind), ["competency", "department"]);
+  assert.deepEqual(catalog.data.map((row) => row.kind), ["competency", "department", "team"]);
   const assignments = await (await fetch(`${baseUrl}/v1/analytics/assignments`)).json();
   assert.equal(assignments.total, 1);
   assert.equal(assignments.data[0].projectName, "Roll out");

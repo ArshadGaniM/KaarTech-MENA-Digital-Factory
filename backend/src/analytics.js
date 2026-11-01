@@ -152,28 +152,36 @@ export function buildStructure(positions, competencyRows) {
   }));
 }
 
-// Competencies, modules, departments and practices as one list, told apart by
-// `kind`, so the page loads its reference data in one request.
+// Competencies, modules, departments, practices and teams as one list, told
+// apart by `kind`, so the page loads its reference data in one request. Teams
+// are here as well as in the structure rows because a team with no position has
+// no structure row, yet it still has no project to show.
 export const CATALOG_SQL = `
-  select 'competency' as kind, c.name, p.name as "practiceName", null::int as "floorNumber", null::text as input, null::text as output
+  select 'competency' as kind, c.name, p.name as "practiceName", null::int as "floorNumber", null::text as input, null::text as output,
+         null::text as "teamCode", null::text as "departmentName"
     from competencies c
     left join practices p on p.code = c.practice_code and p.deleted_at is null
    where c.deleted_at is null
   union all
-  select 'module', m.name, p.name, null, null, null
+  select 'module', m.name, p.name, null, null, null, null, null
     from modules m
     left join practices p on p.id::text = m.practice_id::text and p.deleted_at is null
    where m.deleted_at is null
   union all
-  select 'department', d.name, null, d.floor_number, d.input, d.output
+  select 'department', d.name, null, d.floor_number, d.input, d.output, null, null
     from departments d where d.deleted_at is null
   union all
-  select 'practice', p.name, null, null, null, null
+  select 'practice', p.name, null, null, null, null, null, null
     from practices p where p.deleted_at is null
+  union all
+  select 'team', t.name, null, null, null, null, t.code, d.name
+    from teams t
+    left join departments d on d.code = t.department_code and d.deleted_at is null
+   where t.deleted_at is null
   order by 1, 2`;
 
-// Left joins keep an assignment whose team, department or project has since
-// been deleted, so the page still counts it and shows the missing part as Not set.
+// An assignment of a deleted team is left out, as the structure rows leave out
+// that team. A deleted department or project stays as a missing part, shown as Not set.
 export const ASSIGNMENTS_SQL = `
   select pa.team_code as "teamCode", t.name as "teamName", d.name as "departmentName",
          pa.project_id as "projectId", p.project_name as "projectName",
@@ -183,5 +191,5 @@ export const ASSIGNMENTS_SQL = `
     left join teams t on t.code = pa.team_code and t.deleted_at is null
     left join departments d on d.code = t.department_code and d.deleted_at is null
     left join projects p on p.project_id = pa.project_id and p.deleted_at is null
-   where pa.deleted_at is null
+   where pa.deleted_at is null and t.code is not null
    order by pa.project_assignment_start_date, pa.team_code`;
