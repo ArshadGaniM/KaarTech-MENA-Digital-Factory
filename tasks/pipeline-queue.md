@@ -12,7 +12,7 @@
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
-| FEAT-41 | queued | Dashboard analytics round 4 (owner, 1 Nov 2026): Forecast tab, visuals 55 to 64, booked-forward from deployment and assignment dates, plus the monthly snapshot table (owner approved that migration, 1 Nov 2026). | claude/dreamy-knuth-76pnsa |
+| FEAT-41 | in_flight | Dashboard analytics round 4 (owner, 1 Nov 2026): Forecast tab, visuals 55 to 64, booked-forward from deployment and assignment dates, plus the monthly snapshot table (owner approved that migration, 1 Nov 2026). | claude/dreamy-knuth-76pnsa |
 
 ## Completed
 
