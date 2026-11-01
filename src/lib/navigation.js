@@ -1,7 +1,8 @@
 import { MASTER_DATA_TABLES } from './masterDataApi';
 
-// Single registry both AppShell and Sidebar read from. Control Center and
-// Dashboard come first and have no master-data table behind them; each
+// Single registry both AppShell and Sidebar read from. Control Center,
+// Organization Structure and Dashboard come first and have no master-data
+// table behind them; each
 // master-data table is one entry carrying the route/columns MasterDataTable
 // needs; Entity Relationship (FEAT-12) comes last. Tests destructure this
 // list by position, so reordering it means updating them. `kind` is what
@@ -16,6 +17,14 @@ export const NAV_ITEMS = [
     route: null,
     columns: null,
     kind: 'control-center',
+  },
+  {
+    id: 'organization-structure',
+    label: 'Organization Structure',
+    hash: '#organization-structure',
+    route: null,
+    columns: null,
+    kind: 'organization-structure',
   },
   { id: 'dashboard', label: 'Dashboard', hash: DASHBOARD_HASH, route: null, columns: null, kind: 'dashboard' },
   ...MASTER_DATA_TABLES.map((table) => ({

@@ -9,10 +9,21 @@ describe('navigation registry', () => {
     expect(NAV_ITEMS[0].columns).toBeNull();
   });
 
-  it('has "Dashboard" second, with no route/columns', () => {
-    expect(NAV_ITEMS[1]).toMatchObject({ id: 'dashboard', label: 'Dashboard', hash: '#dashboard', kind: 'dashboard' });
+  it('has "Organization Structure" second, with no route/columns', () => {
+    expect(NAV_ITEMS[1]).toMatchObject({
+      id: 'organization-structure',
+      label: 'Organization Structure',
+      hash: '#organization-structure',
+      kind: 'organization-structure',
+    });
     expect(NAV_ITEMS[1].route).toBeNull();
     expect(NAV_ITEMS[1].columns).toBeNull();
+  });
+
+  it('has "Dashboard" third, with no route/columns', () => {
+    expect(NAV_ITEMS[2]).toMatchObject({ id: 'dashboard', label: 'Dashboard', hash: '#dashboard', kind: 'dashboard' });
+    expect(NAV_ITEMS[2].route).toBeNull();
+    expect(NAV_ITEMS[2].columns).toBeNull();
   });
 
   it('has "Entity Relationship" last, with no route/columns (FEAT-12 — self-updating page, not a master-data table)', () => {
@@ -23,7 +34,7 @@ describe('navigation registry', () => {
   });
 
   it('gives every master-data NAV_ITEMS entry an id, label, hash, route, and columns', () => {
-    const tableItems = NAV_ITEMS.slice(2, -1);
+    const tableItems = NAV_ITEMS.slice(3, -1);
     expect(tableItems.length).toBeGreaterThan(0);
     tableItems.forEach((item) => {
       expect(typeof item.id).toBe('string');
@@ -41,7 +52,7 @@ describe('navigation registry', () => {
   });
 
   it('has one nav item per master-data table between Dashboard and Entity Relationship, in the same order', () => {
-    const tableItems = NAV_ITEMS.slice(2, -1);
+    const tableItems = NAV_ITEMS.slice(3, -1);
     expect(tableItems.map((item) => item.route)).toEqual(MASTER_DATA_TABLES.map((table) => table.route));
     expect(tableItems.map((item) => item.label)).toEqual(MASTER_DATA_TABLES.map((table) => table.label));
   });

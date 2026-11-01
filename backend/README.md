@@ -215,7 +215,7 @@ change arrives, so many open pages cost one load, not one each.
 
 The stream is fed by `LISTEN control_center_changed` on its own connection
 (`src/changeFeed.js`). The channel is notified by migration `0023`'s
-triggers. Without that migration nothing is notified, and the frontend falls
+triggers, plus `0031` (cost tables) and `0036` (practices). Without migration `0023` nothing is notified, and the frontend falls
 back to refreshing every 30 seconds. `LISTEN` works on the session-mode
 pooler (`:5432`) this API already uses, but not on the transaction-mode
 pooler (`:6543`).
@@ -358,6 +358,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0033_add_competency_practice.sql` | `competencies.practice_code text not null`, backfilled for the 29 competencies from the owner's mapping, with the foreign key `fk_competencies_practices` to `practices.code` and the partial index `ix_competencies_practice_code`. Stops without changing anything if a competency is left unmapped. |
 | `0034_competencies_unique_name.sql` | The partial unique index `ux_competencies_name_live` on `competencies (name)` for live rows, because the Control Center and positions find a competency by name. The name carries the column so the API names the field on a clash. |
 | `0035_resource_deployment_dates.sql` | `start_date` and `end_date` on `resource_deployment`, filled for the existing rows with 2026-08-01 to 2027-03-31, then required, with a check that the end is not before the start. The unique index on resource and position is replaced by an exclusion constraint, so the same position may be held again later but not on a shared day. An index on the dates of live rows. |
+| `0036_control_center_notify_practices.sql` | The `trg_control_center_notify` trigger on `practices`, so adding, renaming or deleting a practice refreshes open Organization Structure and Control Center pages. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):
