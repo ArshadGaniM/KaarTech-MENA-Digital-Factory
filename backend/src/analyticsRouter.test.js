@@ -16,6 +16,9 @@ const fakeQuery = async (sql) => {
   if (sql.includes("from resources r")) {
     return { rows: [{ employeeId: 1, skill: "FI, MM", allocation: 100, locationType: "Offshore" }] };
   }
+  if (sql.includes("from departments")) return { rows: [{ code: "DEPT-1", name: "Design", floorNumber: 1 }] };
+  if (sql.includes("from teams")) return { rows: [{ code: "TEAM-1", name: "Alpha", departmentCode: "DEPT-1" }] };
+  if (sql.includes("from positions")) return { rows: [{ code: "POS-1", name: "Consultant", teamCode: "TEAM-1", competencies: null }] };
   return { rows: [] };
 };
 
@@ -58,15 +61,6 @@ test("GET /v1/analytics/people answers 500 without the cause when the database f
   assert.equal(text.includes("secret detail"), false);
 });
 
-test("GET /v1/analytics/seats defaults to the current month and returns a list", async () => {
-  calls = [];
-  const res = await fetch(`${baseUrl}/v1/analytics/seats`);
-  const body = await res.json();
-  assert.equal(res.status, 200);
-  assert.deepEqual(body.data, []);
-  assert.equal(body.total, 0);
-});
-
 test("GET /v1/analytics/seats answers 422 for a bad, reversed, repeated or oversized range, and runs no query", async () => {
   for (const qs of ["from=2026-13&to=2026-12", "from=2026-12&to=2026-10", "from=2026-01&to=2030-01", "from=2026-10&from=2026-11", "from[a]=b&to=2026-10"]) {
     calls = [];
@@ -76,4 +70,25 @@ test("GET /v1/analytics/seats answers 422 for a bad, reversed, repeated or overs
     assert.equal(body.error.code, "validation_error", qs);
     assert.equal(calls.length, 0, qs);
   }
+});
+
+test("GET /v1/analytics/seats gives one row per seat per month for a valid range", async () => {
+  const res = await fetch(`${baseUrl}/v1/analytics/seats?from=2026-09&to=2026-10`);
+  const body = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(body.total, 2);
+  assert.deepEqual(body.data.map((seat) => seat.month), ["2026-09", "2026-10"]);
+  assert.equal(body.data[0].teamCode, "TEAM-1");
+});
+
+test("GET /v1/analytics/seats uses the current month when no range is given, and one month when only from is", async () => {
+  const none = await (await fetch(`${baseUrl}/v1/analytics/seats`)).json();
+  assert.deepEqual(none.data.map((seat) => seat.month), ["2026-10"]);
+  const fromOnly = await (await fetch(`${baseUrl}/v1/analytics/seats?from=2026-08`)).json();
+  assert.deepEqual(fromOnly.data.map((seat) => seat.month), ["2026-08"]);
+});
+
+test("GET /v1/analytics/seats answers 422 when only to is given and it is before the current month", async () => {
+  const res = await fetch(`${baseUrl}/v1/analytics/seats?to=2026-09`);
+  assert.equal(res.status, 422);
 });

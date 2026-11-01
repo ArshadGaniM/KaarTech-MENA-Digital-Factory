@@ -6,12 +6,11 @@
 //    deployments running today.
 //  - seats: one row per counted seat (Consultant or Lead Consultant) per
 //    month, using the Control Center's hour rules.
-import { COUNTED_POSITIONS, HOURS_PER_PERSON, competenciesOf, coveredDays, deployedOn, isValidMonth, monthWindow, referenceDay } from "./controlCenter.js";
+import { COUNTED_POSITIONS, HOURS_PER_PERSON, competenciesOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, seatHours } from "./controlCenter.js";
 
 export const MAX_MONTHS = 24;
 const MAX_SKILLS = 5;
 const MAX_SKILL_LENGTH = 40;
-const round1 = (n) => Math.round(n * 10) / 10;
 
 export const PEOPLE_SQL = `
   select r.employee_id as "employeeId", r.name, r.sub_division as "subDivision",
@@ -69,46 +68,39 @@ export function validateRange(from, to) {
   return problems;
 }
 
-const groupBy = (rows, key) => {
-  const index = new Map();
-  for (const row of rows) index.set(row[key], [...(index.get(row[key]) ?? []), row]);
-  return index;
-};
-
 export function buildSeats({ departments, teams, positions, deployments, assignments, competencies = [] }, from, to, today) {
   const departmentByCode = new Map(departments.map((d) => [d.code, d]));
   const practiceByCompetency = new Map(competencies.map((c) => [c.name, c.practiceName]));
-  const positionsByTeam = groupBy(positions, "teamCode");
-  const assignmentsByTeam = groupBy(assignments, "teamCode");
+  const positionsByTeam = indexBy(positions, "teamCode");
+  const assignmentsByTeam = indexBy(assignments, "teamCode");
+
+  const practiceByTeam = new Map(
+    teams.map((team) => [team.code, practiceByCompetency.get(competenciesOf(positionsByTeam.get(team.code) ?? []).primary) ?? null])
+  );
 
   return monthsBetween(from, to).flatMap((month) => {
     const window = monthWindow(month);
-    const active = groupBy(deployedOn(deployments, referenceDay(window, today)), "positionCode");
+    const active = indexBy(deployedOn(deployments, referenceDay(window, today)), "positionCode");
     return teams.flatMap((team) => {
       const teamPositions = positionsByTeam.get(team.code) ?? [];
       const share = coveredDays(assignmentsByTeam.get(team.code) ?? [], window) / window.days;
-      const practice = practiceByCompetency.get(competenciesOf(teamPositions).primary) ?? null;
       const department = departmentByCode.get(team.departmentCode);
       return teamPositions
         .filter((position) => COUNTED_POSITIONS.has(position.name))
         .map((position) => {
           const occupants = active.get(position.code) ?? [];
-          const percentage = occupants.reduce((sum, d) => sum + d.allocationPercentage, 0);
-          // A seat never exceeds one person's hours, as in the Control Center.
-          const allocatedHours = Math.min(HOURS_PER_PERSON, (HOURS_PER_PERSON * percentage) / 100);
+          const allocatedHours = seatHours(occupants);
           return {
             month,
-            departmentCode: team.departmentCode,
             departmentName: department?.name ?? null,
             teamCode: team.code,
             teamName: team.name,
-            practiceName: practice,
+            practiceName: practiceByTeam.get(team.code),
             positionName: position.name,
             filled: occupants.length > 0,
             availableHours: HOURS_PER_PERSON,
             allocatedHours: round1(allocatedHours),
             utilizedHours: round1(allocatedHours * share),
-            occupants: occupants.map((d) => ({ employeeId: d.employeeId, name: d.employeeName, percentage: d.allocationPercentage })),
           };
         });
     });

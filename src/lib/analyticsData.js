@@ -102,38 +102,8 @@ export const average = (values) => {
 
 export const percent = (part, whole) => (whole === 0 ? 0 : Math.round((part / whole) * 1000) / 10);
 
-export function addMonths(month, delta) {
-  const [year, number] = month.split('-').map(Number);
-  const index = year * 12 + (number - 1) + delta;
-  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
-}
-
-export const currentMonth = (now = new Date()) => now.toISOString().slice(0, 7);
-
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const monthLabel = (month) => `${MONTH_NAMES[Number(month.slice(5)) - 1]} ${month.slice(2, 4)}`;
-
-// Totals per month, in month order, for the seats rows given.
-export function seatsByMonth(seats) {
-  const months = new Map();
-  for (const seat of seats) {
-    const entry = months.get(seat.month) ?? { month: seat.month, seats: 0, filled: 0, available: 0, allocated: 0, utilized: 0 };
-    entry.seats += 1;
-    entry.filled += seat.filled ? 1 : 0;
-    entry.available += seat.availableHours;
-    entry.allocated += seat.allocatedHours;
-    entry.utilized += seat.utilizedHours;
-    months.set(seat.month, entry);
-  }
-  return [...months.values()]
-    .sort((a, b) => a.month.localeCompare(b.month))
-    .map((entry) => ({
-      ...entry,
-      vacant: entry.available - entry.allocated,
-      allocationPercent: percent(entry.allocated, entry.available),
-      utilizationPercent: percent(entry.utilized, entry.allocated),
-    }));
-}
 
 // Sums of the seat hours per value of `field`.
 export function seatTotalsBy(seats, field) {
@@ -166,3 +136,42 @@ const csvCell = (value) => {
 };
 
 export const toCsv = (columns, rows) => [columns, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+
+// Totals per month, in month order, for the seats rows given.
+export const seatsByMonth = (seats) =>
+  seatTotalsBy(seats, 'month')
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(({ name, ...totals }) => ({ month: name, ...totals }));
+
+// Department, team and seat type as a tree for the rings chart. The chart sizes
+// every ring from `value`, so each parent carries the sum of its children.
+// Leaf names include the team, because the chart keys its arcs by name. Seats
+// with no hours for the metric are left out. `fillOf(index)` colours a
+// department and everything under it.
+export function seatTree(seats, metric, fillOf) {
+  const amountOf = (seat) => (metric === 'allocated' ? seat.allocatedHours : metric === 'available' ? seat.availableHours : seat.availableHours - seat.allocatedHours);
+  const departments = new Map();
+  for (const seat of seats) {
+    const amount = amountOf(seat);
+    if (amount <= 0) continue;
+    const teams = departments.get(labelOf(seat.departmentName)) ?? new Map();
+    const kinds = teams.get(seat.team) ?? new Map();
+    kinds.set(seat.positionName, (kinds.get(seat.positionName) ?? 0) + amount);
+    teams.set(seat.team, kinds);
+    departments.set(labelOf(seat.departmentName), teams);
+  }
+  const withTotal = (name, children, fill) => ({ name, children, fill, value: Math.round(children.reduce((sum, child) => sum + child.value, 0) * 10) / 10 });
+  return withTotal(
+    'All departments',
+    [...departments].map(([name, teams], index) => {
+      const fill = fillOf(index);
+      return withTotal(
+        name,
+        [...teams].map(([team, kinds]) =>
+          withTotal(team, [...kinds].map(([kind, amount]) => ({ name: `${kind} (${team})`, kind, fill, value: Math.round(amount * 10) / 10 })), fill)
+        ),
+        fill
+      );
+    })
+  );
+}

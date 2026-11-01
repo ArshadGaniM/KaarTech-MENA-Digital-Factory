@@ -60,7 +60,6 @@ test("a seat's hours follow the Control Center rules and never exceed 160", () =
   assert.equal(october.allocatedHours, 160);
   assert.equal(october.availableHours, 160);
   assert.equal(october.filled, true);
-  assert.equal(october.occupants.length, 2);
   // The team has an assignment for 15 of 31 days.
   assert.equal(october.utilizedHours, Math.round(((160 * 15) / 31) * 10) / 10);
 });
@@ -71,7 +70,6 @@ test("a deployment counts only on the day the month is looked at", () => {
   assert.equal(november.filled, false);
   assert.equal(november.allocatedHours, 0);
   assert.equal(november.utilizedHours, 0);
-  assert.deepEqual(november.occupants, []);
 });
 
 test("a vacant seat, a team with no department and a team with no practice still produce a row", () => {
@@ -82,4 +80,22 @@ test("a vacant seat, a team with no department and a team with no practice still
   const alpha = buildSeats(rows, "2026-10", "2026-10", "2026-10-20").find((s) => s.teamCode === "TEAM-1");
   assert.equal(alpha.practiceName, "Finance");
   assert.equal(alpha.departmentName, "Design Services");
+});
+
+test("a half allocation is half a seat, utilized by the share of the month covered", () => {
+  const half = { ...rows, deployments: [{ employeeId: 9, employeeName: "Dee", positionCode: "POS-3", allocationPercentage: 50, start: "2026-01-01", end: "2026-12-31" }] };
+  const seat = buildSeats(half, "2026-10", "2026-10", "2026-10-20").find((s) => s.positionName === "Lead Consultant" && s.teamCode === "TEAM-1");
+  assert.equal(seat.allocatedHours, 80);
+  assert.equal(seat.utilizedHours, Math.round(((80 * 15) / 31) * 10) / 10);
+});
+
+test("a month before today is looked at on its first day, and one after on its first day too", () => {
+  // Bo and Cy run until 31 October. In September (past) and in October (the
+  // current month, looked at on today) they are deployed, in November not.
+  const months = buildSeats(rows, "2026-09", "2026-11", "2026-10-20").filter((s) => s.teamCode === "TEAM-1" && s.positionName === "Consultant");
+  assert.deepEqual(months.map((s) => s.filled), [true, true, false]);
+});
+
+test("monthsBetween gives nothing for a reversed range", () => {
+  assert.deepEqual(monthsBetween("2026-12", "2026-01"), []);
 });

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addMonths,
   allocationBucket,
   applyFilters,
   applyFiltersExcept,
@@ -14,6 +13,7 @@ import {
   percent,
   percentBands,
   seatTotalsBy,
+  seatTree,
   seatsByMonth,
   toCsv,
   topWithOther,
@@ -116,9 +116,7 @@ describe('numbers and months', () => {
     expect(percent(5, 0)).toBe(0);
   });
 
-  it('adds months across a year boundary in both directions', () => {
-    expect(addMonths('2026-11', 3)).toBe('2027-02');
-    expect(addMonths('2026-01', -2)).toBe('2025-11');
+  it('labels a month in short form', () => {
     expect(monthLabel('2026-11')).toBe('Nov 26');
   });
 });
@@ -145,5 +143,45 @@ describe('seat totals', () => {
 describe('toCsv', () => {
   it('quotes commas and quotes, and defuses cells a spreadsheet would run as a formula', () => {
     expect(toCsv(['a', 'b'], [['x,y', 'say "hi"'], ['=1+1', null]])).toBe('a,b\r\n"x,y","say ""hi"""\r\n\'=1+1,');
+  });
+});
+
+describe('seatTree', () => {
+  const seat = (department, team, kind, allocatedHours) => ({ departmentName: department, team, positionName: kind, availableHours: 160, allocatedHours });
+  const rows = [
+    seat('Design', 'T1', 'Consultant', 160),
+    seat('Design', 'T1', 'Lead Consultant', 80),
+    seat('Design', 'T2', 'Consultant', 40),
+    seat('Audit', 'T3', 'Consultant', 0),
+    seat(null, 'T4', 'Consultant', 10.04),
+  ];
+
+  it('leaves out seats with no hours and gives every parent the sum of its children', () => {
+    const tree = seatTree(rows, 'allocated', (i) => `fill${i}`);
+
+    expect(tree.children.map((department) => department.name)).toEqual(['Design', 'Not set']);
+    expect(tree.children[0].value).toBe(280);
+    expect(tree.children[0].children.map((team) => [team.name, team.value])).toEqual([['T1', 240], ['T2', 40]]);
+    expect(tree.value).toBe(290);
+    expect(tree.children[1].value).toBe(10);
+  });
+
+  it('measures vacant hours as available minus allocated', () => {
+    const tree = seatTree(rows, 'vacant', () => 'x');
+
+    expect(tree.children.find((department) => department.name === 'Audit').value).toBe(160);
+    expect(tree.children.find((department) => department.name === 'Design').children[0].children.map((leaf) => leaf.value)).toEqual([80]);
+  });
+
+  it('names each leaf with its team so two teams with the same seat type never share a name, and colours by department', () => {
+    const tree = seatTree(rows, 'allocated', (i) => `fill${i}`);
+    const leaves = tree.children.flatMap((department) => department.children.flatMap((team) => team.children));
+
+    expect(new Set(leaves.map((leaf) => leaf.name)).size).toBe(leaves.length);
+    expect(leaves[0]).toMatchObject({ name: 'Consultant (T1)', kind: 'Consultant', fill: 'fill0' });
+  });
+
+  it('is an empty tree with a zero total when no seat has hours', () => {
+    expect(seatTree([], 'allocated', () => 'x')).toMatchObject({ children: [], value: 0 });
   });
 });

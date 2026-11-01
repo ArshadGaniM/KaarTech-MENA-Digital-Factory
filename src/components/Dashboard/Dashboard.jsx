@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
+import AnalyticsUnavailable from './AnalyticsUnavailable';
 import AnimatedNumber from '../AnimatedNumber';
 import AllocationInsights from '../AllocationInsights';
 import BarList from '../BarList';
@@ -13,7 +14,8 @@ import styles from './Dashboard.module.css';
 const FEATURED_ROUTES = ['resources', 'projects', 'teams', 'delivery-centers'];
 
 // The charts library is large, so it loads only when a chart tab is opened.
-const Analytics = lazy(() => import('../Analytics'));
+// A tab left open across a deploy asks for a file that no longer exists.
+const Analytics = lazy(() => import('../Analytics').catch(() => ({ default: AnalyticsUnavailable })));
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -136,7 +138,7 @@ function Dashboard({ onNavigate }) {
         ))}
       </div>
 
-      <div role="tabpanel" id={`dashboard-panel-${tab}`} aria-labelledby={`dashboard-tab-${tab}`} className={styles.dashboard}>
+      <div role="tabpanel" id={`dashboard-panel-${tab}`} aria-labelledby={`dashboard-tab-${tab}`} className={styles.tabPanel}>
         {tab === 'overview' ? (
           <>
             <ResourceInsights refreshKey={refreshKey} onNavigate={onNavigate} />

@@ -9,6 +9,7 @@ import {
   countListBy,
   crossTab,
   histogram,
+  labelOf,
   percent,
   topWithOther,
 } from '../../lib/analyticsData';
@@ -68,7 +69,7 @@ function WorkforceTab({ people, filters, onToggle, onSet }) {
     regionSplit === 'none'
       ? regionBase
       : regionBase.map((entry) => {
-          const inRegion = regionRows.filter((row) => (row.region ?? 'Not set') === entry.name);
+          const inRegion = regionRows.filter((row) => labelOf(row.region) === entry.name);
           return Object.fromEntries([['name', entry.name], ...splitNames.map((name) => [name, countBy(inRegion, regionSplit).find((c) => c.name === name)?.value ?? 0])]);
         });
 
@@ -80,8 +81,9 @@ function WorkforceTab({ people, filters, onToggle, onSet }) {
     const groups = new Map();
     for (const row of all) {
       if (row.kaarExperience === null || row.sapExperience === null) continue;
-      const key = colorBy === 'none' ? 'All' : (row[colorBy] ?? 'Not set');
-      groups.set(key, [...(groups.get(key) ?? []), { x: row.kaarExperience, y: row.sapExperience }]);
+      const key = colorBy === 'none' ? 'All' : labelOf(row[colorBy]);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ x: row.kaarExperience, y: row.sapExperience });
     }
     return [...groups].map(([name, points]) => ({ name, points }));
   }, [all, colorBy]);
@@ -169,7 +171,7 @@ function WorkforceTab({ people, filters, onToggle, onSet }) {
 
       <ChartCard
         title="Skill mix"
-        summary="Each person counts once under every skill listed in their record."
+        summary="Counts the first five skills listed for each person, once per person."
         columns={['Skill', 'People']}
         rows={skills.map((entry) => [entry.name, entry.value])}
         controls={<ControlSelect label="Show top" value={skillTop} options={TOP_OPTIONS} onChange={setSkillTop} />}

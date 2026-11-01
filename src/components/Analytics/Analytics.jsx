@@ -38,6 +38,8 @@ const SLICERS = {
   ],
 };
 
+const FIELD_LABELS = Object.fromEntries([...SLICERS.workforce, ...SLICERS.allocation].map((slicer) => [slicer.field, slicer.label]));
+
 // The analytics tabs. The people slicers are kept here, so a pick on one tab
 // is still there on the other.
 function Analytics({ tab, refreshKey }) {
@@ -81,6 +83,7 @@ function Analytics({ tab, refreshKey }) {
       <SlicerBar
         slicers={slicers}
         filters={filters}
+        labels={FIELD_LABELS}
         onChange={set}
         onReset={clearAll}
         matching={`${formatCount(matching)} of ${formatCount(people.length)} people`}

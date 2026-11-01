@@ -29,7 +29,7 @@ const toUtcDay = (isoDate) => {
   const [year, month, day] = isoDate.split("-").map(Number);
   return Date.UTC(year, month - 1, day);
 };
-const round1 = (n) => Math.round(n * 10) / 10;
+export const round1 = (n) => Math.round(n * 10) / 10;
 const round2 = (n) => Math.round(n * 100) / 100;
 // Names already reported, so a busy page does not repeat the same warning.
 const warnedCompetencies = new Set();
@@ -189,7 +189,7 @@ function statusOf(allocatedHours, utilizedHours) {
   return "partial";
 }
 
-function indexBy(rows, key) {
+export function indexBy(rows, key) {
   const index = new Map();
   for (const row of rows) {
     const list = index.get(row[key]) ?? [];
@@ -197,6 +197,13 @@ function indexBy(rows, key) {
     index.set(row[key], list);
   }
   return index;
+}
+
+// One seat's allocated hours: each occupant's share of 160, and a seat never
+// exceeds one person's hours.
+export function seatHours(occupants) {
+  const hours = occupants.reduce((sum, d) => sum + (HOURS_PER_PERSON * d.allocationPercentage) / 100, 0);
+  return Math.min(HOURS_PER_PERSON, hours);
 }
 
 // The hour figures of one team, shared by the floor cards and the popup.
@@ -209,12 +216,8 @@ function teamHours({ teamPositions, deploymentsByPosition, teamAssignments, wind
     const occupants = deploymentsByPosition.get(seat.code) ?? [];
     if (occupants.length === 0) continue;
     filledSeats += 1;
-    let seatHours = 0;
-    for (const d of occupants) {
-      members.add(d.employeeId);
-      seatHours += (HOURS_PER_PERSON * d.allocationPercentage) / 100;
-    }
-    allocated += Math.min(HOURS_PER_PERSON, seatHours);
+    for (const d of occupants) members.add(d.employeeId);
+    allocated += seatHours(occupants);
   }
   const available = seats.length * HOURS_PER_PERSON;
   const covered = coveredDays(teamAssignments, window);
