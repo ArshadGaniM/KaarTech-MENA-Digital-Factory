@@ -6,6 +6,8 @@
 //    deployments running today.
 //  - seats: one row per counted seat (Consultant or Lead Consultant) per
 //    month, using the Control Center's hour rules.
+//  - structure, catalog and assignments: the teams, departments, practices and
+//    project assignments behind the Structure and Projects tabs.
 import { COUNTED_POSITIONS, HOURS_PER_PERSON, competenciesOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, seatHours } from "./controlCenter.js";
 
 export const MAX_MONTHS = 24;
@@ -123,6 +125,8 @@ export const STRUCTURE_SQL = `
    where p.deleted_at is null
    order by t.code, p.code`;
 
+// Which practice each competency belongs to. A competency whose practice is
+// deleted keeps its row, with no practice.
 export const COMPETENCY_PRACTICE_SQL = `
   select c.name, p.name as "practiceName"
     from competencies c
@@ -168,6 +172,8 @@ export const CATALOG_SQL = `
     from practices p where p.deleted_at is null
   order by 1, 2`;
 
+// Left joins keep an assignment whose team, department or project has since
+// been deleted, so the page still counts it and shows the missing part as Not set.
 export const ASSIGNMENTS_SQL = `
   select pa.team_code as "teamCode", t.name as "teamName", d.name as "departmentName",
          pa.project_id as "projectId", p.project_name as "projectName",

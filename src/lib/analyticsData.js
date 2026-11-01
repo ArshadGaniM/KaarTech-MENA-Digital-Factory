@@ -181,11 +181,13 @@ export function seatTree(seats, metric, fillOf) {
 export const teamLabel = (code, name) => (name === code || !name ? code : `${name} (${code})`);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Days since 1970 in UTC. Only the first ten characters count, so a full timestamp works too.
 const dayNumber = (isoDate) => {
   const [year, month, day] = isoDate.slice(0, 10).split('-').map(Number);
   return Date.UTC(year, month - 1, day) / DAY_MS;
 };
 
+// The first and last day of a month, as ISO dates. Day 0 of the next month is the last day of this one.
 export const monthStartDay = (month) => `${month}-01`;
 export const monthEndDay = (month) => {
   const [year, number] = month.split('-').map(Number);
