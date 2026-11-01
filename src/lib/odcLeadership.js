@@ -1,7 +1,9 @@
 // The only hand-maintained part of the Organization Structure page: who sits
 // above the departments. Everything below a department comes from live data.
 // Names are TBD until the owner supplies them. A department missing from
-// every list below shows under "Unassigned" on the page.
+// every list below shows under "Unassigned" on the page. A code with no live
+// department (renamed, deleted, mistyped) is skipped, so check this list when a
+// manager's seat count drops.
 export const ODC_DELIVERY_MANAGER = { title: 'ODC Delivery Manager', name: 'TBD' };
 
 export const ODC_PROJECT_MANAGERS = [

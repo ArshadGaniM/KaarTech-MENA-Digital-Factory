@@ -1,53 +1,9 @@
 import { useState } from 'react';
+import TeamCard from './TeamCard';
 import TreeNode from './TreeNode';
 import { useOrganizationStructure } from '../../hooks/useOrganizationStructure';
+import { allNodeKeys } from '../../lib/orgStructure';
 import styles from './OrganizationStructure.module.css';
-
-function TeamCard({ team }) {
-  return (
-    <li className={styles.team}>
-      <div className={styles.teamHeader}>
-        <span className={styles.teamName}>{team.name}</span>
-        <span className={styles.badge} aria-label={`${team.seats} seats`}>
-          {team.seats}
-        </span>
-      </div>
-      {team.competencies.length > 0 && <p className={styles.competencies}>{team.competencies.join(', ')}</p>}
-      <dl className={styles.roles}>
-        <div>
-          <dt>Lead Consultant</dt>
-          <dd>{team.leadConsultants}</dd>
-        </div>
-        <div>
-          <dt>Consultants</dt>
-          <dd>{team.consultants}</dd>
-        </div>
-        {team.others > 0 && (
-          <div>
-            <dt>Other</dt>
-            <dd>{team.others}</dd>
-          </div>
-        )}
-      </dl>
-    </li>
-  );
-}
-
-function allNodeKeys(data) {
-  return data.projectManagers.flatMap((manager) => [
-    manager.id,
-    ...manager.departments.flatMap((department) => {
-      const departmentKey = `${manager.id}/${department.code}`;
-      return [
-        departmentKey,
-        ...department.practices.flatMap((practice) => {
-          const practiceKey = `${departmentKey}/${practice.code}`;
-          return [practiceKey, ...practice.moduleLeads.map((lead) => `${practiceKey}/${lead.key}`)];
-        }),
-      ];
-    }),
-  ]);
-}
 
 function OrganizationStructure() {
   const { data, isLoading, error } = useOrganizationStructure();
@@ -111,56 +67,47 @@ function OrganizationStructure() {
             meta={manager.name ?? undefined}
             seats={manager.seats}
           >
-            {manager.departments.map((department) => {
-              const departmentKey = `${manager.id}/${department.code}`;
-              return (
-                <TreeNode
-                  key={departmentKey}
-                  id={departmentKey}
-                  isOpen={openKeys.has(departmentKey)}
-                  onToggle={toggle}
-                  title={department.name}
-                  meta={`${department.code} · Floor ${department.floorNumber ?? '–'} · ${department.teamCount} teams`}
-                  seats={department.seats}
-                >
-                  {department.practices.length === 0 && <p className={styles.empty}>No teams yet.</p>}
-                  {department.practices.map((practice) => {
-                    const practiceKey = `${departmentKey}/${practice.code}`;
-                    return (
+            {manager.departments.map((department) => (
+              <TreeNode
+                key={department.key}
+                id={department.key}
+                isOpen={openKeys.has(department.key)}
+                onToggle={toggle}
+                title={department.name}
+                meta={`${department.code} · Floor ${department.floorNumber ?? '–'} · ${department.teamCount} teams`}
+                seats={department.seats}
+              >
+                {department.practices.length === 0 && <p className={styles.empty}>No teams yet.</p>}
+                {department.practices.map((practice) => (
+                  <TreeNode
+                    key={practice.key}
+                    id={practice.key}
+                    isOpen={openKeys.has(practice.key)}
+                    onToggle={toggle}
+                    title={practice.name}
+                    meta="Practice"
+                    seats={practice.seats}
+                  >
+                    {practice.moduleLeads.map((lead) => (
                       <TreeNode
-                        key={practiceKey}
-                        id={practiceKey}
-                        isOpen={openKeys.has(practiceKey)}
+                        key={lead.key}
+                        id={lead.key}
+                        isOpen={openKeys.has(lead.key)}
                         onToggle={toggle}
-                        title={practice.name}
-                        meta="Practice"
-                        seats={practice.seats}
+                        title={lead.name}
+                        meta={lead.isUnallocated ? 'Module Lead seat empty' : 'Module Lead'}
                       >
-                        {practice.moduleLeads.map((lead) => {
-                          const leadKey = `${practiceKey}/${lead.key}`;
-                          return (
-                            <TreeNode
-                              key={leadKey}
-                              id={leadKey}
-                              isOpen={openKeys.has(leadKey)}
-                              onToggle={toggle}
-                              title={lead.name}
-                              meta={lead.key === 'unallocated' ? 'Module Lead seat empty' : 'Module Lead'}
-                            >
-                              <ul className={styles.teams}>
-                                {lead.teams.map((team) => (
-                                  <TeamCard key={team.code} team={team} />
-                                ))}
-                              </ul>
-                            </TreeNode>
-                          );
-                        })}
+                        <ul className={styles.teams}>
+                          {lead.teams.map((team) => (
+                            <TeamCard key={team.code} team={team} />
+                          ))}
+                        </ul>
                       </TreeNode>
-                    );
-                  })}
-                </TreeNode>
-              );
-            })}
+                    ))}
+                  </TreeNode>
+                ))}
+              </TreeNode>
+            ))}
           </TreeNode>
         ))}
       </div>

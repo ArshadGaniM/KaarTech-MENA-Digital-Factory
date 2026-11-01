@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildOrgStructure, roleOf } from './orgStructure';
+import { allNodeKeys, buildOrgStructure, roleOf } from './orgStructure';
 
 const live = { markedDeleted: 'No' };
 const departments = [
@@ -103,7 +103,41 @@ describe('buildOrgStructure', () => {
 
   it('files a team with an empty Module Lead seat under Unallocated', () => {
     const buySide = managerOf(build(), 'pm-3').departments[0].practices[1];
-    expect(buySide.moduleLeads.map((lead) => lead.key)).toEqual(['unallocated']);
+    expect(buySide.moduleLeads.map((lead) => lead.isUnallocated)).toEqual([true]);
+  });
+
+  it('names a Module Lead by employee id when the resource record is deleted', () => {
+    const nameless = [{ positionId: 'POS-1', employeeId: 7, employeeName: null, ...live }];
+    const lead = managerOf(build({ deployments: nameless }), 'pm-3').departments[0].practices[0].moduleLeads[0];
+    expect(lead.name).toBe('Employee 7');
+  });
+
+  it('sorts Module Leads by name with Unallocated last, even with a nameless one', () => {
+    const many = [
+      { positionId: 'POS-1', employeeId: 7, employeeName: 'Zed', ...live },
+      { positionId: 'POS-4', employeeId: 8, employeeName: null, ...live },
+    ];
+    const leads = managerOf(build({ deployments: many }), 'pm-3').departments[0].practices[0].moduleLeads;
+    expect(leads.map((lead) => lead.name)).toEqual(['Employee 8', 'Zed']);
+  });
+
+  it('ignores a deployment without an employee id', () => {
+    const broken = [{ positionId: 'POS-1', employeeId: null, employeeName: 'Ghost', ...live }];
+    const finance = managerOf(build({ deployments: broken }), 'pm-3').departments[0].practices[0];
+    expect(finance.moduleLeads.map((lead) => lead.isUnallocated)).toEqual([true]);
+  });
+
+  it('puts a team under "No practice" when its practice is deleted, keeping seats consistent', () => {
+    const deleted = practices.map((p) => (p.code === 'PRAC-001' ? { ...p, markedDeleted: 'Yes' } : p));
+    const configuration = managerOf(build({ practices: deleted }), 'pm-3').departments[0];
+    expect(configuration.practices.map((p) => p.name)).toEqual(['Logistics Buy Side', 'No practice']);
+    expect(configuration.practices.reduce((sum, p) => sum + p.seats, 0)).toBe(configuration.seats);
+  });
+
+  it('gives every node a key that is unique in the tree', () => {
+    const keys = allNodeKeys(build());
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toContain('DEPT-009/PRAC-001/7');
   });
 
   it('uses the first practice and warns when a team spans two', () => {

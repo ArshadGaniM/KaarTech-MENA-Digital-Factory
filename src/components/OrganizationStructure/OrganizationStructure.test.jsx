@@ -15,6 +15,7 @@ const ROWS = {
     { code: 'POS-2', teamCode: 'TEAM-001', name: 'Lead Consultant', competencies: 'FICO', ...live },
     { code: 'POS-3', teamCode: 'TEAM-001', name: 'Consultant', competencies: 'FICO', ...live },
     { code: 'POS-4', teamCode: 'TEAM-001', name: 'Consultant', competencies: 'FICO', ...live },
+    { code: 'POS-5', teamCode: 'TEAM-001', name: 'Enterprise Architect', competencies: 'FICO', ...live },
   ],
   competencies: [{ name: 'FICO', practiceId: 'PRAC-001', ...live }],
   practices: [{ code: 'PRAC-001', name: 'Finance', ...live }],
@@ -45,7 +46,7 @@ describe('OrganizationStructure', () => {
     render(<OrganizationStructure />);
 
     expect(await screen.findByText('ODC Delivery Manager')).toBeInTheDocument();
-    expect(screen.getByText('Total seats').parentElement).toHaveTextContent('Total seats 4');
+    expect(screen.getByText('Total seats').parentElement).toHaveTextContent('Total seats 5');
     for (const number of [1, 2, 3, 4, 5]) {
       expect(screen.getByText(`ODC Project Manager ${number}`)).toBeInTheDocument();
     }
@@ -63,6 +64,18 @@ describe('OrganizationStructure', () => {
     expect(screen.getByText('Asha')).toBeVisible();
     const team = screen.getByText('TEAM-001').closest('li');
     expect(within(team).getByText('Consultants').nextSibling).toHaveTextContent('2');
+    expect(within(team).getByText('Other').nextSibling).toHaveTextContent('1');
+  });
+
+  it('says so when a department has no teams', async () => {
+    const user = userEvent.setup();
+    render(<OrganizationStructure />);
+    await screen.findByText('ODC Delivery Manager');
+
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+
+    expect(screen.getByText('Assessment Services')).toBeVisible();
+    expect(screen.getByText('No teams yet.')).toBeVisible();
   });
 
   it('collapses everything again', async () => {

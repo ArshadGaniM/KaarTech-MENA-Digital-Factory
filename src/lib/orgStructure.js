@@ -3,8 +3,8 @@ import { ODC_DELIVERY_MANAGER, ODC_PROJECT_MANAGERS } from './odcLeadership';
 const isLive = (row) => row.markedDeleted !== 'Yes';
 
 const NO_PRACTICE = { code: 'NO-PRACTICE', name: 'No practice' };
-const UNALLOCATED_KEY = 'unallocated';
 
+// Position names are the only role signal: there is no role column.
 export function roleOf(positionName) {
   if (positionName.startsWith('Module Lead')) return 'moduleLead';
   if (positionName === 'Lead Consultant') return 'leadConsultant';
@@ -20,9 +20,13 @@ function competencyNamesOf(positions) {
 }
 
 // One competency belongs to exactly one practice, so a team's competencies
-// normally agree. If they ever disagree the first one wins and we say so.
-function practiceCodeOf(team, competencyNames, practiceByCompetency) {
-  const codes = [...new Set(competencyNames.map((name) => practiceByCompetency.get(name)).filter(Boolean))];
+// normally agree. If they ever disagree the first one wins and we say so. A
+// practice that is deleted or unknown counts as no practice, so the team
+// still shows up and the tree keeps adding up to the seat totals.
+function practiceCodeOf(team, competencyNames, practiceByCompetency, livePracticeCodes) {
+  const codes = [
+    ...new Set(competencyNames.map((name) => practiceByCompetency.get(name)).filter((code) => livePracticeCodes.has(code))),
+  ];
   if (codes.length > 1) {
     console.warn(`Team ${team.code} has competencies in several practices (${codes.join(', ')}) — using ${codes[0]}.`);
   }
@@ -32,34 +36,46 @@ function practiceCodeOf(team, competencyNames, practiceByCompetency) {
 // A shared Module Lead is a person deployed to the Module Lead position of
 // several teams. A team whose Module Lead seat is empty falls under
 // "Unallocated".
+// employeeName is null when the person's resource record was deleted but the
+// deployment is still live, so fall back to the employee id.
 function moduleLeadsOf(positions, deploymentsByPosition) {
   const people = positions
     .filter((position) => roleOf(position.name) === 'moduleLead')
     .flatMap((position) => deploymentsByPosition.get(position.code) ?? [])
-    .map((deployment) => ({ key: String(deployment.employeeId), name: deployment.employeeName }));
-  const unique = [...new Map(people.map((person) => [person.key, person])).values()];
-  return unique.length > 0 ? unique : [{ key: UNALLOCATED_KEY, name: 'Unallocated' }];
+    .filter((deployment) => deployment.employeeId != null)
+    .map((deployment) => ({
+      personKey: String(deployment.employeeId),
+      name: deployment.employeeName ?? `Employee ${deployment.employeeId}`,
+      isUnallocated: false,
+    }));
+  const unique = [...new Map(people.map((person) => [person.personKey, person])).values()];
+  return unique.length > 0 ? unique : [{ personKey: 'unallocated', name: 'Unallocated', isUnallocated: true }];
 }
 
-function buildPracticeGroups(departmentTeams, practices) {
+// Every node carries a `key` that is unique in the whole tree, so the page
+// and "Expand all" never build their own.
+function buildPracticeGroups(departmentCode, departmentTeams, practices) {
   const byCode = Map.groupBy(departmentTeams, (team) => team.practiceCode ?? NO_PRACTICE.code);
   const ordered = [...practices, NO_PRACTICE].filter((practice) => byCode.has(practice.code));
 
   return ordered.map((practice) => {
     const teams = byCode.get(practice.code);
+    const practiceKey = `${departmentCode}/${practice.code}`;
     const leadMap = new Map();
     for (const team of teams) {
       for (const lead of team.leads) {
-        if (!leadMap.has(lead.key)) leadMap.set(lead.key, { ...lead, teams: [] });
-        leadMap.get(lead.key).teams.push(team);
+        if (!leadMap.has(lead.personKey)) {
+          leadMap.set(lead.personKey, { ...lead, key: `${practiceKey}/${lead.personKey}`, teams: [] });
+        }
+        leadMap.get(lead.personKey).teams.push(team);
       }
     }
     const moduleLeads = [...leadMap.values()].sort((a, b) => {
-      if (a.key === UNALLOCATED_KEY) return 1;
-      if (b.key === UNALLOCATED_KEY) return -1;
+      if (a.isUnallocated !== b.isUnallocated) return a.isUnallocated ? 1 : -1;
       return a.name.localeCompare(b.name);
     });
     return {
+      key: practiceKey,
       code: practice.code,
       name: practice.name,
       seats: teams.reduce((sum, team) => sum + team.seats, 0),
@@ -73,6 +89,8 @@ function buildPracticeGroups(departmentTeams, practices) {
 // odcLeadership.js — everything else is derived from the live tables.
 export function buildOrgStructure({ departments, teams, positions, competencies, practices, deployments }) {
   const livePractices = practices.filter(isLive).sort((a, b) => a.code.localeCompare(b.code));
+  const livePracticeCodes = new Set(livePractices.map((practice) => practice.code));
+  // practiceId holds the practice's code (competencies.practice_code).
   const practiceByCompetency = new Map(competencies.filter(isLive).map((c) => [c.name, c.practiceId]));
   const deploymentsByPosition = Map.groupBy(deployments.filter(isLive), (deployment) => deployment.positionId);
   const positionsByTeam = Map.groupBy(positions.filter(isLive), (position) => position.teamCode);
@@ -92,19 +110,20 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
           consultants: count('consultant'),
           others: count('other'),
           competencies: competencyNames,
-          practiceCode: practiceCodeOf(team, competencyNames, practiceByCompetency),
+          practiceCode: practiceCodeOf(team, competencyNames, practiceByCompetency, livePracticeCodes),
           leads: moduleLeadsOf(teamPositions, deploymentsByPosition),
         };
       });
       return [
         department.code,
         {
+          key: department.code,
           code: department.code,
           name: department.name,
           floorNumber: department.floorNumber,
           seats: departmentTeams.reduce((sum, team) => sum + team.seats, 0),
           teamCount: departmentTeams.length,
-          practices: buildPracticeGroups(departmentTeams, livePractices),
+          practices: buildPracticeGroups(department.code, departmentTeams, livePractices),
         },
       ];
     })
@@ -128,4 +147,15 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
     totalSeats: projectManagers.reduce((sum, manager) => sum + manager.seats, 0),
     projectManagers,
   };
+}
+
+// Every node key in the tree, for "Expand all".
+export function allNodeKeys(structure) {
+  return structure.projectManagers.flatMap((manager) => [
+    manager.id,
+    ...manager.departments.flatMap((department) => [
+      department.key,
+      ...department.practices.flatMap((practice) => [practice.key, ...practice.moduleLeads.map((lead) => lead.key)]),
+    ]),
+  ]);
 }
