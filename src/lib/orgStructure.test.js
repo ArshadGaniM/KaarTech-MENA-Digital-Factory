@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { allNodeKeys, buildOrgStructure, roleOf } from './orgStructure';
+import { buildOrgStructure, roleOf } from './orgStructure';
 
 const live = { markedDeleted: 'No' };
 const departments = [
@@ -136,11 +136,6 @@ describe('buildOrgStructure', () => {
     expect(configuration.practices.reduce((sum, p) => sum + p.seats, 0)).toBe(configuration.seats);
   });
 
-  it('gives every node a key that is unique in the tree', () => {
-    const keys = allNodeKeys(build());
-    expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toContain('DEPT-009/PRAC-001/7');
-  });
 
   it('counts a deployment only from its start date to its end date, both days included', () => {
     const dated = (startDate, endDate) => [{ positionId: 'POS-1', employeeId: 7, employeeName: 'Asha', startDate, endDate, ...live }];
@@ -150,6 +145,34 @@ describe('buildOrgStructure', () => {
     expect(leadsFor(dated('2026-11-01', '2026-11-01'))[0].name).toBe('Asha');
     expect(leadsFor(dated('2026-06-01', '2026-10-31'))[0].isUnallocated).toBe(true);
     expect(leadsFor(dated('2026-11-02', '2027-03-31'))[0].isUnallocated).toBe(true);
+  });
+
+  it('tracks filled seats per team, practice, department and manager', () => {
+    const result = build();
+    const configuration = managerOf(result, 'pm-3').departments[0];
+    const finance = configuration.practices[0];
+    expect(finance.moduleLeads[0].teams[0].seatStates).toEqual([
+      { role: 'moduleLead', filled: true },
+      { role: 'leadConsultant', filled: false },
+      { role: 'consultant', filled: false },
+    ]);
+    expect(finance.moduleLeads[0].teams[0].filled).toBe(1);
+    expect(finance.filled).toBe(2);
+    expect(configuration.filled).toBe(2);
+    expect(managerOf(result, 'pm-3').filled).toBe(2);
+    expect(result.filledSeats).toBe(2);
+  });
+
+  it('counts teams and departments for the totals', () => {
+    const result = build();
+    expect(managerOf(result, 'pm-3').teamCount).toBe(3);
+    expect(result.totalTeams).toBe(5);
+    expect(result.totalDepartments).toBe(3);
+  });
+
+  it('counts a team once per practice even when a shared lead covers it', () => {
+    const finance = managerOf(build(), 'pm-3').departments[0].practices[0];
+    expect(finance.teamCount).toBe(2);
   });
 
   it('uses the first practice and warns when a team spans two', () => {

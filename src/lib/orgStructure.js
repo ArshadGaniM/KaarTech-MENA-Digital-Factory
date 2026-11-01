@@ -55,8 +55,20 @@ function moduleLeadsOf(positions, deploymentsByPosition) {
   return unique.length > 0 ? unique : [{ personKey: 'unallocated', name: TBD, isUnallocated: true }];
 }
 
-// Every node carries a `key` that is unique in the whole tree, so the page
-// and "Expand all" never build their own.
+const ROLE_ORDER = ['moduleLead', 'leadConsultant', 'consultant', 'other'];
+
+// One entry per seat, Module Lead first, so the page can draw a filled or
+// empty square for each.
+function seatStatesOf(positions, deploymentsByPosition) {
+  return positions
+    .map((position) => ({ role: roleOf(position.name), filled: deploymentsByPosition.has(position.code) }))
+    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
+}
+
+const sumOf = (list, field) => list.reduce((sum, item) => sum + item[field], 0);
+
+// Every practice and lead carries a `key` that is unique in the whole tree,
+// for React lists.
 function buildPracticeGroups(departmentCode, departmentTeams, practices) {
   const byCode = Map.groupBy(departmentTeams, (team) => team.practiceCode ?? NO_PRACTICE.code);
   const ordered = [...practices, NO_PRACTICE].filter((practice) => byCode.has(practice.code));
@@ -81,7 +93,9 @@ function buildPracticeGroups(departmentCode, departmentTeams, practices) {
       key: practiceKey,
       code: practice.code,
       name: practice.name,
-      seats: teams.reduce((sum, team) => sum + team.seats, 0),
+      seats: sumOf(teams, 'seats'),
+      filled: sumOf(teams, 'filled'),
+      teamCount: teams.length,
       moduleLeads,
     };
   });
@@ -113,10 +127,13 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
         const teamPositions = positionsByTeam.get(team.code) ?? [];
         const count = (role) => teamPositions.filter((position) => roleOf(position.name) === role).length;
         const competencyNames = competencyNamesOf(teamPositions);
+        const seatStates = seatStatesOf(teamPositions, deploymentsByPosition);
         return {
           code: team.code,
           name: team.name,
           seats: teamPositions.length,
+          filled: seatStates.filter((seat) => seat.filled).length,
+          seatStates,
           leadConsultants: count('leadConsultant'),
           consultants: count('consultant'),
           others: count('other'),
@@ -128,11 +145,11 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
       return [
         department.code,
         {
-          key: department.code,
           code: department.code,
           name: department.name,
           floorNumber: department.floorNumber,
-          seats: departmentTeams.reduce((sum, team) => sum + team.seats, 0),
+          seats: sumOf(departmentTeams, 'seats'),
+          filled: sumOf(departmentTeams, 'filled'),
           teamCount: departmentTeams.length,
           practices: buildPracticeGroups(department.code, departmentTeams, livePractices),
         },
@@ -143,34 +160,33 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
   // A department with no team has nothing to show, and neither does a manager
   // whose departments are all empty.
   const populated = new Map([...departmentsByCode].filter(([, department]) => department.teamCount > 0));
-  const sumSeats = (list) => list.reduce((sum, department) => sum + department.seats, 0);
+  const managerOf = (id, title, name, managed) => ({
+    id,
+    title,
+    name,
+    seats: sumOf(managed, 'seats'),
+    filled: sumOf(managed, 'filled'),
+    teamCount: sumOf(managed, 'teamCount'),
+    departments: managed,
+  });
   const assigned = new Set(ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes));
 
   const projectManagers = ODC_PROJECT_MANAGERS.map((manager) => {
     const managed = manager.departmentCodes.map((code) => populated.get(code)).filter(Boolean);
-    return { id: manager.id, title: manager.title, name: manager.name, seats: sumSeats(managed), departments: managed };
+    return managerOf(manager.id, manager.title, manager.name, managed);
   }).filter((manager) => manager.departments.length > 0);
 
   const unassigned = [...populated.values()].filter((department) => !assigned.has(department.code));
   if (unassigned.length > 0) {
-    projectManagers.push({ id: 'unassigned', title: 'Unassigned', name: null, seats: sumSeats(unassigned), departments: unassigned });
+    projectManagers.push(managerOf('unassigned', 'Unassigned', null, unassigned));
   }
 
   return {
     deliveryManager: ODC_DELIVERY_MANAGER,
-    totalSeats: projectManagers.reduce((sum, manager) => sum + manager.seats, 0),
+    totalSeats: sumOf(projectManagers, 'seats'),
+    filledSeats: sumOf(projectManagers, 'filled'),
+    totalTeams: sumOf(projectManagers, 'teamCount'),
+    totalDepartments: projectManagers.reduce((sum, manager) => sum + manager.departments.length, 0),
     projectManagers,
   };
-}
-
-// Must return exactly the keys buildOrgStructure stamps on nodes, or
-// "Expand all" silently skips a level.
-export function allNodeKeys(structure) {
-  return structure.projectManagers.flatMap((manager) => [
-    manager.id,
-    ...manager.departments.flatMap((department) => [
-      department.key,
-      ...department.practices.flatMap((practice) => [practice.key, ...practice.moduleLeads.map((lead) => lead.key)]),
-    ]),
-  ]);
 }
