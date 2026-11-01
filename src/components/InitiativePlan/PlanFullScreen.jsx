@@ -63,6 +63,10 @@ FitToScreen.propTypes = { children: PropTypes.node.isRequired };
 function PlanFullScreen({ title, onClose, children }) {
   const frameRef = useRef(null);
   const closeRef = useRef(null);
+  // The caller may pass a new function on every render. Keeping the latest one in a ref means the
+  // setup below runs once, so a re-render never moves focus back to Close or forgets the opener.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const opener = document.activeElement;
@@ -72,7 +76,7 @@ function PlanFullScreen({ title, onClose, children }) {
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -98,7 +102,7 @@ function PlanFullScreen({ title, onClose, children }) {
       document.body.style.overflow = previousOverflow;
       opener?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div ref={frameRef} className={styles.frame} role="dialog" aria-modal="true" aria-labelledby="plan-full-title">

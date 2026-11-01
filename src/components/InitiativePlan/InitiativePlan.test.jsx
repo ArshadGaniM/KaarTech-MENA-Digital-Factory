@@ -244,6 +244,21 @@ describe('InitiativePlan', () => {
       expect(dialog).toContainElement(document.activeElement);
     });
 
+    it('keeps focus where you put it when the plan re-renders inside the dialog, and still returns it to the opener on close', async () => {
+      const user = userEvent.setup();
+      render(<InitiativePlan today={TODAY} />);
+      await user.click(screen.getByRole('button', { name: 'View full screen' }));
+      const dialog = screen.getByRole('dialog', { name: 'Initiative Plan' });
+
+      // The filter is state in the plan, so clicking it re-renders the plan and the dialog.
+      await user.click(within(dialog).getByRole('button', { name: 'In Progress' }));
+      expect(within(dialog).getByRole('button', { name: 'In Progress' })).toHaveFocus();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(screen.getByRole('button', { name: 'View full screen' })).toHaveFocus();
+      expect(document.body.style.overflow).toBe('');
+    });
+
     it('shows the same filter in the dialog and keeps it when the dialog closes', async () => {
       const user = userEvent.setup();
       render(<InitiativePlan today={TODAY} />);
