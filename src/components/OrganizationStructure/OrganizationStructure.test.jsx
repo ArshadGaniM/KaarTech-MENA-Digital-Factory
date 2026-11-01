@@ -221,3 +221,151 @@ describe('OrganizationStructure', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the organization structure');
   });
 });
+
+describe('OrganizationStructure tree view', () => {
+  const openTree = async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: 'Tree' }));
+    return user;
+  };
+  const pickManager = (user, number) => user.click(screen.getByRole('button', { name: new RegExp(`Layer 2 ODC Project Manager ${number} Name TBD`) }));
+
+  it('starts on Cards and switches to a tree headed by the Delivery Manager and the managers', async () => {
+    const user = await openTree();
+
+    expect(screen.getByRole('button', { name: 'Tree' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Cards' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(/Layer 1/)).toHaveTextContent('ODC Delivery Manager');
+    expect(screen.queryByRole('region', { name: 'ODC Delivery Manager' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'ODC Project Managers' })).getAllByRole('button')).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(screen.getByRole('region', { name: 'ODC Delivery Manager' })).toBeInTheDocument();
+  });
+
+  it('shows the picked manager down to practices, Module Leads and teams, with No practice and TBD where they apply', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+
+    expect(screen.getByRole('button', { name: /Department Configuration Services/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /Practice Finance/ })).toHaveAttribute('aria-expanded', 'true');
+    const financeTeams = screen.getByRole('list', { name: 'Teams of Asha Rao' });
+    expect(within(financeTeams).getByText('TEAM-001')).toHaveTextContent('1/5');
+    const unfilled = screen.getByRole('list', { name: 'Teams of the unfilled Module Lead seat' });
+    expect(within(unfilled).getByText('TEAM-002')).toHaveTextContent('0/1');
+    expect(screen.getByRole('button', { name: /Practice No practice/ })).toBeInTheDocument();
+    expect(screen.getByText('TBD', { selector: 'strong' })).toBeInTheDocument();
+  });
+
+  it('collapses and expands one department, and every level at once', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const department = screen.getByRole('button', { name: /Department Configuration Services/ });
+
+    await user.click(department);
+    expect(department).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: /Practice Finance/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(screen.getByRole('button', { name: /Practice Finance/ })).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(screen.queryByRole('button', { name: /Practice Finance/ })).not.toBeInTheDocument();
+  });
+
+  it('starts a newly picked manager from the default and keeps the pick when switching views', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    await pickManager(user, 2);
+    expect(screen.getByRole('button', { name: /Department Design Services/ })).toHaveAttribute('aria-expanded', 'true');
+
+    await pickManager(user, 3);
+    expect(screen.getByRole('button', { name: /Department Configuration Services/ })).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(screen.getByRole('heading', { name: 'ODC Project Manager 3: departments' })).toBeInTheDocument();
+  });
+
+  it('opens the department drawer from the tree', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+
+    await user.click(screen.getByRole('button', { name: 'Open Configuration Services' }));
+
+    expect(screen.getByRole('dialog', { name: 'Configuration Services' })).toBeInTheDocument();
+  });
+
+  it('shows initials for a deployed Module Lead and TBD only for an unfilled seat', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+
+    const filled = screen.getByRole('list', { name: 'Teams of Asha Rao' }).closest('div');
+    expect(within(filled).getByText('AR')).toBeInTheDocument();
+    expect(within(filled).queryByText('TBD')).not.toBeInTheDocument();
+    const unfilled = screen.getByRole('list', { name: 'Teams of the unfilled Module Lead seat' }).closest('div');
+    expect(within(unfilled).getAllByText('TBD')).toHaveLength(2);
+  });
+
+  it('closes and reopens a practice without touching its department', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const practice = screen.getByRole('button', { name: /Practice Finance/ });
+
+    await user.click(practice);
+    expect(practice).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('list', { name: 'Teams of Asha Rao' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Department Configuration Services/ })).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(practice);
+    expect(screen.getByRole('list', { name: 'Teams of Asha Rao' })).toBeInTheDocument();
+  });
+
+  it('keeps the open departments when the manager already shown is picked again', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    await user.click(screen.getByRole('button', { name: /Practice Finance/ }));
+
+    await pickManager(user, 3);
+
+    expect(screen.getByRole('button', { name: /Practice Finance/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('names the controlled list only while it is open', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const department = screen.getByRole('button', { name: /Department Configuration Services/ });
+    expect(department).toHaveAttribute('aria-controls', 'tree-DEPT-009');
+    expect(document.getElementById('tree-DEPT-009')).not.toBeNull();
+
+    await user.click(department);
+
+    expect(department).not.toHaveAttribute('aria-controls');
+  });
+
+  it('marks a team with someone deployed differently from an empty one, and colours each practice', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+
+    expect(screen.getByText('TEAM-001').closest('li').className).toMatch(/treeTeamFilled/);
+    expect(screen.getByText('TEAM-002').closest('li').className).not.toMatch(/treeTeamFilled/);
+    expect(screen.getByRole('button', { name: /Practice Finance/ }).querySelector('i')).toHaveStyle({ background: 'var(--color-practice-1)' });
+    expect(screen.getByRole('button', { name: /Practice No practice/ }).querySelector('i')).toHaveStyle({ background: 'var(--color-practice-none)' });
+  });
+
+  it('opens and closes a department from the keyboard and keeps focus on it', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const department = screen.getByRole('button', { name: /Department Configuration Services/ });
+    department.focus();
+
+    await user.keyboard('{Enter}');
+    expect(department).toHaveAttribute('aria-expanded', 'false');
+    expect(department).toHaveFocus();
+
+    await user.keyboard(' ');
+    expect(department).toHaveAttribute('aria-expanded', 'true');
+    expect(department).toHaveFocus();
+  });
+});
+

@@ -6,12 +6,13 @@
 
 **Active run ID:** none — direct-build is the current standing mode, with the "continuous autonomous execution through the queue" standing instruction (§7.2) in effect: once a feature's gate passes and pushes, immediately pick up the next queued/in_flight feature without waiting to be told. Queue is now empty as of FEAT-16's completion — no further work queued. Also this session: found and fixed a real production gap — the Render backend's `autoDeploy` had silently stopped firing after PR #13 (2026-09-16), so every feature merged since (FEAT-5 through FEAT-12) never reached production despite the Vercel frontend being current. Triggered a manual deploy (`dep-dao4080ae00c73amau5g`) to the latest `main` commit; confirmed live via curl (`/v1/schema/entity-relationships` responding) and a full headless-browser walkthrough of the real site (marketing page, Dashboard, all 12 tables, Entity Relationship — no errors, empty tables correctly showing "No records yet"). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants.
 
-**Feature counter:** 41
+**Feature counter:** 42
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
+| FEAT-42 | in_flight | Organization Structure page (owner, 1 Nov 2026): centre the content, add a Cards and Tree switch, keep the Cards view as is. The tree shows Delivery Manager, Project Managers, then the picked manager's departments, practices, Module Leads and teams, built by the existing grouping rules (No practice group, TBD Module Lead). Design approved from a preview. | claude/dreamy-knuth-76pnsa |
 | FEAT-39 | queued | Dashboard analytics round 2 (owner, 1 Nov 2026): Teams, Departments, Practices and Projects tabs, visuals 23 to 38 of the suggestion list, with slicers on each. | claude/dreamy-knuth-76pnsa |
 | FEAT-40 | queued | Dashboard analytics round 3 (owner, 1 Nov 2026): Cost and Initiative Plan tabs, visuals 39 to 50, plus data health 51 to 54. Cost visuals reuse the Control Center cost rules. | claude/dreamy-knuth-76pnsa |
 | FEAT-41 | queued | Dashboard analytics round 4 (owner, 1 Nov 2026): Forecast tab, visuals 55 to 64, booked-forward from deployment and assignment dates, plus the monthly snapshot table (owner approved that migration, 1 Nov 2026). | claude/dreamy-knuth-76pnsa |
