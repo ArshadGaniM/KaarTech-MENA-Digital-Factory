@@ -19,6 +19,12 @@
   --color-status-unused-ink: #9e0c24;
   --color-status-unstaffed: #ebebee;
   --color-status-unstaffed-ink: #5f6368;
+  --color-plan-completed: #2eaa57;
+  --color-plan-progress: #ffc000;
+  --color-plan-pending: #87ceeb;
+  --color-plan-completed-ink: #ffffff;
+  --color-plan-progress-ink: #3d2f00;
+  --color-plan-pending-ink: #0b3a52;
   --color-chart-1: var(--color-accent);
   --color-chart-2: var(--color-primary);
   --color-chart-3: #8a8f98;
