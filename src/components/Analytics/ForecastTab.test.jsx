@@ -77,7 +77,7 @@ describe('ForecastTab', () => {
   it('counts a seat deployment ending in 15 days under 30 days and ignores other positions', async () => {
     const user = await renderTab();
 
-    expect(await tableOf(user, 'People rolling off')).toEqual([
+    expect(await tableOf(user, 'Deployments ending soon')).toEqual([
       ['Window', 'Design'],
       ['Within 30 days', '1'],
       ['Within 60 days', '0'],
@@ -102,6 +102,28 @@ describe('ForecastTab', () => {
     await user.selectOptions(screen.getByLabelText('Extend by'), '0');
 
     expect(cellsOf(within(card('Booked against extended')).getByRole('table'))[2]).toEqual(['Dec 26', '0', '0', '0']);
+  });
+
+  it('groups deployments ending soon by seat type', async () => {
+    const user = await renderTab();
+    await user.selectOptions(screen.getByLabelText('Group by'), 'positionName');
+
+    expect((await tableOf(user, 'Deployments ending soon'))[0]).toEqual(['Window', 'Consultant']);
+  });
+
+  it('plots saved months next to booked months', async () => {
+    fetchSnapshots.mockResolvedValue([
+      { month: '2026-10', availableHours: 320, allocatedHours: 160 },
+      { month: '2026-10', availableHours: 160, allocatedHours: 160 },
+    ]);
+    const user = await renderTab();
+
+    expect(await tableOf(user, 'Saved months and booked months')).toEqual([
+      ['Month', 'Saved allocation %', 'Booked allocation %'],
+      ['Oct 26', '66.7', '–'],
+      ['Nov 26', '–', '50'],
+      ['Dec 26', '–', '0'],
+    ]);
   });
 
   it('shows an error with Try again when deployments cannot load', async () => {

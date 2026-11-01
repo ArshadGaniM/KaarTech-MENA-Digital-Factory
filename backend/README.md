@@ -169,7 +169,7 @@ toward its resource's bucket, but that position's name is never listed.
 
 ### `/v1/analytics`
 
-Flat, read-only datasets for the Dashboard's Workforce, Allocation, Structure, Projects, Cost, Plan and Data health tabs. The page slices them in the browser. The responses are compressed.
+Flat datasets for the Dashboard's Workforce, Allocation, Structure, Projects, Cost, Forecast, Plan and Data health tabs. Every route reads, except `POST /snapshots`. The page slices them in the browser. The responses are compressed.
 
 | Route | Response |
 |---|---|
@@ -180,8 +180,8 @@ Flat, read-only datasets for the Dashboard's Workforce, Allocation, Structure, P
 | `GET /v1/analytics/assignments` | `{ data: [assignment], total }`. One row per live project assignment: `teamCode`, `teamName`, `departmentName`, `projectId`, `projectName`, `profitCenter`, `start` and `end` (ISO dates). |
 | `GET /v1/analytics/health` | `{ data: [row], total }`. Rows told apart by `kind`. `count`: per master-data `table` (its route name), `live` and `deleted` rows. `week`: rows created per `week` (a Monday) as `added`, for the last 12 weeks. `blank`: for resources, the `field` and how many of its `live` rows leave it `blank`. The fields checked are `org_chart`, `employment_status`, `employment_type`, `region`, `sub_division`, `position`, `onsite_location`, `offshore_location`, `location_type`, `designation`, `skill` and `ge_batch`. |
 | `GET /v1/analytics/deployments` | `{ data: [deployment], total }`. One row per live resource deployment: `employeeId`, `name`, `positionCode`, `positionName`, `teamCode`, `teamName`, `departmentName`, `allocationPercentage`, `start` and `end` (ISO dates). The Forecast tab reads the dates. |
-| `GET /v1/analytics/snapshots` | `{ data: [snapshot], total }`. The saved monthly snapshots, oldest first, one per `month`, `teamCode` and `positionName`: `seats`, `filledSeats`, `availableHours`, `allocatedHours`, `utilizedHours`, `onsiteCost` and `offshoreCost`. |
-| `POST /v1/analytics/snapshots` | Needs `x-internal-api-key`. Saves or replaces the snapshot of the current month and returns 201 with `{ data: { month, rows } }`. The backend also does this by itself at startup and every 6 hours, so a month is never saved twice. |
+| `GET /v1/analytics/snapshots` | `{ data: [snapshot], total }`. The saved monthly snapshots, oldest first, one per `month`, `teamCode` and `positionName`: `departmentName`, `practiceName`, `seats`, `filledSeats`, `availableHours`, `allocatedHours`, `utilizedHours`, `onsiteCost` and `offshoreCost`. |
+| `POST /v1/analytics/snapshots` | Needs `x-internal-api-key`. Saves or replaces the snapshot of the current month and returns 201 with `{ data: { month, rows } }`, where `rows` is the number of rows written. A run replaces that month's rows for the teams and seat types it finds, so the last run of a month is how it ended. The backend also does this by itself at startup and every 6 hours. On Render's free plan the service sleeps when idle, so a quiet month end can leave the last run days earlier. Call this route from an outside scheduler to close that gap. |
 
 ### `/v1/control-center`
 
@@ -375,6 +375,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0034_competencies_unique_name.sql` | The partial unique index `ux_competencies_name_live` on `competencies (name)` for live rows, because the Control Center and positions find a competency by name. The name carries the column so the API names the field on a clash. |
 | `0035_resource_deployment_dates.sql` | `start_date` and `end_date` on `resource_deployment`, filled for the existing rows with 2026-08-01 to 2027-03-31, then required, with a check that the end is not before the start. The unique index on resource and position is replaced by an exclusion constraint, so the same position may be held again later but not on a shared day. An index on the dates of live rows. |
 | `0036_control_center_notify_practices.sql` | The `trg_control_center_notify` trigger on `practices`, so adding, renaming or deleting a practice refreshes open Organization Structure and Control Center pages. |
+| `0037_create_analytics_snapshots.sql` | `analytics_snapshots`: one row per month, team code and seat type with seats, filled seats, hours and onsite and offshore cost, plus the unique index `ux_analytics_snapshots_month_team_code_position_name`. Fed by `POST /v1/analytics/snapshots` and the backend's own schedule. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

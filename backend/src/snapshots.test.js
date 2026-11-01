@@ -62,6 +62,8 @@ test("takeSnapshot saves one row per team and seat type for the month, counting 
   assert.deepEqual(write.params[1], ["T1"]);
   assert.deepEqual(write.params[2], ["Consultant"]);
   assert.deepEqual(write.params[5], [1]);
+  assert.equal(write.params.length, 12);
+  assert.deepEqual(write.params.slice(6).map((p) => p.length), [1, 1, 1, 1, 1, 1]);
 });
 
 test("takeSnapshot writes nothing when there are no seats", async () => {

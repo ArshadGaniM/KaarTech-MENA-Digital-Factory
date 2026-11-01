@@ -5,9 +5,11 @@ import { labelOf, monthLabel, percent, seatTotalsBy, seatsByMonth, teamLabel } f
 import {
   addDays,
   allocationByMonth,
+  allocationPercentOf,
   extendDeployments,
   isSeatDeployment,
   monthlySeries,
+  utilizationPercentOf,
 } from '../../lib/forecast';
 import { formatCount } from '../../lib/formatCount';
 import { currentMonth, shiftMonth } from '../../lib/months';
@@ -78,12 +80,8 @@ function Charts({ seats: seatRows, deployments, snapshots, snapshotsFailed, base
   const [extendMonths, setExtendMonths] = useState('3');
 
   const totals = seatsByMonth(seats).map((entry) => ({ ...entry, label: monthLabel(entry.month), vacantHours: hours(entry.available - entry.allocated) }));
-  const allocationSeries = monthlySeries(seats, months, allocBy === 'total' ? null : allocBy, (rows) =>
-    rows.length === 0 ? null : percent(rows.reduce((sum, row) => sum + row.allocatedHours, 0), rows.reduce((sum, row) => sum + row.availableHours, 0))
-  );
-  const utilizationSeries = monthlySeries(seats, months, null, (rows) =>
-    rows.length === 0 || rows.every((row) => row.allocatedHours === 0) ? null : percent(rows.reduce((sum, row) => sum + row.utilizedHours, 0), rows.reduce((sum, row) => sum + row.allocatedHours, 0))
-  );
+  const allocationSeries = monthlySeries(seats, months, allocBy === 'total' ? null : allocBy, allocationPercentOf);
+  const utilizationSeries = monthlySeries(seats, months, null, utilizationPercentOf);
   const hiring = monthlySeries(seats, months, hireBy, (rows) => rows.filter((row) => !row.filled).length);
   const hiringNames = hiring.names.filter((name) => hiring.data.some((entry) => entry[name] > 0));
 
@@ -109,7 +107,7 @@ function Charts({ seats: seatRows, deployments, snapshots, snapshotsFailed, base
   })();
 
   const ending = seatDeployments.filter((deployment) => deployment.end >= today && deployment.end <= addDays(today, 180));
-  const cliffGroups = [...new Set(ending.map((deployment) => labelOf(deployment[cliffBy === 'positionName' ? 'positionName' : 'departmentName'])))].sort();
+  const cliffGroups = [...new Set(ending.map((deployment) => labelOf(deployment[cliffBy])))].sort();
   const cliff = WINDOWS.map((limit, index) => {
     const lower = index === 0 ? -1 : WINDOWS[index - 1];
     const inWindow = ending.filter((deployment) => {
@@ -118,7 +116,7 @@ function Charts({ seats: seatRows, deployments, snapshots, snapshotsFailed, base
     });
     return {
       name: `Within ${limit} days`,
-      ...Object.fromEntries(cliffGroups.map((group) => [group, inWindow.filter((deployment) => labelOf(deployment[cliffBy === 'positionName' ? 'positionName' : 'departmentName']) === group).length])),
+      ...Object.fromEntries(cliffGroups.map((group) => [group, inWindow.filter((deployment) => labelOf(deployment[cliffBy]) === group).length])),
     };
   });
 
@@ -192,8 +190,8 @@ function Charts({ seats: seatRows, deployments, snapshots, snapshotsFailed, base
       </ChartCard>
 
       <ChartCard
-        title="People rolling off"
-        summary="People whose deployment ends inside each window, from today."
+        title="Deployments ending soon"
+        summary="Seat deployments that end inside each window, from today. A person with two deployments counts twice."
         columns={['Window', ...cliffGroups]}
         rows={cliff.map((entry) => [entry.name, ...cliffGroups.map((group) => entry[group])])}
         controls={<ControlSelect label="Group by" value={cliffBy} options={[{ value: 'departmentName', label: 'Department' }, { value: 'positionName', label: 'Seat type' }]} onChange={setCliffBy} />}

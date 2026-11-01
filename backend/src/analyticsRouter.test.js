@@ -163,6 +163,13 @@ test("POST /v1/analytics/snapshots needs the internal key and answers 401 withou
   assert.equal(res.status, 401);
 });
 
+test("POST /v1/analytics/snapshots answers 401 for a wrong key", async () => {
+  process.env.INTERNAL_API_KEY = "test-key";
+  const res = await fetch(`${baseUrl}/v1/analytics/snapshots`, { method: "POST", headers: { "x-internal-api-key": "other" } });
+  delete process.env.INTERNAL_API_KEY;
+  assert.equal(res.status, 401);
+});
+
 test("POST /v1/analytics/snapshots with the key saves this month and answers 201", async () => {
   process.env.INTERNAL_API_KEY = "test-key";
   const res = await fetch(`${baseUrl}/v1/analytics/snapshots`, { method: "POST", headers: { "x-internal-api-key": "test-key" } });

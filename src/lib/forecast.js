@@ -4,7 +4,7 @@
 // first day for any other).
 import { labelOf, monthLabel, percent } from './analyticsData';
 
-export const HOURS_PER_PERSON = 160;
+const HOURS_PER_PERSON = 160;
 const COUNTED = new Set(['Consultant', 'Lead Consultant']);
 
 export const referenceDayOf = (month, today) => (today.slice(0, 7) === month ? today : `${month}-01`);
