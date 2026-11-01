@@ -178,7 +178,7 @@ export function TrendChart({ data, bars = [], lines = [], areas = [], percentAxi
         {bars.map((item, index) => (
           <Bar key={item.key} yAxisId="left" dataKey={item.key} name={item.label} fill={item.color ?? colorAt(index)} cursor={onPick ? 'pointer' : undefined} onClick={onPick ? (entry) => onPick(entry.month) : undefined}>
             {data.map((entry) => (
-              <Cell key={entry.month} fill={item.color ?? colorAt(index)} fillOpacity={activeKey === null || activeKey === entry.month ? 1 : 0.5} />
+              <Cell key={entry.month ?? entry.label} fill={item.color ?? colorAt(index)} fillOpacity={activeKey === null || activeKey === entry.month ? 1 : 0.5} />
             ))}
           </Bar>
         ))}

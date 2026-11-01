@@ -22,6 +22,9 @@ const failed = (error) => {
 const Analytics = lazy(() => import('../Analytics').catch(failed));
 const StructureTab = lazy(() => import('../Analytics/StructureTab').catch(failed));
 const ProjectsTab = lazy(() => import('../Analytics/ProjectsTab').catch(failed));
+const CostTab = lazy(() => import('../Analytics/CostTab').catch(failed));
+const PlanTab = lazy(() => import('../Analytics/PlanTab').catch(failed));
+const HealthTab = lazy(() => import('../Analytics/HealthTab').catch(failed));
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -29,6 +32,9 @@ const TABS = [
   { key: 'allocation', label: 'Allocation' },
   { key: 'structure', label: 'Structure' },
   { key: 'projects', label: 'Projects' },
+  { key: 'cost', label: 'Cost' },
+  { key: 'plan', label: 'Plan' },
+  { key: 'health', label: 'Data health' },
 ];
 
 const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -209,6 +215,12 @@ function Dashboard({ onNavigate }) {
               <StructureTab refreshKey={refreshKey} />
             ) : tab === 'projects' ? (
               <ProjectsTab refreshKey={refreshKey} />
+            ) : tab === 'cost' ? (
+              <CostTab refreshKey={refreshKey} />
+            ) : tab === 'plan' ? (
+              <PlanTab refreshKey={refreshKey} />
+            ) : tab === 'health' ? (
+              <HealthTab refreshKey={refreshKey} />
             ) : (
               <Analytics tab={tab} refreshKey={refreshKey} />
             )}

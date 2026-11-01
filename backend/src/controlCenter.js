@@ -30,7 +30,7 @@ const toUtcDay = (isoDate) => {
   return Date.UTC(year, month - 1, day);
 };
 export const round1 = (n) => Math.round(n * 10) / 10;
-const round2 = (n) => Math.round(n * 100) / 100;
+export const round2 = (n) => Math.round(n * 100) / 100;
 // Names already reported, so a busy page does not repeat the same warning.
 const warnedCompetencies = new Set();
 const DEFAULT_COST_DESIGNATION = "Senior Consultant";
@@ -69,7 +69,9 @@ export function coveredDays(assignments, window) {
   return covered.size;
 }
 
-function buildCostContext({ resources = [], actualCosts = [], plannedCosts = [] }) {
+// The lookups costOf needs: each person's resource row, their actual cost and
+// the planned cost of each designation.
+export function buildCostContext({ resources = [], actualCosts = [], plannedCosts = [] }) {
   return {
     employeeById: new Map(resources.map((r) => [r.employeeId, r])),
     actualByEmployee: new Map(actualCosts.map((c) => [c.employeeId, c])),
@@ -79,7 +81,7 @@ function buildCostContext({ resources = [], actualCosts = [], plannedCosts = [] 
 
 // One person's monthly cost. `source` says which figure was used: "Actual",
 // "Planned" (their designation's) or "Default" (the Senior Consultant cost).
-function costOf(costs, employeeId, allocationPercentage) {
+export function costOf(costs, employeeId, allocationPercentage) {
   const employee = costs.employeeById.get(employeeId);
   const side = designationKey(employee?.locationType) === "onsite" ? "onsiteCost" : "offshoreCost";
   const actual = costs.actualByEmployee.get(employeeId)?.[side] ?? null;

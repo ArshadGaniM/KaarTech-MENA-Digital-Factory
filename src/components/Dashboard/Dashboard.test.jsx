@@ -12,6 +12,9 @@ vi.mock('../../hooks/useAllocationSummary');
 vi.mock('../Analytics', () => ({ default: ({ tab }) => <p>Analytics tab {tab}</p> }));
 vi.mock('../Analytics/StructureTab', () => ({ default: () => <p>Structure charts</p> }));
 vi.mock('../Analytics/ProjectsTab', () => ({ default: () => <p>Project charts</p> }));
+vi.mock('../Analytics/CostTab', () => ({ default: () => <p>Cost charts</p> }));
+vi.mock('../Analytics/PlanTab', () => ({ default: () => <p>Plan charts</p> }));
+vi.mock('../Analytics/HealthTab', () => ({ default: () => <p>Health charts</p> }));
 
 const counts = (overrides = {}) => {
   const base = {
@@ -274,6 +277,20 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('tab', { name: 'Projects' }));
     expect(await screen.findByText('Project charts')).toBeInTheDocument();
     expect(screen.queryByText('Structure charts')).not.toBeInTheDocument();
+  });
+
+  it('opens the Cost, Plan and Data health tabs', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+    render(<Dashboard onNavigate={() => {}} />);
+
+    await user.click(screen.getByRole('tab', { name: 'Cost' }));
+    expect(await screen.findByText('Cost charts')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Plan' }));
+    expect(await screen.findByText('Plan charts')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Data health' }));
+    expect(await screen.findByText('Health charts')).toBeInTheDocument();
+    expect(screen.queryByText('Plan charts')).not.toBeInTheDocument();
   });
 });
 
