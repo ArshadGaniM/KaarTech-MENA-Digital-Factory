@@ -17,6 +17,12 @@ import {
   seatsByMonth,
   toCsv,
   topWithOther,
+  monthCoverage,
+  monthEndDay,
+  monthsFromTo,
+  overlapsMonth,
+  spanDays,
+  teamLabel,
 } from './analyticsData';
 
 const people = [
@@ -183,5 +189,45 @@ describe('seatTree', () => {
 
   it('is an empty tree with a zero total when no seat has hours', () => {
     expect(seatTree([], 'allocated', () => 'x')).toMatchObject({ children: [], value: 0 });
+  });
+});
+
+describe('assignment dates', () => {
+  it('finds the last day of any month, including February in a leap year', () => {
+    expect(monthEndDay('2026-11')).toBe('2026-11-30');
+    expect(monthEndDay('2028-02')).toBe('2028-02-29');
+    expect(monthEndDay('2026-12')).toBe('2026-12-31');
+  });
+
+  it('counts the days of a span with both ends included', () => {
+    expect(spanDays('2026-01-01', '2026-01-01')).toBe(1);
+    expect(spanDays('2026-01-01', '2026-12-31')).toBe(365);
+  });
+
+  it('tells whether an assignment touches a month, including its first and last day', () => {
+    const assignment = { start: '2026-10-31', end: '2026-12-01' };
+    expect(overlapsMonth(assignment, '2026-10')).toBe(true);
+    expect(overlapsMonth(assignment, '2026-12')).toBe(true);
+    expect(overlapsMonth(assignment, '2026-09')).toBe(false);
+    expect(overlapsMonth(assignment, '2027-01')).toBe(false);
+  });
+
+  it('works out the share of a month covered, counting overlapping days once', () => {
+    const half = [{ start: '2026-11-01', end: '2026-11-15' }, { start: '2026-11-10', end: '2026-11-15' }];
+    expect(monthCoverage(half, '2026-11')).toBe(50);
+    expect(monthCoverage([{ start: '2026-01-01', end: '2026-12-31' }], '2026-11')).toBe(100);
+    expect(monthCoverage([], '2026-11')).toBe(0);
+    expect(monthCoverage([{ start: '2026-12-01', end: '2026-12-31' }], '2026-11')).toBe(0);
+  });
+
+  it('lists months across a year boundary', () => {
+    expect(monthsFromTo('2026-11', '2027-01')).toEqual(['2026-11', '2026-12', '2027-01']);
+    expect(monthsFromTo('2027-01', '2026-11')).toEqual([]);
+  });
+
+  it('labels a team by code, adding its name only when it differs', () => {
+    expect(teamLabel('TEAM-1', 'TEAM-1')).toBe('TEAM-1');
+    expect(teamLabel('TEAM-1', 'Support')).toBe('Support (TEAM-1)');
+    expect(teamLabel('TEAM-1', null)).toBe('TEAM-1');
   });
 });

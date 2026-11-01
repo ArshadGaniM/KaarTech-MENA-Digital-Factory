@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPeople, buildSeats, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
+import { buildPeople, buildSeats, buildStructure, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
 
 const rows = {
   departments: [{ code: "DEPT-1", name: "Design Services", floorNumber: 3 }],
@@ -98,4 +98,29 @@ test("a month before today is looked at on its first day, and one after on its f
 
 test("monthsBetween gives nothing for a reversed range", () => {
   assert.deepEqual(monthsBetween("2026-12", "2026-01"), []);
+});
+
+const positionRow = (teamCode, positionName, competencies, over = {}) => ({ departmentName: "Design", floorNumber: 3, teamCode, teamName: teamCode, positionName, competencies, filled: false, ...over });
+
+test("buildStructure gives each team the practice of its main competency and splits competencies into a list", () => {
+  const rows = buildStructure(
+    [positionRow("T1", "Consultant", "FICO, MM"), positionRow("T1", "Consultant", "FICO"), positionRow("T2", "Consultant", "MM"), positionRow("T3", "Module Lead", null)],
+    [{ name: "FICO", practiceName: "Finance" }, { name: "MM", practiceName: "Logistics" }]
+  );
+  assert.deepEqual(rows.map((r) => r.practiceName), ["Finance", "Finance", "Logistics", null]);
+  assert.deepEqual(rows[0].competencies, ["FICO", "MM"]);
+  assert.deepEqual(rows[3].competencies, []);
+});
+
+test("buildStructure leaves the practice empty when the main competency has no live practice", () => {
+  const [row] = buildStructure([positionRow("T1", "Consultant", "ABAP")], [{ name: "ABAP", practiceName: null }]);
+  assert.equal(row.practiceName, null);
+  const [unknown] = buildStructure([positionRow("T1", "Consultant", "GHOST")], []);
+  assert.equal(unknown.practiceName, null);
+});
+
+test("buildStructure keeps the position fields and returns nothing for no positions", () => {
+  const [row] = buildStructure([positionRow("T1", "Lead Consultant", "FICO", { filled: true })], []);
+  assert.deepEqual({ ...row, competencies: undefined }, { departmentName: "Design", floorNumber: 3, teamCode: "T1", teamName: "T1", positionName: "Lead Consultant", filled: true, practiceName: null, competencies: undefined });
+  assert.deepEqual(buildStructure([], []), []);
 });
