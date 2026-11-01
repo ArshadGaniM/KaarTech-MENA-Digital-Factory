@@ -540,4 +540,70 @@ describe('RecordFormModal', () => {
       expect(screen.getByLabelText('Project ID *')).toHaveValue('PRJ-2002');
     });
   });
+
+  describe('initialValues and lockedKeys', () => {
+    const entity = {
+      route: 'project-assignments',
+      identity: { type: 'none' },
+      fields: [
+        { key: 'teamId', type: 'string', required: true },
+        { key: 'projectAssignmentEndDate', type: 'date', required: true },
+      ],
+    };
+    const labels = { teamId: 'Team Code', projectAssignmentEndDate: 'End Date' };
+    beforeEach(() => {
+      useEntityRelationships.mockReturnValue({ data: [entity], isLoading: false, error: null });
+    });
+
+    it('pre-fills an Add form, locks the named field, and sends the pre-filled value', async () => {
+      const user = userEvent.setup();
+      createRecord.mockResolvedValue({});
+      const onSaved = vi.fn();
+      render(
+        <RecordFormModal
+          route="project-assignments"
+          singularLabel="Project Assignment"
+          labelByKey={labels}
+          initialValues={{ teamId: 'TEAM-001' }}
+          lockedKeys={['teamId']}
+          onClose={vi.fn()}
+          onSaved={onSaved}
+        />
+      );
+
+      const team = screen.getByLabelText('Team Code *');
+      expect(team).toHaveValue('TEAM-001');
+      expect(team).toBeDisabled();
+
+      await user.type(screen.getByLabelText('End Date *'), '2026-12-05');
+      await user.click(screen.getByRole('button', { name: 'Add' }));
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalled());
+      expect(createRecord).toHaveBeenCalledWith('project-assignments', { teamId: 'TEAM-001', projectAssignmentEndDate: '2026-12-05' });
+    });
+
+    it('ignores initialValues in edit mode, showing the record, and still locks the field', () => {
+      render(
+        <RecordFormModal
+          route="project-assignments"
+          singularLabel="Project Assignment"
+          labelByKey={labels}
+          record={{ id: 'A-1', teamId: 'TEAM-009', projectAssignmentEndDate: '2026-12-05' }}
+          initialValues={{ teamId: 'TEAM-001' }}
+          lockedKeys={['teamId']}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      );
+
+      expect(screen.getByLabelText('Team Code *')).toHaveValue('TEAM-009');
+      expect(screen.getByLabelText('Team Code *')).toBeDisabled();
+    });
+
+    it('leaves every field open and empty when neither prop is given', () => {
+      render(<RecordFormModal route="project-assignments" singularLabel="Project Assignment" labelByKey={labels} onClose={vi.fn()} onSaved={vi.fn()} />);
+      expect(screen.getByLabelText('Team Code *')).toHaveValue('');
+      expect(screen.getByLabelText('Team Code *')).toBeEnabled();
+    });
+  });
 });

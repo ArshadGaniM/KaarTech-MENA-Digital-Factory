@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { notFound, validationError, ApiError } from "./errors.js";
+import { notFound, validationError, ApiError, isExclusionViolation, overlapRaceError } from "./errors.js";
 
 test("notFound builds a 404 ApiError with a machine-readable code", () => {
   const err = notFound("team_member", "abc-123");
@@ -15,4 +15,17 @@ test("validationError builds a 422 ApiError carrying field details", () => {
   assert.equal(err.status, 422);
   assert.equal(err.code, "validation_error");
   assert.deepEqual(err.details, { email: "invalid" });
+});
+
+test("isExclusionViolation recognises only Postgres 23P01", () => {
+  assert.equal(isExclusionViolation({ code: "23P01" }), true);
+  assert.equal(isExclusionViolation({ code: "23505" }), false);
+  assert.equal(isExclusionViolation(null), false);
+});
+
+test("overlapRaceError is a 422 on the start date that names the group, with no database detail", () => {
+  const err = overlapRaceError({ startKey: "projectAssignmentStartDate", groupLabel: "team" });
+  assert.equal(err.status, 422);
+  assert.deepEqual(Object.keys(err.details), ["projectAssignmentStartDate"]);
+  assert.match(err.details.projectAssignmentStartDate, /team already has an assignment/);
 });

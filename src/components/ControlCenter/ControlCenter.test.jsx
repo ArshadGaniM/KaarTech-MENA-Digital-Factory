@@ -152,7 +152,7 @@ describe('ControlCenter', () => {
 
     await user.click(screen.getByRole('button', { name: /Alpha, TEAM-001/ }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', currentMonth(), loaded().updatedAt.getTime());
+    expect(useTeamDetail).toHaveBeenCalledWith('TEAM-001', currentMonth(), `${loaded().updatedAt.getTime()}-0`);
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

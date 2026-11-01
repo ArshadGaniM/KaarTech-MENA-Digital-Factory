@@ -131,7 +131,11 @@ export function validateBody(table, body, { partial = false } = {}) {
       // A plain ISO 8601 date/datetime string, stored in a `date` column —
       // Date.parse rejects garbage strings but accepts both "2026-01-01"
       // and a full timestamp, matching what a `date` column itself accepts.
-      if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+      // A day such as 2026-02-30 parses in JavaScript but Postgres rejects it,
+      // so a plain YYYY-MM-DD must also be a real calendar day.
+      const plainDay = typeof value === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
+      const realDay = plainDay && new Date(Date.UTC(+plainDay[1], +plainDay[2] - 1, +plainDay[3])).toISOString().slice(0, 10) === value;
+      if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || (plainDay && !realDay)) {
         details[field.key] = `${field.key} must be a valid date (ISO 8601 string).`;
       }
       continue;
@@ -266,6 +270,38 @@ export function validateActor(actor) {
   if (actor.length > MAX_TEXT_LENGTH) {
     throw validationError({ updatedBy: `updatedBy must be ${MAX_TEXT_LENGTH} characters or fewer.` });
   }
+}
+
+// Rejects a row whose date range shares a day with another live row of the same
+// group (a team may not have two project assignments on the same day). Both
+// ends are inclusive, so one ending on 5 Dec clashes with one starting on 5 Dec.
+// `candidate` is keyed by column name; `excludeId` is the row being edited.
+export async function validateOverlap(pool, table, candidate, excludeId = null) {
+  const rule = table.overlapRule;
+  if (!rule) return;
+  const start = candidate[rule.startColumn];
+  const end = candidate[rule.endColumn];
+  if (start == null || end == null) return;
+  const { rows } = await pool.query(
+    `select ${rule.startColumn}::text as start, ${rule.endColumn}::text as "end"
+     from ${table.tableName}
+     where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)
+       and ${rule.startColumn} <= $4::date and ${rule.endColumn} >= $3::date
+     order by ${rule.startColumn} limit 1`,
+    [candidate[rule.groupColumn], excludeId, start, end]
+  );
+  if (rows.length > 0) {
+    throw validationError({
+      [rule.startKey]: `${rule.groupLabel} ${candidate[rule.groupColumn]} already has an assignment from ${rows[0].start} to ${rows[0].end}. Assignments of one team cannot share a day.`,
+    });
+  }
+}
+
+// The rules a write must pass inside the group lock: the allocation total (a
+// resource) and the no-overlap dates (a team). A table has at most one of them.
+export async function validateGroupRules(db, table, candidate, excludeId = null) {
+  await validateAllocation(db, table, candidate, excludeId);
+  await validateOverlap(db, table, candidate, excludeId);
 }
 
 // A resource's allocation total across all of its live rows, selected next to

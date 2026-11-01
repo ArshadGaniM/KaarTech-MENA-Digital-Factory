@@ -25,6 +25,9 @@
   --color-plan-completed-ink: #ffffff;
   --color-plan-progress-ink: #3d2f00;
   --color-plan-pending-ink: #0b3a52;
+  --color-location-onsite: var(--color-accent);
+  --color-location-offshore: #1f77c4;
+  --color-location-hybrid: #7c4dcf;
   --color-chart-1: var(--color-accent);
   --color-chart-2: var(--color-primary);
   --color-chart-3: #8a8f98;

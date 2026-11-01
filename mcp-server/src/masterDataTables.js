@@ -109,9 +109,20 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
+    slug: "planned_resource_cost",
+    route: "planned-resource-costs",
+    label: "Planned Resource Cost",
+    fields: [
+      { key: "designation", label: "employee designation, exactly as on the Resources table (unique: one planned cost per designation, at most 100 characters)", required: true, type: "string", maxLength: 100 },
+      { key: "grade", label: "grade, for example K16 (not unique, at most 20 characters)", required: true, type: "string", maxLength: 20 },
+      { key: "offshoreCost", label: "monthly offshore cost in USD (0 to 1,000,000)", required: true, type: "number", min: 0, max: 1000000 },
+      { key: "onsiteCost", label: "monthly onsite cost in USD (0 to 1,000,000)", required: true, type: "number", min: 0, max: 1000000 },
+    ],
+  },
+  {
     slug: "resource_cost",
     route: "resource-cost",
-    label: "Resource Cost",
+    label: "Actual Resource Cost",
     // employeeName/employeeDesignation are NOT writable here — they're a
     // live lookup against the Resources table's current data, returned
     // by the backend's GET responses but never accepted on add_/update_.

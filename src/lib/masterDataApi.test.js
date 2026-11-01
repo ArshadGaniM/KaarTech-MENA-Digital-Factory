@@ -28,6 +28,12 @@ describe('MASTER_DATA_TABLES column definitions', () => {
     }
   );
 
+  it('lists Planned Resource Cost before Actual Resource Cost, with the planned columns', () => {
+    const labels = MASTER_DATA_TABLES.map((table) => table.label);
+    expect(labels.indexOf('Planned Resource Cost')).toBe(labels.indexOf('Actual Resource Cost') - 1);
+    expect(columnsFor('planned-resource-costs').slice(0, 5).map((c) => c.key)).toEqual(['id', 'designation', 'grade', 'offshoreCost', 'onsiteCost']);
+  });
+
   // FEAT-20: departments gained two optional free-text fields.
   it('gives departments Floor Number, Input and Output columns between the name and the audit columns', () => {
     const keys = columnsFor('departments').map((column) => column.key);

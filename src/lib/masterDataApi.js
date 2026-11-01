@@ -102,9 +102,22 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
+    route: "planned-resource-costs",
+    label: "Planned Resource Cost",
+    singularLabel: "Planned Resource Cost",
+    columns: [
+      { key: "id", label: "Record ID" },
+      { key: "designation", label: "Designation" },
+      { key: "grade", label: "Grade" },
+      { key: "offshoreCost", label: "Offshore Cost (USD per month)" },
+      { key: "onsiteCost", label: "Onsite Cost (USD per month)" },
+      ...AUDIT_COLUMNS,
+    ],
+  },
+  {
     route: "resource-cost",
-    label: "Resource Cost",
-    singularLabel: "Resource Cost",
+    label: "Actual Resource Cost",
+    singularLabel: "Actual Resource Cost",
     columns: [
       // FEAT-15: this table has no business code (identity: "none") — the
       // internal row id is the only thing a "Delete by Code or ID" popup

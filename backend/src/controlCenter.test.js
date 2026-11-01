@@ -157,8 +157,9 @@ test("team detail lists every seat, marks vacant ones, and shows what each perso
     positions: base.positions.filter((p) => p.teamCode === "TEAM-001"),
     deployments: base.deployments.filter((d) => ["POS-1", "POS-2", "POS-3"].includes(d.positionCode)),
     allDeployments: base.deployments,
-    assignments: [{ teamCode: "TEAM-001", projectId: "P1", projectName: "Rollout", start: "2026-10-01", end: "2026-10-31" }],
+    assignments: [{ id: "A-1", teamCode: "TEAM-001", projectId: "P1", projectName: "Rollout", start: "2026-10-01", end: "2026-10-31" }],
     month,
+    today: "2026-10-15",
   });
   assert.equal(detail.department.name, "Design Services");
   assert.equal(detail.status, "full");
@@ -198,4 +199,167 @@ test("departments are listed top floor first, by their floor number, not by code
     teams: [],
   });
   assert.deepEqual(result.departments.map((d) => [d.floorNumber, d.name]), [[13, "Penthouse"], [6, "Middle"], [1, "Ground"]]);
+});
+
+// Costs, the current assignment and the month-by-month plan.
+const PLANNED = [
+  { designation: "Senior Consultant", offshoreCost: 1800, onsiteCost: 3300 },
+  { designation: "Consultant", offshoreCost: 1500, onsiteCost: 2400 },
+  { designation: "Analyst", offshoreCost: 1000, onsiteCost: 1750 },
+];
+const PEOPLE = [
+  { employeeId: 2, designation: "Consultant", locationType: "Offshore" },
+  { employeeId: 3, designation: "Analyst", locationType: "Onsite" },
+];
+const costInputs = { resources: PEOPLE, actualCosts: [], plannedCosts: PLANNED };
+const detailOf = (overrides = {}) =>
+  buildTeamDetail({
+    team: base.teams[0],
+    department: base.departments[0],
+    positions: base.positions.filter((p) => p.teamCode === "TEAM-001"),
+    deployments: base.deployments.filter((d) => ["POS-1", "POS-2", "POS-3"].includes(d.positionCode)),
+    allDeployments: base.deployments,
+    assignments: [],
+    month,
+    today: "2026-10-15",
+    ...costInputs,
+    ...overrides,
+  });
+const seatOf = (detail, employeeId) => detail.seats.find((s) => s.employeeId === employeeId);
+
+test("a person's cost is their designation's planned cost for their location, times the allocation", () => {
+  const detail = detailOf();
+  assert.deepEqual(
+    [seatOf(detail, 2).plannedResourceCost, seatOf(detail, 2).actualResourceCost, seatOf(detail, 2).allocatedResourceCost, seatOf(detail, 2).costSource],
+    [1500, null, 1500, "Planned"]
+  );
+  // Onsite analyst at 50%: 1750 x 0.5.
+  assert.equal(seatOf(detail, 3).allocatedResourceCost, 875);
+  assert.equal(detail.allocatedTeamCost, 2375);
+});
+
+test("an Actual Resource Cost wins over the planned one, using the figure for the person's location", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 2, offshoreCost: 2000, onsiteCost: 9999 }] });
+  const lead = seatOf(detail, 2);
+  assert.deepEqual([lead.actualResourceCost, lead.plannedResourceCost, lead.allocatedResourceCost, lead.costSource], [2000, 1500, 2000, "Actual"]);
+});
+
+test("an actual cost with no figure for the person's location falls back to the planned cost", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 2, offshoreCost: null, onsiteCost: 5000 }] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Planned", 1500]);
+});
+
+test("a designation with no planned cost is costed as a Senior Consultant and tagged Default", () => {
+  const detail = detailOf({ resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Default", 3300]);
+});
+
+test("a person with no location type is costed as offshore", () => {
+  const detail = detailOf({ resources: [{ employeeId: 2, designation: "Consultant", locationType: null }, PEOPLE[1]] });
+  assert.equal(seatOf(detail, 2).allocatedResourceCost, 1500);
+});
+
+test("vacant seats and the Module Lead carry no cost and add nothing to the team cost", () => {
+  const detail = detailOf();
+  for (const code of ["POS-1", "POS-4"]) {
+    const seat = detail.seats.find((s) => s.positionCode === code);
+    assert.deepEqual([seat.plannedResourceCost, seat.actualResourceCost, seat.allocatedResourceCost, seat.costSource], [null, null, null, null]);
+  }
+});
+
+test("the location mix is Onsite, Offshore or Hybrid from the people deployed now", () => {
+  assert.equal(detailOf().locationMix, "Hybrid");
+  assert.equal(detailOf({ resources: [{ ...PEOPLE[0], locationType: "Onsite" }, PEOPLE[1]] }).locationMix, "Onsite");
+  assert.equal(detailOf({ resources: [PEOPLE[0], { ...PEOPLE[1], locationType: "Offshore" }] }).locationMix, "Offshore");
+  assert.equal(detailOf({ deployments: [] }).locationMix, null);
+});
+
+test("the card carries the assignment end date and the allocated team cost", () => {
+  const assignments = [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-09-01", end: "2026-12-05" }];
+  const team = teamOf(buildControlCenter({ ...base, assignments, today: "2026-10-15", ...costInputs }), "TEAM-001");
+  assert.equal(team.assignmentEndDate, "2026-12-05");
+  assert.equal(team.allocatedTeamCost, 2375);
+  const idle = teamOf(buildControlCenter({ ...base, assignments, today: "2027-01-01", ...costInputs }), "TEAM-001");
+  assert.equal(idle.assignmentEndDate, null);
+  const none = teamOf(buildControlCenter({ ...base, assignments: [], today: "2026-10-15", ...costInputs }), "TEAM-002");
+  assert.equal(none.assignmentEndDate, null);
+});
+
+test("the end date counts on the day itself, and an assignment starting tomorrow is not current", () => {
+  const at = (start, end, today) =>
+    teamOf(buildControlCenter({ ...base, assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start, end }], today, ...costInputs }), "TEAM-001").assignmentEndDate;
+  assert.equal(at("2026-09-01", "2026-12-05", "2026-12-05"), "2026-12-05");
+  assert.equal(at("2026-09-01", "2026-12-05", "2026-12-06"), null);
+  assert.equal(at("2026-12-06", "2027-01-31", "2026-12-05"), null);
+});
+
+test("the monthly plan runs from the assignment's start month to its end month, prorating part months", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", projectName: "Rollout", start: "2026-09-01", end: "2026-12-05" }] });
+  const plan = detail.monthlyPlan;
+  assert.deepEqual(plan.months.map((m) => m.month), ["2026-09", "2026-10", "2026-11", "2026-12"]);
+  assert.deepEqual(plan.months.map((m) => m.utilizationPercent), [100, 100, 100, 16.13]);
+  assert.deepEqual(plan.months.map((m) => m.cost), [2375, 2375, 2375, 383.06]);
+  assert.equal(plan.totalCost, 7508.06);
+  assert.equal(detail.assignmentEndDate, "2026-12-05");
+  assert.deepEqual(detail.projects.map((p) => [p.id, p.projectName]), [["A", "Rollout"]]);
+});
+
+test("a start part way through a month is prorated too, and the plan crosses a year end", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-12-16", end: "2027-01-15" }], today: "2026-12-20" });
+  assert.deepEqual(detail.monthlyPlan.months.map((m) => [m.month, m.utilizationPercent]), [["2026-12", 51.61], ["2027-01", 48.39]]);
+});
+
+test("a team with no current assignment shows no projects and an empty plan", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "2026-02-01" }] });
+  assert.deepEqual([detail.projects, detail.assignmentEndDate, detail.monthlyPlan], [[], null, { months: [], totalCost: 0, truncated: false }]);
+});
+
+test("when even the Senior Consultant planned cost is gone, a person costs zero and is tagged Missing, not Default", () => {
+  const detail = detailOf({ plannedCosts: PLANNED.filter((c) => c.designation !== "Senior Consultant" && c.designation !== "Consultant") });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost, seatOf(detail, 2).plannedResourceCost], ["Missing", 0, null]);
+});
+
+test("a person who is not in the resources list is costed offshore at the default rate", () => {
+  const detail = detailOf({ resources: [PEOPLE[1]] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Default", 1800]);
+});
+
+test("a partial allocation scales an actual cost too", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 3, offshoreCost: 900, onsiteCost: 2000 }] });
+  // Onsite, 50%: 2000 x 0.5.
+  assert.equal(seatOf(detail, 3).allocatedResourceCost, 1000);
+});
+
+test("a person deployed in a Module Lead seat is not costed and not counted in the team cost", () => {
+  const detail = detailOf();
+  const moduleLead = detail.seats.find((s) => s.positionCode === "POS-1");
+  assert.equal(moduleLead.employeeId, 1);
+  assert.deepEqual([moduleLead.allocatedResourceCost, moduleLead.costSource], [null, null]);
+  assert.equal(detail.allocatedTeamCost, 2375);
+});
+
+test("the team counts how many people were costed at the default rate", () => {
+  const defaulted = detailOf({ resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]] });
+  assert.equal(defaulted.defaultedCostCount, 1);
+  assert.equal(detailOf().defaultedCostCount, 0);
+  const card = teamOf(buildControlCenter({ ...base, today: "2026-10-15", resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]], actualCosts: [], plannedCosts: PLANNED }), "TEAM-001");
+  assert.equal(card.defaultedCostCount, 1);
+});
+
+test("an assignment that starts after today is shown as the next assignment, never as the current one", () => {
+  const detail = detailOf({
+    assignments: [
+      { id: "L", teamCode: "TEAM-001", projectId: "P2", projectName: "Later", start: "2027-03-01", end: "2027-04-01" },
+      { id: "N", teamCode: "TEAM-001", projectId: "P1", projectName: "Next", start: "2026-12-06", end: "2027-01-31" },
+    ],
+  });
+  assert.deepEqual(detail.projects, []);
+  assert.deepEqual(detail.nextAssignment, { id: "N", projectId: "P1", projectName: "Next", start: "2026-12-06", end: "2027-01-31" });
+});
+
+test("a very long assignment is cut at 120 months and says so", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "9999-12-31" }] });
+  assert.equal(detail.monthlyPlan.months.length, 120);
+  assert.equal(detail.monthlyPlan.truncated, true);
+  assert.equal(detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-09-01", end: "2026-12-05" }] }).monthlyPlan.truncated, false);
 });

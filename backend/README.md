@@ -32,9 +32,9 @@ npm run dev
 
 Actual progress against the locked initiative plan (the plan itself is read-only and lives in the frontend). `GET /v1/initiative-plan/actuals` lists the recorded actuals (open read). `PUT /v1/initiative-plan/actuals/:key` records or replaces one (`actualStartWeek` and `actualEndWeek` whole weeks 1 to 65 or null, end not before start and not without a start, `actualPoc` whole number 0 to 100; needs `x-internal-api-key`) and `DELETE` clears it (204, or 404 if none). `:key` is the plan's Sl. No: `1.0` for a group, `1a` for an activity; anything else is a 404. Both writes accept an optional `updatedBy` string (at most 255 characters; the default actor is used without it). `GET` answers `{ data: [{ activityKey, actualStartWeek, actualEndWeek, actualPoc, updatedBy, updatedAt }] }` and `PUT` answers `{ data: { …same fields } }`; a failed validation is a 422 with the field names under `details`. The password screen on the application is a browser-side check only: reads stay open and writes rely on the shared key, so it is not access control. Table `initiative_plan_actuals` (created by migration `0026_create_project_plan_actuals.sql` as `project_plan_actuals`, renamed by `0027_rename_project_plan_actuals.sql`, with its updated-at trigger added by `0028_initiative_plan_actuals_updated_at_trigger.sql`).
 
-### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`, `/v1/project-assignments`
+### Master data: `/v1/practices`, `/v1/delivery-centers`, `/v1/competencies`, `/v1/modules`, `/v1/resources`, `/v1/departments`, `/v1/planned-resource-costs`, `/v1/resource-cost`, `/v1/teams`, `/v1/resource-deployment`, `/v1/positions`, `/v1/projects`, `/v1/project-assignments`
 
-All twelve routes share the same shape (`src/masterDataRouter.js`), but each
+All thirteen routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
 authoritative per-table field list (key, required, type), or fetch
 `GET /v1/schema/entity-relationships`' own `fields` array (below) for the
@@ -55,7 +55,8 @@ Per-table fields, as of this writing:
 | Table | Fields |
 |---|---|
 | `competencies` | `name` (required) |
-| `resource-cost` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
+| `planned-resource-costs` | `designation` (required, string, unique among live rows — one planned cost per designation, matched to `resources.designation`), `grade` (required, string, not unique: Engineer and Intern are both K1), `offshoreCost` / `onsiteCost` (required, numbers of 0 or more, monthly, in USD — returned as numbers). The Control Center applies a designation's planned cost to every resource with it when the resource has no actual cost. 33 rows were loaded by migration `0030`. |
+| `resource-cost` (Actual Resource Cost) | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
 | `resource-deployment` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName` (**read-only**, live-looked-up from the referenced resource), `positionId` (required, string — must reference an existing `positions.code`, enforced), `positionName` (**read-only**, live-looked-up from the referenced position) — the first table with two independent FK/lookup pairs at once, `allocationPercentage` (required, number above 0 up to 100 — a resource can have several rows, one per position; the live rows of one resource may not add up to more than 100 and may not repeat a position, enforced with a 422 on create, edit and restore), `employeeTotalAllocation` (**read-only**, the sum of that resource's live rows, so a resource short of 100 is visible) |
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `competencies` (optional, comma-separated competency names up to 500 characters, e.g. `MM, SRM` — each must match an existing, non-deleted `competencies.name`, otherwise a 422 names the unknown ones) — plus an auto-generated `code` (`POS-001`, ...) |
@@ -109,6 +110,8 @@ directly. The `via` target must be an earlier entry in the same
 carry a `crossFieldValidations` array for rules spanning two fields at
 once — currently one rule type, `{ type: "dateRange", startKey, endKey,
 message }`, enforcing `endKey >= startKey` (e.g.
+A team cannot have two live assignments that share a day (both ends are inclusive, so one ending 5 Dec clashes with one starting 5 Dec): a POST, PATCH or restore that would create such a clash is a 422 on `projectAssignmentStartDate` naming the assignment in the way. The end date is required.
+
 `project-assignments.projectAssignmentEndDate` must not be earlier than
 `projectAssignmentStartDate`). Runs on both POST and PATCH; a PATCH that
 only sends one of the two fields is still checked against the *other's
@@ -168,12 +171,23 @@ page. Code in `src/controlCenter.js` and `src/controlCenterRouter.js`.
 
 | Route | Returns |
 |---|---|
-| `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, floorNumber, teams: [...] }] } }`, top floor first (highest `floorNumber`), one entry per live department. Each team carries its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by main competency, then code. |
-| `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. 404 `team_not_found` for an unknown code. |
+| `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, floorNumber, teams: [...] }] } }`, top floor first (highest `floorNumber`), one entry per live department. Each team carries `assignmentEndDate` (the end date of the assignment covering today, or `null`), `allocatedTeamCost` (monthly USD, see below), its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by main competency, then code. |
+| `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. Each person in a counted seat also carries `plannedResourceCost`, `actualResourceCost`, `allocatedResourceCost` and `costSource` (`Actual`, `Planned` or `Default`). The team also carries `allocatedTeamCost`, `locationMix` (`Onsite`, `Offshore`, `Hybrid` or `null`), `assignmentEndDate`, `defaultedCostCount` (people costed at the default rate), `projects` (at most one entry: the assignment covering today, with its `id`), `nextAssignment` (the earliest assignment starting after today, or an object of `null`s) and `monthlyPlan` (`{ months: [{ month, utilizationPercent, cost }], totalCost, truncated }`, from the start month to the end month of that assignment, cut at 120 months with `truncated: true`). 404 `team_not_found` for an unknown code. |
 | `GET /v1/control-center/stream` | Server-sent events. Sends `retry: 5000`, then one `event: changed` (`data: {}`) per burst of writes to the tables below, and a `: keep-alive` comment every 25 s. |
 
 `month` defaults to the current UTC month. A value that is not `YYYY-MM`
 is a 422 `validation_error`.
+
+**Costs** are monthly, in USD. A person's cost is their Actual Resource Cost
+(`resource_cost`) when it has a figure for their location, else the Planned
+Resource Cost of their designation (`planned_resource_costs`), else the Senior
+Consultant planned cost (`costSource` `Default`, or `Missing`, costing zero, if that row is gone too). The onsite or offshore figure
+follows `resources.location_type`; no location type counts as offshore.
+`allocatedResourceCost` is that cost times the allocation percentage, and
+`allocatedTeamCost` sums it over the people in Consultant and Lead Consultant
+seats (vacant seats and Module Leads cost nothing). A month in `monthlyPlan`
+shows the share of its days the assignment covers, and the cost is
+`allocatedTeamCost` times that share, so 1 to 5 December is 5/31.
 
 Hour rules, all measured in the selected month:
 
@@ -331,6 +345,10 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
 | `0023_control_center_notify.sql` | `notify_control_center_changed()` plus a statement-level `trg_control_center_notify` trigger on `departments`, `teams`, `positions`, `competencies`, `resource_deployment`, `project_assignments`, `projects` and `resources`. Each insert, update or delete sends one `NOTIFY control_center_changed`, which the backend turns into the Control Center stream's `changed` event. Not applied automatically. |
 | `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `public` schema, because the backend's role cannot use the `extensions` schema), used by the list routes' fuzzy `?q=` search. |
+| `0029_project_assignments_no_overlap.sql` | `btree_gist` (in `public`) and the exclusion constraint `ex_project_assignments_team_no_overlap`: no two live assignments of one team share a day (both ends inclusive). The API checks first (`validateOverlap`, under a per-team lock) and answers 422 naming the clashing dates; the constraint is the backstop for a race (23P01 is mapped to a 422). |
+| `0030_create_planned_resource_costs.sql` | `planned_resource_costs` (designation, grade, `offshore_cost`, `onsite_cost`, the usual audit columns) with the unique live index `ux_planned_resource_costs_designation_live`, loaded with the owner's 33 designations. |
+| `0032_planned_resource_costs_limits.sql` | Check constraints matching the descriptor limits on `planned_resource_costs`: designation at most 100 characters, grade at most 20, each cost at most 1,000,000. |
+| `0031_control_center_notify_costs.sql` | The `trg_control_center_notify` trigger on `resource_cost` and `planned_resource_costs`, so a cost change refreshes open Control Center pages. |
 | `0025_add_department_floor_number.sql` | `departments.floor_number integer not null` with `ck_departments_floor_number_range` (1 to 1000) and the partial unique index `ux_departments_floor_number_live` (live rows only, so deleting a department frees its floor; the name carries the column so the API's unique-violation handler can name the field). Backfilled for the thirteen departments as laid out by the owner, any other row parked at 101 and up. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
