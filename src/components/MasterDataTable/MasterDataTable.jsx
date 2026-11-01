@@ -8,6 +8,8 @@ import DeleteRecordModal from '../DeleteRecordModal';
 import styles from './MasterDataTable.module.css';
 
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
+// A date without a time, as the API sends it (2026-08-01T00:00:00.000Z), shown as 2026-08-01.
+const DAY_COLUMN_KEYS = new Set(['startDate', 'endDate']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
 const ACTIONS_COLUMN_WIDTH = 190;
@@ -20,6 +22,7 @@ function capitalize(value) {
 
 function formatCell(column, value) {
   if (DATE_COLUMN_KEYS.has(column.key)) return new Date(value).toLocaleString();
+  if (DAY_COLUMN_KEYS.has(column.key)) return typeof value === 'string' ? value.slice(0, 10) : value;
   if (ENUM_COLUMN_KEYS.has(column.key)) return capitalize(value);
   return value;
 }

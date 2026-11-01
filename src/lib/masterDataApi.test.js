@@ -53,6 +53,14 @@ describe('MASTER_DATA_TABLES column definitions', () => {
     expect(keys.slice(3, 7)).toEqual(['positionId', 'positionName', 'allocationPercentage', 'employeeTotalAllocation']);
   });
 
+  it('gives resource-deployment Start Date and End Date columns after the total, before the audit columns', () => {
+    const columns = columnsFor('resource-deployment');
+    const keys = columns.map((column) => column.key);
+    expect(keys.slice(7, 9)).toEqual(['startDate', 'endDate']);
+    expect(columns.slice(7, 9).map((column) => column.label)).toEqual(['Start Date', 'End Date']);
+    expect(keys.indexOf('createdBy')).toBeGreaterThan(keys.indexOf('endDate'));
+  });
+
   // FEAT-22: positions record the competencies they need.
   it('gives positions a Competencies column after the team columns', () => {
     const keys = columnsFor('positions').map((column) => column.key);

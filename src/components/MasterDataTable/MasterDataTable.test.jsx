@@ -69,6 +69,15 @@ describe('MasterDataTable', () => {
     expect(screen.getByRole('cell', { name: 'Digital Factory' })).toBeInTheDocument();
   });
 
+  it('shows a start date or end date as a plain day, without the time the API adds', () => {
+    mockTable({ data: [{ id: '1', startDate: '2026-08-01T00:00:00.000Z', endDate: '2027-03-31T00:00:00.000Z' }] });
+
+    render(<MasterDataTable route="resource-deployment" columns={[{ key: 'startDate', label: 'Start Date' }, { key: 'endDate', label: 'End Date' }]} singularLabel="Resource Deployment" />);
+
+    expect(screen.getByRole('cell', { name: '2026-08-01' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '2027-03-31' })).toBeInTheDocument();
+  });
+
   it('shows an empty-state message when there are zero rows', () => {
     mockTable({ data: [] });
 

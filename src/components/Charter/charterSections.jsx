@@ -3,6 +3,8 @@ import { NAV_ITEMS } from '../../lib/navigation';
 import { PLAN_GROUPS, PLAN_OWNER, PLAN_WEEK_COUNT } from '../../data/initiativePlan';
 import { weekEnd, weekStart } from '../../lib/initiativePlanCalendar';
 import { STAKEHOLDERS, ROLE, roleLabel, withRole } from '../../data/stakeholders';
+import { buildDeliverables } from '../../data/deliverables';
+import { useServices } from '../../hooks/useServices';
 import OrgChart from './OrgChart';
 import styles from './Charter.module.css';
 
@@ -212,20 +214,43 @@ function Governance() {
   );
 }
 
+const isoDate = (iso) => dateText(new Date(`${iso}T00:00:00Z`));
+
 function Deliverables() {
-  const rows = PLAN_GROUPS.flatMap((group) => [
+  const { data: services, isLoading, error, retry } = useServices();
+  const milestones = PLAN_GROUPS.flatMap((group) => [
     ['f', 'KPI governance framework for utilization'],
     ['g', 'SOP document'],
     ['h', 'Two pilot projects completed'],
     ['i', 'Rollout strategy document for all MENA projects'],
   ].map(([slNo, name]) => {
     const step = stepOf(group, slNo);
-    return [stream(group), name, `Week ${step.endWeek}`, dateText(weekEnd(step.endWeek))];
+    return [stream(group), name, dateText(weekEnd(step.endWeek)), step.status];
   }));
+  const deliverables = buildDeliverables({ services: services ?? [], streams: PLAN_GROUPS.map(stream) }).map((row) => [
+    row.name,
+    row.owner,
+    isoDate(row.due),
+    row.status,
+  ]);
   return (
     <>
-      <p>Due dates are the end of the planned week for each step, counted from {dateText(weekStart(1))}.</p>
-      <Table caption="Deliverables and milestones" head={['Stream', 'Deliverable', 'Due week', 'Due date']} rows={rows} />
+      <p>
+        Milestone dates are the end of the planned week for each step, counted from {dateText(weekStart(1))}. Each
+        milestone shows the status of its step in the initiative plan.
+      </p>
+      <Table caption="Milestones" head={['Stream', 'Milestone', 'Due date', 'Status']} rows={milestones} />
+      {isLoading && <p role="status">Loading the SOP documents, one for each service.</p>}
+      {services?.length === 0 && !error && <p role="status">No services are listed yet, so there are no SOP document rows.</p>}
+      {error && !isLoading && (
+        <div role="alert">
+          <p>The SOP documents could not be listed, because the services could not be loaded.</p>
+          <button type="button" className={styles.retry} onClick={retry}>
+            Try again
+          </button>
+        </div>
+      )}
+      <Table caption="Deliverables" head={['Deliverable name', 'Owner', 'Due date', 'Status']} rows={deliverables} />
     </>
   );
 }

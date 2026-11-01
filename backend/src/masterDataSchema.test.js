@@ -718,22 +718,25 @@ test("toResponse turns a numeric field's pg string into a number, leaves null al
 
 test("allocationSelectSql is empty without a rule and filters soft-deleted rows with one", () => {
   assert.deepEqual(allocationSelectSql(rangedTable), []);
+  const dated = { tableName: "t", allocationRule: { groupColumn: "employee_id", valueColumn: "v", startColumn: "s", endColumn: "e" } };
+  assert.match(allocationSelectSql(dated)[0], /a\.s <= current_date and a\.e >= current_date/);
   const [sql] = allocationSelectSql({
     tableName: "resource_deployment",
-    allocationRule: { groupColumn: "employee_id", valueColumn: "allocation_percentage" },
+    allocationRule: { groupColumn: "employee_id", valueColumn: "allocation_percentage", startColumn: "start_date", endColumn: "end_date" },
   });
   assert.match(sql, /deleted_at is null/);
+  assert.doesNotMatch(sql, /undefined/);
   assert.match(sql, /as employee_total_allocation/);
 });
 
 test("validateAllocation reports a duplicate position and an overflow together, and skips tables without a rule", async () => {
   const rule = {
     groupKey: "employeeId", groupColumn: "employee_id", uniqueKey: "positionId", uniqueColumn: "position_code",
-    valueKey: "allocationPercentage", valueColumn: "allocation_percentage", total: 100,
+    valueKey: "allocationPercentage", valueColumn: "allocation_percentage", startColumn: "start_date", endColumn: "end_date", total: 100,
   };
-  const pool = { query: async () => ({ rows: [{ unique_value: "POS-1", value: "70.10" }] }) };
+  const pool = { query: async () => ({ rows: [{ unique_value: "POS-1", value: "70.10", start: "2026-08-01", end: "2027-03-31" }] }) };
   await assert.rejects(
-    validateAllocation(pool, { tableName: "t", allocationRule: rule }, { employee_id: 1, position_code: "POS-1", allocation_percentage: 40 }),
+    validateAllocation(pool, { tableName: "t", allocationRule: rule }, { employee_id: 1, position_code: "POS-1", allocation_percentage: 40, start_date: "2026-08-01", end_date: "2027-03-31" }),
     (err) => err.details.positionId && /at most 29\.9%/.test(err.details.allocationPercentage)
   );
   const never = { query: async () => { throw new Error("must not query"); } };

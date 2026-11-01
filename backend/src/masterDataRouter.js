@@ -13,6 +13,7 @@ import {
   isExclusionViolation,
   inUse,
   overlapRaceError,
+  positionOverlapRaceError,
 } from "./errors.js";
 import {
   toResponse,
@@ -73,6 +74,7 @@ function actorOf(body) {
 // treatment as a unique-violation rather than a leaked 500.
 function mapWriteError(err, fields, body, table) {
   if (isExclusionViolation(err) && table?.overlapRule) return overlapRaceError(table.overlapRule);
+  if (isExclusionViolation(err) && table?.allocationRule) return positionOverlapRaceError(table.allocationRule);
   if (isUniqueViolation(err)) return duplicateFieldError(err, fields);
   if (isForeignKeyViolation(err)) return referenceNotFoundError(err, fields);
   if (isInvalidTextRepresentation(err)) return invalidValueError(err, fields, body);

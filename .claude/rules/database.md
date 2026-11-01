@@ -71,6 +71,7 @@
 | Unique index | `ux_<table>_<col>_live` for live rows. Older ones use `ix_` | `ux_departments_floor_number_live` |
 | Foreign key | `fk_<table>_<ref_table>` | `fk_teams_departments` |
 | Check constraint | `ck_<table>_<col>_<rule>`. Migrations up to 0006 use `<table>_<col>_length` | `ck_departments_floor_number_range` |
+| Exclusion constraint | `ex_<table>_<what>_no_overlap`. Use one instead of a unique index when rows carry a date range and only overlapping rows clash | `ex_resource_deployment_position_no_overlap` |
 | Trigger | `trg_<table>_<what>` | `trg_practices_updated_at` |
 
 ## Transactions

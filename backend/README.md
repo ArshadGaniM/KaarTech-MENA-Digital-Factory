@@ -59,7 +59,7 @@ Per-table fields, as of this writing:
 | `competencies` | `name` (required), `practiceId` (required, string — must be the `code` of a live practice, such as `PRAC-007`, enforced), `practiceName` (**read-only**, live-looked-up from the practice). A live name is unique. |
 | `planned-resource-costs` | `designation` (required, string, unique among live rows — one planned cost per designation, matched to `resources.designation`), `grade` (required, string, not unique: Engineer and Intern are both K1), `offshoreCost` / `onsiteCost` (required, numbers of 0 or more, monthly, in USD — returned as numbers). The Control Center applies a designation's planned cost to every resource with it when the resource has no actual cost. 33 rows were loaded by migration `0030`. |
 | `resource-cost` (Actual Resource Cost) | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName`/`employeeDesignation` (**read-only**, live-looked-up from the referenced resource — not stored columns, never accepted on POST/PATCH), `offshoreCost`/`onsiteCost` (both optional, number, independently settable) |
-| `resource-deployment` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName` (**read-only**, live-looked-up from the referenced resource), `positionId` (required, string — must reference an existing `positions.code`, enforced), `positionName` (**read-only**, live-looked-up from the referenced position) — the first table with two independent FK/lookup pairs at once, `allocationPercentage` (required, number above 0 up to 100 — a resource can have several rows, one per position; the live rows of one resource may not add up to more than 100 and may not repeat a position, enforced with a 422 on create, edit and restore), `employeeTotalAllocation` (**read-only**, the sum of that resource's live rows, so a resource short of 100 is visible) |
+| `resource-deployment` | `employeeId` (required, number — must reference an existing `resources.employee_id`, enforced), `employeeName` (**read-only**, live-looked-up from the referenced resource), `positionId` (required, string — must reference an existing `positions.code`, enforced), `positionName` (**read-only**, live-looked-up from the referenced position) — the first table with two independent FK/lookup pairs at once, `allocationPercentage` (required, number above 0 up to 100 — a resource can have several rows, one per position; on any one day the live rows of one resource may not add up to more than 100, and may not hold the same position twice, enforced with a 422 on create, edit and restore; only rows that share a day are added up, so 100 until 31 Dec and another 100 from 1 Jan is allowed), `startDate` and `endDate` (both required, dates with both days included, the end not earlier than the start: the resource counts as deployed only from the start to the end, and is TBD after), `employeeTotalAllocation` (**read-only**, the sum of that resource's live rows that are deployed today, so a resource short of 100, or with an ended deployment, is visible) |
 | `teams` | `name` (required, editable anytime), `departmentCode` (required, string — must reference an existing `departments.code`, enforced), `departmentName` (**read-only**, live-looked-up from the referenced department) — plus an auto-generated `code` (`TEAM-001`, ...) |
 | `positions` | `name` (required, editable anytime), `teamCode` (required, string — must reference an existing `teams.code`, enforced), `teamName` (**read-only**, live-looked-up from the referenced team), `competencies` (optional, comma-separated competency names up to 500 characters, e.g. `MM, SRM` — each must match an existing, non-deleted `competencies.name`, otherwise a 422 names the unknown ones) — plus an auto-generated `code` (`POS-001`, ...) |
 | `practices` | `name` (required) — plus an auto-generated `code` (`PRAC-001`, ...) |
@@ -72,8 +72,9 @@ Per-table fields, as of this writing:
 
 **Field types beyond `string`/`enum`:** a field's `type` can also be
 `"number"` (a finite JS number; optional `integer: true`, `min` and `max` limit it, as on `departments.floorNumber`), `"date"`
-(a string that must parse via `Date.parse` — any ISO 8601 date or
-datetime string, e.g. `project-assignments.projectAssignmentStartDate`),
+(an ISO 8601 `YYYY-MM-DD` string, optionally with a time and a zone
+offset up to 15:59. Other formats and impossible days get a 422, e.g.
+`project-assignments.projectAssignmentStartDate`),
 and any `"string"` field can set `maxLength` to override the default
 255-char cap (`resources.skill` uses `maxLength: 20000`, since real skill
 lists run past 12,000 characters).
@@ -139,7 +140,7 @@ section. Code in `src/allocation.js` and `src/allocationRouter.js`.
 
 | Route | Returns |
 |---|---|
-| `GET /v1/allocation/summary` | `{ data: { buckets: [{ key, count }], positions: [{ value, count }] } }` |
+| `GET /v1/allocation/summary` | `{ data: { buckets: [{ key, count }], positions: [{ value, count }] } }`. Only deployments running today count (start date on or before today, end date on or after), so a person whose deployment has ended or not started falls in `none`. |
 
 A resource's total allocation is the sum of its live `resource_deployment`
 percentages. `buckets` always holds the same four keys in this order, with
@@ -149,7 +150,7 @@ percentages. `buckets` always holds the same four keys in this order, with
 |---|---|
 | `full` | total is exactly 100 |
 | `partial` | total is above 0 and below 100 |
-| `none` | no live deployment at all |
+| `none` | no live deployment running today (none at all, or only ones that have ended or not started) |
 | `over` | total is above 100. The allocation rule should make this impossible, so it is reported only so a broken rule cannot hide |
 
 Without a `position` filter, every live resource is in exactly one bucket. `positions` counts the
@@ -174,7 +175,7 @@ page. Code in `src/controlCenter.js` and `src/controlCenterRouter.js`.
 | Route | Returns |
 |---|---|
 | `GET /v1/control-center?month=YYYY-MM` | `{ data: { month, departments: [{ code, name, floorNumber, teams: [...] }] } }`, top floor first (highest `floorNumber`), one entry per live department. Each team carries `practiceCode` and `practiceName` (the practice of its main competency, or `null`), `assignmentEndDate` (the end date of the assignment covering today, or `null`), `allocatedTeamCost` (monthly USD, see below), its competencies, `memberCount`, `seatCount`, `vacantSeatCount`, `availableHours`, `allocatedHours`, `utilizedHours`, `vacantHours`, `utilizationPercent`, `monthCoveragePercent` and a `status`. Teams are sorted by practice code (teams with no practice last). Inside a practice: teams with a current assignment and no hours utilized come first, then teams with a current assignment and some utilization, then teams with no current assignment. The first two bands sort by assignment end date, earliest first, ties by team code. The last band sorts by team code. |
-| `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. Each person in a counted seat also carries `plannedResourceCost`, `actualResourceCost`, `allocatedResourceCost` and `costSource` (`Actual`, `Planned` or `Default`). The team also carries `allocatedTeamCost`, `locationMix` (`Onsite`, `Offshore`, `Hybrid` or `null`), `assignmentEndDate`, `defaultedCostCount` (people costed at the default rate), `projects` (at most one entry: the assignment covering today, with its `id`), `nextAssignment` (the earliest assignment starting after today, or an object of `null`s) and `monthlyPlan` (`{ months: [{ month, utilizationPercent, cost }], totalCost, truncated }`, from the start month to the end month of that assignment, cut at 120 months with `truncated: true`). 404 `team_not_found` for an unknown code. |
+| `GET /v1/control-center/teams/:code?month=YYYY-MM` | One team's detail: its department, projects, and every position with the person in it, their `allocationPercentage` and `availablePercentage` (100 minus all their live allocations). A vacant seat has `null` person and percentages. Only deployments running on the day the page looks at count: today when it falls in the month, else the month's first day. Each person in a counted seat also carries `plannedResourceCost`, `actualResourceCost`, `allocatedResourceCost` and `costSource` (`Actual`, `Planned` or `Default`). The team also carries `allocatedTeamCost`, `locationMix` (`Onsite`, `Offshore`, `Hybrid` or `null`), `assignmentEndDate`, `defaultedCostCount` (people costed at the default rate), `projects` (at most one entry: the assignment covering today, with its `id`), `nextAssignment` (the earliest assignment starting after today, or an object of `null`s) and `monthlyPlan` (`{ months: [{ month, utilizationPercent, cost }], totalCost, truncated }`, from the start month to the end month of that assignment, cut at 120 months with `truncated: true`). 404 `team_not_found` for an unknown code. |
 | `GET /v1/control-center/stream` | Server-sent events. Sends `retry: 5000`, then one `event: changed` (`data: {}`) per burst of writes to the tables below, and a `: keep-alive` comment every 25 s. |
 
 `month` defaults to the current UTC month. A value that is not `YYYY-MM`
@@ -197,7 +198,9 @@ Hour rules, all measured in the selected month:
   positions are never counted.
 - **Available hours** = seats x 160.
 - **Allocated hours** = for each seat with someone deployed, 160 scaled by the
-  deployment's `allocation_percentage` (a seat never exceeds 160).
+  deployment's `allocation_percentage` (a seat never exceeds 160). Only deployments
+  running on the day the page looks at count: today when it falls in the month, else
+  the month's first day (both the start date and the end date included).
 - **Utilized hours** = allocated hours x the share of the month's days that
   fall inside any of the team's project assignments (overlaps count once).
 - `status`: `unstaffed` (no allocated hours), `full` (utilized equals
@@ -343,7 +346,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0018_create_project_assignments.sql` | New table `project_assignments`, created directly with its full real shape in one migration (table starts empty). No `name`/`hasCode` — `project_id` (FK to `projects.project_id`, `fk_project_assignments_projects`, `ix_project_assignments_project_id` index) and `team_code` (FK to `teams.code`, `fk_project_assignments_teams`, `ix_project_assignments_team_code` index) are both pick-list-only references, the second table (after `resource_deployment`/0016) with two FK constraints at once. `project_assignment_start_date`/`project_assignment_end_date` are plain `date` columns with a DB-layer `CHECK (project_assignment_end_date >= project_assignment_start_date)` mirroring the app-layer cross-field validation as defense-in-depth. No `department_code` column — department fields are resolved entirely through the chained lookup via `teams.department_code`, so there's nothing to store for them here. |
 | `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
 | `0020_add_resource_deployment_allocation.sql` | `resource_deployment.allocation_percentage numeric(5,2) not null` with a `ck_resource_deployment_allocation_percentage` check (above 0, up to 100). Existing rows backfilled to 100; the default is dropped afterwards so new rows must state a percentage. |
-| `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule. The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
+| `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule (dropped by migration 0035, which replaced it with a rule per shared day). The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
 | `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
 | `0023_control_center_notify.sql` | `notify_control_center_changed()` plus a statement-level `trg_control_center_notify` trigger on `departments`, `teams`, `positions`, `competencies`, `resource_deployment`, `project_assignments`, `projects` and `resources`. Each insert, update or delete sends one `NOTIFY control_center_changed`, which the backend turns into the Control Center stream's `changed` event. Not applied automatically. |
 | `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `public` schema, because the backend's role cannot use the `extensions` schema), used by the list routes' fuzzy `?q=` search. |
@@ -354,6 +357,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0032_planned_resource_costs_limits.sql` | Check constraints matching the descriptor limits on `planned_resource_costs`: designation at most 100 characters, grade at most 20, each cost at most 1,000,000. |
 | `0033_add_competency_practice.sql` | `competencies.practice_code text not null`, backfilled for the 29 competencies from the owner's mapping, with the foreign key `fk_competencies_practices` to `practices.code` and the partial index `ix_competencies_practice_code`. Stops without changing anything if a competency is left unmapped. |
 | `0034_competencies_unique_name.sql` | The partial unique index `ux_competencies_name_live` on `competencies (name)` for live rows, because the Control Center and positions find a competency by name. The name carries the column so the API names the field on a clash. |
+| `0035_resource_deployment_dates.sql` | `start_date` and `end_date` on `resource_deployment`, filled for the existing rows with 2026-08-01 to 2027-03-31, then required, with a check that the end is not before the start. The unique index on resource and position is replaced by an exclusion constraint, so the same position may be held again later but not on a shared day. An index on the dates of live rows. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

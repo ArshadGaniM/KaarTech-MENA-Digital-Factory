@@ -2,10 +2,12 @@
 // is the sum of its live deployment percentages, and it falls in one bucket:
 //   full     exactly 100
 //   partial  above 0 and below 100
-//   none     no live deployment at all
+//   none     no deployment running today
 //   over     above 100, which the allocation rule should make impossible and
 //            which is reported only so a broken rule cannot hide
-// Soft-deleted resources and deployments are left out everywhere. A
+// Only deployments running today count (start date on or before today, end date
+// on or after): a person whose deployment has ended or not started is not
+// deployed, so they fall in "none". Soft-deleted resources and deployments are left out everywhere. A
 // soft-deleted position's name is never shown: a resource whose only live
 // deployment points at one still counts in its bucket (its total allocation
 // is unchanged) but appears under no position.
@@ -19,7 +21,7 @@ const PEOPLE = `
   with totals as (
     select employee_id, sum(allocation_percentage) as total
       from resource_deployment
-     where deleted_at is null
+     where deleted_at is null and start_date <= current_date and end_date >= current_date
      group by employee_id
   ),
   people as (
@@ -36,7 +38,7 @@ const PEOPLE = `
     select distinct rd.employee_id, p.name as position
       from resource_deployment rd
       join positions p on p.code = rd.position_code and p.deleted_at is null
-     where rd.deleted_at is null
+     where rd.deleted_at is null and rd.start_date <= current_date and rd.end_date >= current_date
   )`;
 
 // Each side is filtered by the other's pick and never by its own, so every

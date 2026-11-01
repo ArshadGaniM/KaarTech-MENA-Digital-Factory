@@ -254,6 +254,10 @@ export const MASTER_DATA_TABLES = [
     // (surfaced per row as employeeTotalAllocation so a short resource is
     // visible — rows are entered one at a time, so a hard "exactly 100"
     // check could never let the first row in).
+    // With dates (migration 0035) the total is checked on every day of the new
+    // row's period: only rows that share a day with it count, and the same
+    // position may not be held twice on one day. The list shows the total of
+    // the rows deployed today.
     allocationRule: {
       groupKey: "employeeId",
       groupColumn: "employee_id",
@@ -261,6 +265,8 @@ export const MASTER_DATA_TABLES = [
       uniqueColumn: "position_code",
       valueKey: "allocationPercentage",
       valueColumn: "allocation_percentage",
+      startColumn: "start_date",
+      endColumn: "end_date",
       total: 100,
     },
     // employeeName/positionName are NOT stored columns — they're live
@@ -318,6 +324,18 @@ export const MASTER_DATA_TABLES = [
         numeric: true,
         min: 0.01,
         max: 100,
+      },
+      // The person counts as deployed from startDate to endDate, both days
+      // included. After endDate they are back to TBD.
+      { key: "startDate", column: "start_date", required: true, type: "date" },
+      { key: "endDate", column: "end_date", required: true, type: "date" },
+    ],
+    crossFieldValidations: [
+      {
+        type: "dateRange",
+        startKey: "startDate",
+        endKey: "endDate",
+        message: "endDate must not be earlier than startDate.",
       },
     ],
   },

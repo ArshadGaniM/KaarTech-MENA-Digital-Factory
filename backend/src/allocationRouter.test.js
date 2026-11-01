@@ -229,3 +229,16 @@ test("GET /v1/allocation/summary shortens a very long unknown key in its error",
   assert.equal(Object.keys(body.error.details)[0].length, 50);
 });
 
+
+test("both queries count only deployments running today, so an ended or not yet started deployment is not deployed", async () => {
+  reset();
+
+  await fetch(`${baseUrl}/v1/allocation/summary`);
+
+  assert.equal(calls.length, 2);
+  for (const call of calls) {
+    // The total per person and the list of positions people are placed in.
+    assert.match(call.sql, /deleted_at is null and start_date <= current_date and end_date >= current_date/);
+    assert.match(call.sql, /rd\.deleted_at is null and rd\.start_date <= current_date and rd\.end_date >= current_date/);
+  }
+});
