@@ -43,3 +43,20 @@ button.tile { color: var(--color-text); text-align: left; cursor: pointer; }
 button.tile .tileLabel { color: var(--color-text); }
 button.tile[aria-pressed='true'] { outline: 2px solid var(--color-accent); }
 .center { display: flex; justify-content: center; overflow-x: auto; }
+.ganttWrap { overflow-x: auto; }
+.ganttAxis { position: relative; list-style: none; margin: 0 0 4px 190px; padding: 0; height: 18px; min-width: 520px; font-size: 11px; color: var(--color-text-muted); }
+.ganttAxis li { position: absolute; top: 0; white-space: nowrap; }
+.ganttRows { list-style: none; margin: 0; padding: 0; min-width: 710px; display: flex; flex-direction: column; gap: 6px; }
+.ganttRow { display: flex; align-items: center; gap: 10px; }
+.ganttLabel { width: 180px; flex: none; display: flex; flex-direction: column; min-width: 0; font-size: 12px; }
+.ganttLabel strong { font-weight: 600; overflow-wrap: anywhere; }
+.ganttLabel small { color: var(--color-text-muted); overflow-wrap: anywhere; }
+.ganttTrack { position: relative; flex: 1; height: 16px; min-width: 520px; background: var(--color-bg-alt); border-radius: 4px; }
+.ganttBar { position: absolute; top: 2px; bottom: 2px; background: var(--color-chart-5); border-radius: 3px; min-width: 3px; }
+
+.tileMap { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tileMap li { display: flex; }
+.tileMapCell { flex: 1; min-height: 64px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; text-align: left; border: 0; border-radius: 6px; padding: 8px 10px; color: var(--color-on-primary); font: inherit; font-size: 12px; cursor: pointer; overflow-wrap: anywhere; }
+.tileMapCell:disabled { cursor: default; }
+.tileMapCell strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.table th[scope='row'] { white-space: nowrap; }

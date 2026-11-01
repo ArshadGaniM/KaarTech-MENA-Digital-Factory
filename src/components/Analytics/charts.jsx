@@ -16,7 +16,6 @@ import {
   ScatterChart,
   SunburstChart,
   Tooltip,
-  Treemap,
   XAxis,
   YAxis,
   ZAxis,
@@ -26,6 +25,7 @@ import styles from './Analytics.module.css';
 
 
 const HEIGHT = 280;
+const shorten = (text) => (String(text).length > 24 ? `${String(text).slice(0, 23)}…` : text);
 const AXIS = { fontSize: 12, fill: 'var(--color-text-muted)' };
 const TOOLTIP = { contentStyle: { border: '1px solid var(--color-border)', borderRadius: 4, fontSize: 12 } };
 const seriesShape = PropTypes.arrayOf(PropTypes.shape({ key: PropTypes.string.isRequired, label: PropTypes.string.isRequired, color: PropTypes.string }));
@@ -40,9 +40,9 @@ export function BarsChart({ data, series = [{ key: 'value', label: 'Count' }], s
       <BarChart data={data} layout={sideways ? 'vertical' : 'horizontal'} margin={{ top: 8, right: 16, bottom: 8, left: sideways ? 8 : 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={!sideways} horizontal={sideways ? false : true} />
         {sideways ? <XAxis type="number" tick={AXIS} allowDecimals={false} /> : <XAxis dataKey="name" tick={AXIS} interval={0} angle={data.length > 4 ? -35 : 0} textAnchor={data.length > 4 ? 'end' : 'middle'} height={data.length > 4 ? 70 : 30} />}
-        {sideways ? <YAxis type="category" dataKey="name" tick={AXIS} width={150} interval={0} /> : <YAxis tick={AXIS} allowDecimals={false} />}
+        {sideways ? <YAxis type="category" dataKey="name" tick={AXIS} width={150} interval={0} tickFormatter={shorten} /> : <YAxis tick={AXIS} allowDecimals={false} />}
         <Tooltip {...TOOLTIP} />
-        {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
+        {series.length > 1 && <Legend verticalAlign="top" wrapperStyle={{ fontSize: 12 }} />}
         {series.map((item, seriesIndex) => (
           <Bar
             key={item.key}
@@ -104,45 +104,31 @@ DonutPie.propTypes = {
   centerLabel: PropTypes.string.isRequired,
 };
 
-function TreemapCell({ x, y, width, height, index, name, value, depth, activeName, onPick }) {
-  if (depth !== 1 || width < 2 || height < 2) return null;
-  const showName = width > 70 && height > 34;
+// Tiles sized by value, wrapping to rows. A click calls `onPick(name)`, and the
+// picked tile stays solid while the others fade.
+export function TileMap({ data, activeName = null, onPick }) {
   return (
-    <g onClick={onPick ? () => onPick(name) : undefined} style={{ cursor: onPick ? 'pointer' : 'default' }}>
-      <rect x={x} y={y} width={width} height={height} fill={colorAt(index)} fillOpacity={activeName === null || activeName === name ? 0.9 : 0.3} stroke="var(--color-bg)" strokeWidth={2} />
-      {showName && (
-        <text x={x + 6} y={y + 18} fontSize={12} fill="var(--color-on-primary)">
-          {name.length > Math.floor(width / 7) ? `${name.slice(0, Math.max(1, Math.floor(width / 7) - 1))}…` : name} ({value})
-        </text>
-      )}
-    </g>
+    <ul className={styles.tileMap}>
+      {data.filter((entry) => entry.value > 0).map((entry, index) => (
+        <li key={entry.name} style={{ flex: `${entry.value} 1 ${Math.max(90, Math.min(220, entry.value * 4))}px` }}>
+          <button
+            type="button"
+            className={styles.tileMapCell}
+            style={{ background: colorAt(index), opacity: activeName === null || activeName === entry.name ? 1 : 0.35 }}
+            aria-pressed={activeName === entry.name}
+            disabled={!onPick}
+            onClick={() => onPick(entry.name)}
+          >
+            <span>{entry.name}</span>
+            <strong>{entry.value}</strong>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-TreemapCell.propTypes = {
-  x: PropTypes.number,
-  y: PropTypes.number,
-  width: PropTypes.number,
-  height: PropTypes.number,
-  index: PropTypes.number,
-  name: PropTypes.string,
-  value: PropTypes.number,
-  depth: PropTypes.number,
-  activeName: PropTypes.string,
-  onPick: PropTypes.func,
-};
-
-export function TreemapChart({ data, activeName = null, onPick }) {
-  return (
-    <ResponsiveContainer width="100%" height={HEIGHT + 40}>
-      <Treemap data={data} dataKey="value" nameKey="name" isAnimationActive content={<TreemapCell activeName={activeName} onPick={onPick} />}>
-        <Tooltip {...TOOLTIP} />
-      </Treemap>
-    </ResponsiveContainer>
-  );
-}
-
-TreemapChart.propTypes = {
+TileMap.propTypes = {
   data: PropTypes.arrayOf(PropTypes.shape({ name: PropTypes.string.isRequired, value: PropTypes.number.isRequired })).isRequired,
   activeName: PropTypes.string,
   onPick: PropTypes.func,
@@ -232,7 +218,7 @@ SunburstView.propTypes = {
 
 // A grid of counts. It is a real table, so it reads the same to a screen
 // reader. The darker the cell, the larger the count.
-export function Heatmap({ rowNames, colNames, cell, rowLabel, onPick }) {
+export function Heatmap({ rowNames, colNames, colLabels = {}, cell, rowLabel, onPick }) {
   const max = Math.max(1, ...rowNames.flatMap((rowName) => colNames.map((colName) => cell(rowName, colName))));
   return (
     <div className={styles.tableWrap}>
@@ -243,7 +229,7 @@ export function Heatmap({ rowNames, colNames, cell, rowLabel, onPick }) {
             <th scope="col">{rowLabel}</th>
             {colNames.map((colName) => (
               <th key={colName} scope="col">
-                {colName}
+                {colLabels[colName] ?? colName}
               </th>
             ))}
           </tr>
@@ -277,6 +263,7 @@ export function Heatmap({ rowNames, colNames, cell, rowLabel, onPick }) {
 Heatmap.propTypes = {
   rowNames: PropTypes.arrayOf(PropTypes.string).isRequired,
   colNames: PropTypes.arrayOf(PropTypes.string).isRequired,
+  colLabels: PropTypes.objectOf(PropTypes.string),
   cell: PropTypes.func.isRequired,
   rowLabel: PropTypes.string.isRequired,
   onPick: PropTypes.func,

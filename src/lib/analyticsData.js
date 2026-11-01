@@ -1,3 +1,5 @@
+import { shiftMonth } from './months';
+
 // Pure helpers behind the analytics charts. They take plain rows and return
 // plain rows, so every chart can be checked without drawing anything.
 
@@ -175,3 +177,60 @@ export function seatTree(seats, metric, fillOf) {
     })
   );
 }
+
+// Teams are told apart by code, because two teams can share a name. A team
+// named after its own code shows the code once.
+export const teamLabel = (code, name) => (name === code || !name ? code : `${name} (${code})`);
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Days since 1970 in UTC. Only the first ten characters count, so a full timestamp works too.
+const dayNumber = (isoDate) => {
+  const [year, month, day] = isoDate.slice(0, 10).split('-').map(Number);
+  return Date.UTC(year, month - 1, day) / DAY_MS;
+};
+
+// The first and last day of a month, as ISO dates. Day 0 of the next month is the last day of this one.
+const monthStartDay = (month) => `${month}-01`;
+export const monthEndDay = (month) => {
+  const [year, number] = month.split('-').map(Number);
+  return new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10);
+};
+
+// Whole days from one ISO date to another, both ends counted.
+export const spanDays = (start, end) => dayNumber(end) - dayNumber(start) + 1;
+
+// Does the assignment cover at least one day of the month?
+export const overlapsMonth = (assignment, month) => assignment.start <= monthEndDay(month) && assignment.end >= monthStartDay(month);
+
+// The share of the month's days covered by at least one assignment, as a
+// percentage. Overlapping assignments count each day once.
+export function monthCoverage(assignments, month) {
+  const from = dayNumber(monthStartDay(month));
+  const to = dayNumber(monthEndDay(month));
+  const covered = new Set();
+  for (const assignment of assignments) {
+    const start = Math.max(from, dayNumber(assignment.start));
+    const end = Math.min(to, dayNumber(assignment.end));
+    for (let day = start; day <= end; day += 1) covered.add(day);
+  }
+  return percent(covered.size, to - from + 1);
+}
+
+// Months from `from` to `to`, both included, as YYYY-MM.
+export function monthsFromTo(from, to) {
+  const months = [];
+  let [year, number] = from.split('-').map(Number);
+  const [endYear, endNumber] = to.split('-').map(Number);
+  while (year < endYear || (year === endYear && number <= endNumber)) {
+    months.push(`${year}-${String(number).padStart(2, '0')}`);
+    number += 1;
+    if (number > 12) {
+      number = 1;
+      year += 1;
+    }
+  }
+  return months;
+}
+
+// The months a range slicer offers: the 12 before `base` and the 12 from it on.
+export const monthChoices = (base) => Array.from({ length: 24 }, (_, i) => shiftMonth(base, i - 11)).map((month) => ({ value: month, label: monthLabel(month) }));

@@ -6,6 +6,8 @@
 //    deployments running today.
 //  - seats: one row per counted seat (Consultant or Lead Consultant) per
 //    month, using the Control Center's hour rules.
+//  - structure, catalog and assignments: the teams, departments, practices and
+//    project assignments behind the Structure and Projects tabs.
 import { COUNTED_POSITIONS, HOURS_PER_PERSON, competenciesOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, seatHours } from "./controlCenter.js";
 
 export const MAX_MONTHS = 24;
@@ -106,3 +108,88 @@ export function buildSeats({ departments, teams, positions, deployments, assignm
     });
   });
 }
+
+// One row per live position, with where it sits and whether someone is deployed
+// to it today. The team's practice is added by buildStructure.
+export const STRUCTURE_SQL = `
+  select d.name as "departmentName", d.floor_number as "floorNumber",
+         t.code as "teamCode", t.name as "teamName", p.name as "positionName", p.competencies,
+         exists (
+           select 1 from resource_deployment rd
+            where rd.position_code = p.code and rd.deleted_at is null
+              and rd.start_date <= current_date and rd.end_date >= current_date
+         ) as filled
+    from positions p
+    join teams t on t.code = p.team_code and t.deleted_at is null
+    left join departments d on d.code = t.department_code and d.deleted_at is null
+   where p.deleted_at is null
+   order by t.code, p.code`;
+
+// Which practice each competency belongs to. A competency whose practice is
+// deleted keeps its row, with no practice.
+export const COMPETENCY_PRACTICE_SQL = `
+  select c.name, p.name as "practiceName"
+    from competencies c
+    left join practices p on p.code = c.practice_code and p.deleted_at is null
+   where c.deleted_at is null`;
+
+const splitNames = (text) =>
+  (text ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+// A team's practice is its main competency's practice, as in the Control Center.
+export function buildStructure(positions, competencyRows) {
+  const practiceByCompetency = new Map(competencyRows.map((c) => [c.name, c.practiceName]));
+  const practiceByTeam = new Map(
+    [...indexBy(positions, "teamCode")].map(([teamCode, rows]) => [teamCode, practiceByCompetency.get(competenciesOf(rows).primary) ?? null])
+  );
+  return positions.map(({ competencies, ...position }) => ({
+    ...position,
+    practiceName: practiceByTeam.get(position.teamCode),
+    competencies: splitNames(competencies),
+  }));
+}
+
+// Competencies, modules, departments, practices and teams as one list, told
+// apart by `kind`, so the page loads its reference data in one request. Teams
+// are here as well as in the structure rows because a team with no position has
+// no structure row, yet it still has no project to show.
+export const CATALOG_SQL = `
+  select 'competency' as kind, c.name, p.name as "practiceName", null::int as "floorNumber", null::text as input, null::text as output,
+         null::text as "teamCode", null::text as "departmentName"
+    from competencies c
+    left join practices p on p.code = c.practice_code and p.deleted_at is null
+   where c.deleted_at is null
+  union all
+  select 'module', m.name, p.name, null, null, null, null, null
+    from modules m
+    left join practices p on p.id::text = m.practice_id::text and p.deleted_at is null
+   where m.deleted_at is null
+  union all
+  select 'department', d.name, null, d.floor_number, d.input, d.output, null, null
+    from departments d where d.deleted_at is null
+  union all
+  select 'practice', p.name, null, null, null, null, null, null
+    from practices p where p.deleted_at is null
+  union all
+  select 'team', t.name, null, null, null, null, t.code, d.name
+    from teams t
+    left join departments d on d.code = t.department_code and d.deleted_at is null
+   where t.deleted_at is null
+  order by 1, 2`;
+
+// An assignment of a deleted team is left out, as the structure rows leave out
+// that team. A deleted department or project stays as a missing part, shown as Not set.
+export const ASSIGNMENTS_SQL = `
+  select pa.team_code as "teamCode", t.name as "teamName", d.name as "departmentName",
+         pa.project_id as "projectId", p.project_name as "projectName",
+         p.project_profit_center_code as "profitCenter",
+         pa.project_assignment_start_date::text as start, pa.project_assignment_end_date::text as "end"
+    from project_assignments pa
+    left join teams t on t.code = pa.team_code and t.deleted_at is null
+    left join departments d on d.code = t.department_code and d.deleted_at is null
+    left join projects p on p.project_id = pa.project_id and p.deleted_at is null
+   where pa.deleted_at is null and t.code is not null
+   order by pa.project_assignment_start_date, pa.team_code`;
