@@ -1,47 +1,51 @@
-# Gate Report: Organization Structure redesign and stable list order
+# Gate report: FEAT-42, Organization Structure tree view
 
-**Verdict: WARN** (zero FAIL, zero Critical.)
+Verdict: PASS with WARN items
 
-**Branch:** `feat/org-structure-redesign` to `main`. Main was merged into the branch before the gate and again before this push.
-**Scope:** `git diff origin/main..HEAD`, 17 files.
-- Backend: `backend/src/masterDataRouter.js` adds `id` as the last sort key of every list route, with a test. Before this, 324 positions named "Consultant" tied on the sort key, so pages of 100 overlapped and dropped rows (338 distinct of 529 live positions). The Organization Structure page showed wrong seat counts per manager. Checked on the live data: after the change all rows come back, none repeated.
-- Frontend: the Organization Structure page is redesigned. It has a Delivery Manager band, a seat share bar, five Project Manager cards, department tiles with a practice mix bar, a department search and a slide-over drawer with practices, shared Module Leads and team cards with filled and empty seats. Practice colours are tokens in `src/index.css`. `TreeNode.jsx` is removed.
-- `backend/README.md` documents the sort order.
+Branch `claude/dreamy-knuth-76pnsa`, diff `origin/main..HEAD`. Main was already an ancestor, so no merge was needed. Frontend only: no route, migration or environment variable.
 
-**Checks:** frontend 665/665 and backend 467/467 pass. Lint is clean on the changed files. The production build works. I looked at the page in a browser with realistic data on desktop (1440 px) and phone (400 px): no horizontal overflow.
-One test from main (`Analytics.test.jsx`, "asks for a range of months around the current one") failed once under load and passed on 3 reruns. Not caused by this change.
+## What changed
 
-| Agent | Verdict |
-|---|---|
-| code-reviewer | WARN |
-| security-auditor | PASS |
-| debugger | PASS |
-| test-writer | WARN (85% or more per file, estimated, no coverage tool installed) |
-| refactorer | WARN |
-| doc-writer | WARN |
-| silent-failure-hunter | WARN (low) |
-| pr-test-analyzer | WARN |
+- A Cards and Tree switch at the top of the Organization Structure page. Cards is unchanged in behaviour.
+- The page content sits in a centred column (1120px) with margins.
+- The tree shows the Delivery Manager, the five Project Managers, then for the picked manager its departments, practices, Module Leads and teams. It reads the same grouping the page already builds, so "No practice" and an unfilled Module Lead (TBD) come out as before. Each department has an Open link to the existing drawer.
 
-All findings were confirmed by direct reads. No agent claimed a missing file, so nothing was relabelled as hallucinated.
+## Agents
 
-## Fixed in this push
+| Agent | Result | Notes |
+|---|---|---|
+| code-reviewer | WARN, 0 Critical | Fixed: `aria-controls` only while open, counts kept on phones, long names wrap, re-picking the same manager keeps the open rows, `Toggle` split into its own file |
+| security-auditor | PASS | No findings. Names are React text, the only style value is a practice token from a fixed list, no new network call |
+| debugger | PASS | No crash path. Empty lists cannot reach the tree because the builder drops them |
+| test-writer | PASS | About 77 percent of branches before the extra tests, estimated. The remaining gaps are unreachable branches |
+| refactorer | WARN, 0 Critical | Fixed: shared `initialsOf`, dead class reference, duplicated CSS selectors |
+| doc-writer | PASS | No doc describes the page layout. Queue row and counter are right |
+| silent-failure-hunter | WARN | Fixed: a deployed Module Lead's avatar read "TBD", which made a filled seat look vacant |
+| pr-test-analyzer | WARN | Added tests: team filled styling, practice colour, keyboard use, avatar initials, practice toggle, aria-controls, refresh keeps open state, picked manager disappears |
 
-- The open drawer was `aria-modal` but Tab could leave it. Tab now wraps inside the drawer. Tested.
-- The backdrop is a real labelled button, so tests find it by role and not by CSS class. Focus returns to the tile after Close, Escape and the backdrop. Tested.
-- A deployment with no employee counted as a filled seat but not as a Module Lead. It no longer counts as filled anywhere. Tested.
-- Singular and plural wording ("1 team", "1 seat") now uses one shared helper.
-- `README` sort-order sentence, why-comments, and a description of the `buildOrgStructure` result shape.
-- `DepartmentDrawer` props now describe the practices and leads they use.
-- New tests: search by any case and whitespace only, singular wording, loading message, Tab trap.
+Two agents found the same real bug (the TBD avatar on a filled lead). It is fixed and a mutation check confirms the new test fails without the fix.
 
-## Open, not blocking
+Subagent verification rule (CLAUDE.md section 8): one agent reported uncommitted edits in the working tree. That was true while fixes were in progress (CONFIRMED) and is resolved by the commit before this report.
 
-- [ ] The page reloads six whole tables on every change event and every 30 seconds per open tab. Same pattern as the Control Center.
-- [ ] The live-refresh code is copied from the Control Center hook. A shared helper would remove about 30 lines.
-- [ ] A live team whose department is deleted is not shown, and no warning appears.
-- [ ] A department code in `odcLeadership.js` with no live department is skipped silently.
-- [ ] A selected manager or open drawer comes back by itself if its target disappears and returns on a later refresh.
-- [ ] `Map.groupBy` needs Chrome 117, Safari 17.4 or Firefox 119.
-- [ ] Test gaps: the unnamed "Unassigned" manager card, the search-ranking variant of the list ordering, and `practiceColor` out-of-range input have no direct test.
-- [ ] The manager seat bar and the manager cards are two sets of controls for one choice, so keyboard users tab past each choice twice.
-- [ ] The Render backend must deploy before the page shows correct seat counts. The Vercel frontend deploys by itself.
+## Checks run
+
+- Frontend: 70 files, 678 tests pass
+- Backend: 467 tests pass
+- Build: clean
+- Lint: no warnings in the changed files
+- Mutation checks: pick reset, default open, view switch, department collapse and the avatar fix each fail a test when reverted
+- Browser check: the real component rendered in Chromium with live data in both views, no console errors
+
+## Remaining WARN items (not blocking)
+
+- [ ] Tab switching: the tree's open rows reset when you switch to Cards and back
+- [ ] An open department drawer stays open if its department disappears and then reappears on a later refresh (already in main, affects Cards too)
+- [ ] If the picked manager disappears on refresh, the page falls back to the first manager without saying so (already in main)
+- [ ] `LeaderBand` is not re-indented inside its new `view === 'cards'` wrapper (formatting only)
+- [ ] Frontend coverage is estimated, not measured. No coverage provider is installed
+- [ ] `tasks/pipeline-queue.md` still carries an old "queue is empty" sentence in its header
+
+## Notes for the owner
+
+- The mockup you approved is what was built. Names stay TBD until you give them.
+- Round 2 of the analytics work (Structure and Projects tabs) is set aside on this branch by a revert and resumes after this merge.

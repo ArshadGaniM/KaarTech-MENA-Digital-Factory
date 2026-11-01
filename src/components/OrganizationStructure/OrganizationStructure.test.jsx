@@ -342,4 +342,30 @@ describe('OrganizationStructure tree view', () => {
 
     expect(department).not.toHaveAttribute('aria-controls');
   });
+
+  it('marks a team with someone deployed differently from an empty one, and colours each practice', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+
+    expect(screen.getByText('TEAM-001').closest('li').className).toMatch(/treeTeamFilled/);
+    expect(screen.getByText('TEAM-002').closest('li').className).not.toMatch(/treeTeamFilled/);
+    expect(screen.getByRole('button', { name: /Practice Finance/ }).querySelector('i')).toHaveStyle({ background: 'var(--color-practice-1)' });
+    expect(screen.getByRole('button', { name: /Practice No practice/ }).querySelector('i')).toHaveStyle({ background: 'var(--color-practice-none)' });
+  });
+
+  it('opens and closes a department from the keyboard and keeps focus on it', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const department = screen.getByRole('button', { name: /Department Configuration Services/ });
+    department.focus();
+
+    await user.keyboard('{Enter}');
+    expect(department).toHaveAttribute('aria-expanded', 'false');
+    expect(department).toHaveFocus();
+
+    await user.keyboard(' ');
+    expect(department).toHaveAttribute('aria-expanded', 'true');
+    expect(department).toHaveFocus();
+  });
 });
+
