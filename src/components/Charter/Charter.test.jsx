@@ -26,7 +26,100 @@ describe('Charter', () => {
 
     expect(screen.getByRole('tab', { name: /Stakeholder Matrix/ })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('table', { name: 'Stakeholder matrix' })).toBeInTheDocument();
-    expect(screen.getByText('BU / Operations / Sales Director')).toBeInTheDocument();
+  });
+
+  it('lists 30 stakeholders with name, designation and initiative role, in the owner\'s order', async () => {
+    const user = userEvent.setup();
+    render(<Charter />);
+
+    await user.click(screen.getByRole('tab', { name: /Stakeholder Matrix/ }));
+    const table = screen.getByRole('table', { name: 'Stakeholder matrix' });
+    const rows = within(table).getAllByRole('row');
+
+    expect(within(rows[0]).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Name', 'Designation', 'Initiative role']);
+    expect(rows).toHaveLength(1 + 30);
+    const cells = (row) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
+    expect(cells(rows[1])).toEqual(['Irfan Ahmed', 'COO MENA', 'Initiative Sponsor']);
+    expect(cells(rows[2])).toEqual(['Arshad Gani M', 'Delivery Manager - Onsite, Platinum, MENA', 'Initiative Owner']);
+    expect(cells(rows[18])).toEqual(['Faizan R', 'Group Project Manager, Managed Services Projects, Platinum, MENA', 'Initiative Track Owner (Managed Services Projects)']);
+  });
+
+  it('gives each person the role the owner named', async () => {
+    const user = userEvent.setup();
+    render(<Charter />);
+
+    await user.click(screen.getByRole('tab', { name: /Stakeholder Matrix/ }));
+    const table = screen.getByRole('table', { name: 'Stakeholder matrix' });
+    const roleOf = (name) => within(within(table).getByRole('cell', { name }).closest('tr')).getAllByRole('cell')[2].textContent;
+
+    expect(roleOf('Mohammed Ibrahim S')).toBe('Initiative Co-owner');
+    expect(roleOf('Srinivasan R')).toBe('Initiative Co-owner');
+    expect(roleOf('Rushikesh Subhash Nikam')).toBe('Initiative Track Owner (Development & Enhancement Projects)');
+    expect(roleOf('Surya M')).toBe('Initiative Track Owner (SAP Implementation & Rollout Projects)');
+    expect(roleOf('Dinesh V')).toBe('Initiative Member');
+    expect(roleOf('Shravan Balaji')).toBe('Initiative Member');
+  });
+
+  it('adds twelve empty track co-owner rows, one per vertical under each track', async () => {
+    const user = userEvent.setup();
+    render(<Charter />);
+
+    await user.click(screen.getByRole('tab', { name: /Stakeholder Matrix/ }));
+    const table = screen.getByRole('table', { name: 'Stakeholder matrix' });
+    const open = within(table).getAllByRole('row').filter((row) => row.textContent.includes('Initiative Track Co-owner'));
+
+    expect(open).toHaveLength(12);
+    for (const row of open) expect(within(row).getAllByRole('cell')[0]).toBeEmptyDOMElement();
+    expect(open[0]).toHaveTextContent('PlatinumInitiative Track Co-owner (Development & Enhancement Projects)');
+    expect(open[11]).toHaveTextContent('A&DInitiative Track Co-owner (Managed Services Projects)');
+  });
+
+  it('shows the initiative owner and co-owners in the overview, beside the locked plan owner', () => {
+    render(<Charter />);
+
+    const glance = screen.getByRole('table', { name: 'Initiative at a glance' });
+    expect(within(glance).getByText('BU / Operations / Sales Director')).toBeInTheDocument();
+    expect(within(within(glance).getByText('Initiative owner').closest('tr')).getAllByRole('cell')[1]).toHaveTextContent('Arshad Gani M');
+    expect(within(within(glance).getByText('Initiative co-owners').closest('tr')).getAllByRole('cell')[1]).toHaveTextContent('Mohammed Ibrahim S, Srinivasan R');
+    expect(within(glance).queryByText(/Irfan/)).not.toBeInTheDocument();
+  });
+
+  it('draws the org structure right after the stakeholder matrix, without the members', async () => {
+    const user = userEvent.setup();
+    render(<Charter />);
+    const titles = SECTIONS.map((section) => section.title);
+    expect(titles.indexOf('Initiative Org Structure')).toBe(titles.indexOf('Stakeholder Matrix') + 1);
+
+    await user.click(screen.getByRole('tab', { name: /Initiative Org Structure/ }));
+    const chart = screen.getByRole('region', { name: 'Initiative org structure diagram' });
+
+    for (const name of ['Irfan Ahmed', 'Arshad Gani M', 'Mohammed Ibrahim S', 'Srinivasan R', 'Rushikesh Subhash Nikam', 'Surya M', 'Faizan R']) {
+      expect(within(chart).getByText(name)).toBeInTheDocument();
+    }
+    expect(within(chart).queryByText('Dinesh V')).not.toBeInTheDocument();
+    expect(within(chart).queryByText('Initiative Member')).not.toBeInTheDocument();
+    expect(within(chart).getAllByText('Initiative Track Co-owner')).toHaveLength(12);
+  });
+
+  it('nests the org structure: sponsor, then owner and co-owners, then track owners, then their four co-owner seats', async () => {
+    const user = userEvent.setup();
+    render(<Charter />);
+
+    await user.click(screen.getByRole('tab', { name: /Initiative Org Structure/ }));
+    const chart = screen.getByRole('region', { name: 'Initiative org structure diagram' });
+    const itemOf = (name) => within(chart).getByText(name).closest('li');
+
+    expect(within(itemOf('Irfan Ahmed')).getByText('Arshad Gani M')).toBeInTheDocument();
+    expect(within(itemOf('Irfan Ahmed')).getByText('Srinivasan R')).toBeInTheDocument();
+    expect(within(itemOf('Arshad Gani M')).getByText('Surya M')).toBeInTheDocument();
+    expect(within(itemOf('Arshad Gani M')).queryByText('Srinivasan R')).not.toBeInTheDocument();
+    const faizan = within(chart).getByRole('list', { name: 'Co-owners of Managed Services Projects' });
+    expect(within(faizan).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'PlatinumInitiative Track Co-owner',
+      'ServicesInitiative Track Co-owner',
+      'EOGInitiative Track Co-owner',
+      'A&DInitiative Track Co-owner',
+    ]);
   });
 
   it('shows the locked plan, read-only, under the Initiative Plan heading', async () => {

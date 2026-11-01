@@ -219,21 +219,26 @@ function teamHours({ teamPositions, deploymentsByPosition, teamAssignments, wind
   };
 }
 
+// A team with no live assignment is not allocated and goes last in its practice.
+// An allocated team with no hours utilized comes first, then the rest.
+function allocationRank(team) {
+  if (team.assignmentEndDate === null) return 2;
+  return team.utilizedHours === 0 ? 0 : 1;
+}
+
 // Teams are laid out by practice, in practice code order, with teams that have
-// no practice last. Inside a practice the team that becomes free soonest comes
-// first: a team with no current assignment is free now, so it leads, then the
-// rest by assignment end date, ties by team code.
-function byPracticeThenEndDate(a, b) {
+// no practice last. Inside a practice: allocated teams with nothing utilized,
+// then allocated teams with some utilization, then teams with no live
+// assignment. Each band sorts by assignment end date, then team code.
+function byPracticeThenAllocation(a, b) {
   if (a.practiceCode !== b.practiceCode) {
     if (a.practiceCode === null) return 1;
     if (b.practiceCode === null) return -1;
     return a.practiceCode.localeCompare(b.practiceCode);
   }
-  if (a.assignmentEndDate !== b.assignmentEndDate) {
-    if (a.assignmentEndDate === null) return -1;
-    if (b.assignmentEndDate === null) return 1;
-    return a.assignmentEndDate.localeCompare(b.assignmentEndDate);
-  }
+  const rankDiff = allocationRank(a) - allocationRank(b);
+  if (rankDiff !== 0) return rankDiff;
+  if (a.assignmentEndDate !== b.assignmentEndDate) return a.assignmentEndDate.localeCompare(b.assignmentEndDate);
   return a.code.localeCompare(b.code);
 }
 
@@ -287,8 +292,8 @@ export function buildControlCenter({ departments, teams, positions, deployments,
         floorNumber: department.floorNumber,
         teams: (teamsByDepartment.get(department.code) ?? [])
           .map(buildTeam)
-          // Grouped by practice, the team that becomes free soonest first.
-          .sort(byPracticeThenEndDate),
+          // Grouped by practice, then by allocation band.
+          .sort(byPracticeThenAllocation),
       })),
   };
 }

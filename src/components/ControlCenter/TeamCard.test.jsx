@@ -38,12 +38,35 @@ describe('TeamCard', () => {
     expect(card).toHaveTextContent('100%');
   });
 
-  it('shows three competencies and counts the rest', () => {
+  it('keeps the competencies on one line and counts the rest', () => {
     renderCard();
     expect(screen.getByText('FICO')).toBeInTheDocument();
-    expect(screen.getByText('SD')).toBeInTheDocument();
+    expect(screen.getByText('MM')).toBeInTheDocument();
     expect(screen.queryByText('PP')).not.toBeInTheDocument();
-    expect(screen.getByText('+2')).toBeInTheDocument();
+    expect(screen.getByText('+3')).toBeInTheDocument();
+  });
+
+  it('lists every competency in a tooltip the card points to, so it shows on hover and keyboard focus', () => {
+    renderCard();
+    const card = screen.getByRole('button', { name: /Gamma, TEAM-007/ });
+    const tip = screen.getByRole('tooltip');
+    expect(tip).toHaveTextContent('FICO, MM, SD, PP, QM');
+    expect(card).toHaveAttribute('aria-describedby', tip.id);
+  });
+
+  it('shows every competency and no "+N" or tooltip when they all fit', () => {
+    renderCard({ ...base, competencies: ['FICO', 'MM'] });
+    expect(screen.getByText('FICO')).toBeInTheDocument();
+    expect(screen.getByText('MM')).toBeInTheDocument();
+    expect(screen.queryByText(/^\+\d/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gamma, TEAM-007/ })).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('always shows at least the first competency, even a long one, and counts the rest', () => {
+    renderCard({ ...base, competencies: ['A very long competency name indeed', 'MM'] });
+    expect(screen.getByText('A very long competency name indeed')).toBeInTheDocument();
+    expect(screen.getByText('+1')).toBeInTheDocument();
   });
 
   it('says so when a team has no competency', () => {

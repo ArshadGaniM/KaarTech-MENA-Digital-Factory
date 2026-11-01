@@ -385,7 +385,8 @@ const practiceData = {
   departments: [{ code: "D", name: "Dept", floorNumber: 1 }],
   teams: teamPlan.map(([code]) => ({ code, name: code, departmentCode: "D" })),
   positions: teamPlan.flatMap(([code, competency], i) => (competency ? [{ code: `P-${i}`, name: "Consultant", teamCode: code, competencies: competency }] : [])),
-  deployments: [],
+  // Only TEAM-A (seat P-0) has someone deployed, so it is the only utilized team.
+  deployments: [{ employeeId: 1, employeeName: "Person", positionCode: "P-0", allocationPercentage: 100 }],
   assignments: teamPlan.filter(([, , end]) => end).map(([code, , end]) => ({ id: code, teamCode: code, projectId: "P", start: "2026-01-01", end })),
   month,
   today: "2026-11-15",
@@ -404,22 +405,40 @@ test("a team takes the practice of its main competency, or none when it has no c
   assert.equal(by("TEAM-H").practiceCode, null);
 });
 
-test("teams are ordered by practice code, no practice last, and inside a practice free teams first then the earliest end date", () => {
-  // The assignment of TEAM-G (ends 10 Nov, before today) is over, so it is free now too.
-  assert.deepEqual(floorOrder(), ["TEAM-C", "TEAM-B", "TEAM-A", "TEAM-D", "TEAM-F", "TEAM-E", "TEAM-G", "TEAM-H"]);
+test("teams are ordered by practice code, no practice last, and inside a practice by allocation band", () => {
+  // Finance: B (allocated, nothing utilized), A (allocated, utilized), C (no assignment).
+  // TEAM-G's assignment ended before today, so it counts as no assignment.
+  assert.deepEqual(floorOrder(), ["TEAM-B", "TEAM-A", "TEAM-C", "TEAM-D", "TEAM-E", "TEAM-F", "TEAM-G", "TEAM-H"]);
 });
 
-test("a team whose assignment has ended is free now and leads its practice", () => {
+test("an allocated team with nothing utilized comes before an allocated team that is utilized, whatever their end dates", () => {
+  // TEAM-A ends later than TEAM-B and is utilized, so it must follow TEAM-B.
+  // Moving TEAM-A's end date earlier changes nothing: the band decides first.
+  const data = { ...practiceData, assignments: practiceData.assignments.map((a) => (a.teamCode === "TEAM-A" ? { ...a, end: "2026-11-16" } : a)) };
+  const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(finance, ["TEAM-B", "TEAM-A", "TEAM-C"]);
+});
+
+test("a team whose assignment has ended counts as unallocated and falls to the end of its practice", () => {
   const teams = buildControlCenter({ ...practiceData, today: "2026-12-10" }).departments[0].teams;
   const finance = teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
-  // A, B and C are all free by 10 December, so they fall back to team code order.
+  // A, B and C all have no current assignment on 10 December, so they sort by team code.
   assert.deepEqual(finance, ["TEAM-A", "TEAM-B", "TEAM-C"]);
 });
 
 test("ties on the end date break by team code", () => {
   const data = { ...practiceData, assignments: practiceData.assignments.map((a) => (["TEAM-A", "TEAM-B"].includes(a.teamCode) ? { ...a, end: "2026-12-05" } : a)) };
   const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
-  assert.deepEqual(finance, ["TEAM-C", "TEAM-A", "TEAM-B"]);
+  // Same end date, but B has nothing utilized, so it still leads A. Make both unutilized to reach the tie.
+  assert.deepEqual(finance, ["TEAM-B", "TEAM-A", "TEAM-C"]);
+  const noDeployments = buildControlCenter({ ...data, deployments: [] }).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(noDeployments, ["TEAM-A", "TEAM-B", "TEAM-C"]);
+});
+
+test("teams with no live assignment sort by team code at the end of their practice", () => {
+  const data = { ...practiceData, assignments: [] };
+  const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(finance, ["TEAM-A", "TEAM-B", "TEAM-C"]);
 });
 
 test("a team with several competencies takes the practice of the one used by most of its positions, ties by name", () => {
