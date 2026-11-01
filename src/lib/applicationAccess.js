@@ -7,7 +7,6 @@
 const ACCESS_HASHES = [
   '703b6e248758e6f15b02ce145f950fa5d88bfcf427471338ab270fc3fa674265',
 ];
-const STORAGE_KEY = 'application-unlocked';
 
 function normalise(text) {
   return text.toLowerCase().replace(/\s+/g, '');
@@ -24,21 +23,4 @@ async function sha256Hex(text) {
 
 export async function isApplicationPassphrase(text) {
   return ACCESS_HASHES.includes(await sha256Hex(normalise(text)));
-}
-
-// Unlocked for this browser tab only: closing the tab locks the application again.
-export function readApplicationUnlocked() {
-  try {
-    return window.sessionStorage.getItem(STORAGE_KEY) === 'yes';
-  } catch {
-    return false;
-  }
-}
-
-export function writeApplicationUnlocked() {
-  try {
-    window.sessionStorage.setItem(STORAGE_KEY, 'yes');
-  } catch {
-    // Storage can be blocked. The application still opens for this page view.
-  }
 }

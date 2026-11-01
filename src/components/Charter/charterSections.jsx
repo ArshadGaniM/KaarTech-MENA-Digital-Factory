@@ -2,6 +2,8 @@ import InitiativePlan from '../InitiativePlan';
 import { NAV_ITEMS } from '../../lib/navigation';
 import { PLAN_GROUPS, PLAN_OWNER, PLAN_WEEK_COUNT } from '../../data/initiativePlan';
 import { weekEnd, weekStart } from '../../lib/initiativePlanCalendar';
+import { STAKEHOLDERS, ROLE, roleLabel, withRole } from '../../data/stakeholders';
+import OrgChart from './OrgChart';
 import styles from './Charter.module.css';
 
 // Everything below is derived from three sources: the locked initiative plan
@@ -62,6 +64,8 @@ function Overview() {
         head={['Item', 'Detail']}
         rows={[
           ['Plan owner', PLAN_OWNER.label],
+          ['Initiative owner', withRole(ROLE.owner).map((entry) => entry.name).join(', ')],
+          ['Initiative co-owners', withRole(ROLE.coOwner).map((entry) => entry.name).join(', ')],
           ['Start', dateText(weekStart(1))],
           ['Finish', `${dateText(last)} (Week ${PLAN_WEEK_COUNT})`],
           ['Streams', String(PLAN_GROUPS.length)],
@@ -154,21 +158,26 @@ function Stakeholders() {
   return (
     <>
       <p>
-        These are the parties the plan itself names or depends on. Names are for the owner to fill in.
+        The people who run the initiative, with their designation and their role in it. Open rows are seats
+        still to be filled.
       </p>
       <Table
         caption="Stakeholder matrix"
-        head={['Stakeholder', 'Role in the initiative', 'Plan steps', 'Named person']}
-        rows={[
-          [PLAN_OWNER.label, 'Owns the initiative plan', 'All', TBC],
-          ['Account teams', 'Provide the existing account pools that staff the delivery center', 'a', TBC],
-          ['Workstream team leads', 'Lead one small team each, appointed per workstream', 'c', TBC],
-          ['Network and security owners', 'Set up zero trust connectivity and test VPN rerouting from KSA to India', 'd', TBC],
-          ['Delivery center teams', 'Khobar, Riyadh, Chennai and Bangalore run the projects under the revised structure', 'e', TBC],
-          ['Other BUs or verticals', 'Provide two pilot projects to test the model', 'h', TBC],
-          ['KaarTech customers', 'Receive delivery from the factory on their projects', 'e', TBC],
-        ]}
+        head={['Name', 'Designation', 'Initiative role']}
+        rows={STAKEHOLDERS.map((entry) => [entry.name, entry.designation, roleLabel(entry)])}
       />
+    </>
+  );
+}
+
+function OrgStructure() {
+  return (
+    <>
+      <p>
+        Who reports to whom in the initiative. Initiative members are listed in the Stakeholder Matrix and are
+        not drawn here.
+      </p>
+      <OrgChart />
     </>
   );
 }
@@ -268,6 +277,7 @@ export const SECTIONS = [
   { id: 'initiative-plan', title: 'Initiative Plan', Panel: InitiativePlanPanel },
   { id: 'execution-approach', title: 'Execution Approach', Panel: ExecutionApproach },
   { id: 'stakeholders', title: 'Stakeholder Matrix', Panel: Stakeholders },
+  { id: 'org-structure', title: 'Initiative Org Structure', Panel: OrgStructure },
   { id: 'governance', title: 'Governance and KPIs', Panel: Governance },
   { id: 'deliverables', title: 'Deliverables and Milestones', Panel: Deliverables },
   { id: 'resources', title: 'Resources and Team Setup', Panel: Resources },

@@ -27,7 +27,6 @@ function FactoryFloor({ name, level, order, teams, onOpenTeam }) {
         )}
         <h3 className={styles.floorName}>{name}</h3>
         <span className={styles.floorCount}>{teams.length} {teams.length === 1 ? 'team' : 'teams'}</span>
-        <span className={styles.conveyor} aria-hidden="true" />
       </div>
       <div className={styles.floorBody}>
         {teams.length === 0 ? (
