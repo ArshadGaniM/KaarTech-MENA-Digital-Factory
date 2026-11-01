@@ -37,7 +37,18 @@ export const MASTER_DATA_TABLES = [
     slug: "competency",
     route: "competencies",
     label: "Competency",
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    // practiceName is NOT writable here: a live lookup of the practice's name.
+    fields: [
+      { key: "name", label: "name", required: true, type: "string" },
+      {
+        key: "practiceId",
+        label:
+          "practice ID (for example PRAC-007) — must match an existing practice's own auto-generated code; " +
+          "required, and the backend rejects the request if no such practice exists",
+        required: true,
+        type: "string",
+      },
+    ],
   },
   {
     slug: "module",

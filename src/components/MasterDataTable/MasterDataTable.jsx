@@ -24,7 +24,9 @@ function formatCell(column, value) {
   return value;
 }
 
-function MasterDataTable({ route, columns, singularLabel }) {
+// `formLabels` overrides the Add/Edit form labels where a field's table column shows
+// something else (the competency's Practice column shows a name, its form field is the ID).
+function MasterDataTable({ route, columns, singularLabel, formLabels = {} }) {
   // FEAT-24: `searchText` is what the box shows; `searchTerm` is what has been
   // sent to the backend once typing paused. Switching table clears both.
   const [searchText, setSearchText] = useState('');
@@ -57,7 +59,7 @@ function MasterDataTable({ route, columns, singularLabel }) {
   // in-flight indicator (gate finding, code-reviewer, FEAT-15).
   const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
   const [restoringRowIds, setRestoringRowIds] = useState(() => new Set());
-  const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
+  const labelByKey = { ...Object.fromEntries(columns.map((column) => [column.key, column.label])), ...formLabels };
   const { widths, startResize } = useColumnWidths(columns);
 
   function handleCreated() {
@@ -298,6 +300,7 @@ MasterDataTable.propTypes = {
     })
   ).isRequired,
   singularLabel: PropTypes.string.isRequired,
+  formLabels: PropTypes.objectOf(PropTypes.string),
 };
 
 export default MasterDataTable;

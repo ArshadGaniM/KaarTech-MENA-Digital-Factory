@@ -49,7 +49,15 @@ export const MASTER_DATA_TABLES = [
     // (identity: "none", same as resource-cost/resource-deployment/
     // project-assignments) — gate finding, debugger: without this column
     // the Delete popup has nothing visible to match against for this table.
-    columns: [{ key: "id", label: "Record ID" }, { key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "id", label: "Record ID" },
+      { key: "name", label: "Name" },
+      { key: "practiceName", label: "Practice" },
+      ...AUDIT_COLUMNS,
+    ],
+    // The Practice pick-list in the Add and Edit form is the practiceId field; the
+    // table shows the practice's name instead.
+    formLabels: { practiceId: "Practice" },
   },
   {
     route: "modules",

@@ -34,6 +34,13 @@ describe('MASTER_DATA_TABLES column definitions', () => {
     expect(columnsFor('planned-resource-costs').slice(0, 5).map((c) => c.key)).toEqual(['id', 'designation', 'grade', 'offshoreCost', 'onsiteCost']);
   });
 
+  it('gives competencies a Practice column showing the practice name, and labels the form field Practice', () => {
+    const table = MASTER_DATA_TABLES.find((t) => t.route === 'competencies');
+    expect(table.columns.map((c) => c.key).slice(0, 3)).toEqual(['id', 'name', 'practiceName']);
+    expect(table.columns[2].label).toBe('Practice');
+    expect(table.formLabels).toEqual({ practiceId: 'Practice' });
+  });
+
   // FEAT-20: departments gained two optional free-text fields.
   it('gives departments Floor Number, Input and Output columns between the name and the audit columns', () => {
     const keys = columnsFor('departments').map((column) => column.key);

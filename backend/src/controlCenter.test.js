@@ -363,3 +363,94 @@ test("a very long assignment is cut at 120 months and says so", () => {
   assert.equal(detail.monthlyPlan.truncated, true);
   assert.equal(detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-09-01", end: "2026-12-05" }] }).monthlyPlan.truncated, false);
 });
+
+// Practice grouping and the order inside a practice.
+const COMPETENCIES = [
+  { name: "FICO", practiceCode: "PRAC-001", practiceName: "Finance" },
+  { name: "MM", practiceCode: "PRAC-002", practiceName: "Logistics Buy Side" },
+  { name: "ECP", practiceCode: "PRAC-004", practiceName: "HXM" },
+];
+const teamPlan = [
+  // [team, competency, assignment end or null]
+  ["TEAM-A", "FICO", "2026-12-05"],
+  ["TEAM-B", "FICO", "2026-11-20"],
+  ["TEAM-C", "FICO", null],
+  ["TEAM-D", "MM", "2026-12-01"],
+  ["TEAM-E", "ECP", "2027-02-28"],
+  ["TEAM-F", "ECP", null],
+  ["TEAM-G", null, "2026-11-10"],
+  ["TEAM-H", "ZZZ", null],
+];
+const practiceData = {
+  departments: [{ code: "D", name: "Dept", floorNumber: 1 }],
+  teams: teamPlan.map(([code]) => ({ code, name: code, departmentCode: "D" })),
+  positions: teamPlan.flatMap(([code, competency], i) => (competency ? [{ code: `P-${i}`, name: "Consultant", teamCode: code, competencies: competency }] : [])),
+  deployments: [],
+  assignments: teamPlan.filter(([, , end]) => end).map(([code, , end]) => ({ id: code, teamCode: code, projectId: "P", start: "2026-01-01", end })),
+  month,
+  today: "2026-11-15",
+  resources: [],
+  actualCosts: [],
+  plannedCosts: [],
+  competencies: COMPETENCIES,
+};
+const floorOrder = () => buildControlCenter(practiceData).departments[0].teams.map((t) => t.code);
+
+test("a team takes the practice of its main competency, or none when it has no competency or its competency is unknown", () => {
+  const teams = buildControlCenter(practiceData).departments[0].teams;
+  const by = (code) => teams.find((t) => t.code === code);
+  assert.deepEqual([by("TEAM-A").practiceCode, by("TEAM-A").practiceName], ["PRAC-001", "Finance"]);
+  assert.deepEqual([by("TEAM-G").practiceCode, by("TEAM-G").practiceName], [null, null]);
+  assert.equal(by("TEAM-H").practiceCode, null);
+});
+
+test("teams are ordered by practice code, no practice last, and inside a practice free teams first then the earliest end date", () => {
+  // The assignment of TEAM-G (ends 10 Nov, before today) is over, so it is free now too.
+  assert.deepEqual(floorOrder(), ["TEAM-C", "TEAM-B", "TEAM-A", "TEAM-D", "TEAM-F", "TEAM-E", "TEAM-G", "TEAM-H"]);
+});
+
+test("a team whose assignment has ended is free now and leads its practice", () => {
+  const teams = buildControlCenter({ ...practiceData, today: "2026-12-10" }).departments[0].teams;
+  const finance = teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  // A, B and C are all free by 10 December, so they fall back to team code order.
+  assert.deepEqual(finance, ["TEAM-A", "TEAM-B", "TEAM-C"]);
+});
+
+test("ties on the end date break by team code", () => {
+  const data = { ...practiceData, assignments: practiceData.assignments.map((a) => (["TEAM-A", "TEAM-B"].includes(a.teamCode) ? { ...a, end: "2026-12-05" } : a)) };
+  const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(finance, ["TEAM-C", "TEAM-A", "TEAM-B"]);
+});
+
+test("a team with several competencies takes the practice of the one used by most of its positions, ties by name", () => {
+  const data = {
+    ...practiceData,
+    teams: [{ code: "TEAM-M", name: "Mixed", departmentCode: "D" }, { code: "TEAM-T", name: "Tied", departmentCode: "D" }],
+    positions: [
+      { code: "M1", name: "Consultant", teamCode: "TEAM-M", competencies: "MM, FICO" },
+      { code: "M2", name: "Consultant", teamCode: "TEAM-M", competencies: "FICO" },
+      { code: "M3", name: "Consultant", teamCode: "TEAM-M", competencies: "FICO, ECP" },
+      { code: "T1", name: "Consultant", teamCode: "TEAM-T", competencies: "MM" },
+      { code: "T2", name: "Consultant", teamCode: "TEAM-T", competencies: "FICO" },
+    ],
+    assignments: [],
+  };
+  const teams = buildControlCenter(data).departments[0].teams;
+  assert.equal(teams.find((t) => t.code === "TEAM-M").practiceCode, "PRAC-001"); // FICO is on three positions
+  assert.equal(teams.find((t) => t.code === "TEAM-T").practiceCode, "PRAC-001"); // MM and FICO tie, FICO sorts first
+});
+
+test("a team whose main competency has no live practice is reported once, not on every request", () => {
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (message) => warnings.push(message);
+  try {
+    const data = { ...practiceData, teams: [practiceData.teams[7]], positions: [{ code: "Z", name: "Consultant", teamCode: "TEAM-H", competencies: "ZZZ-UNKNOWN" }], assignments: [] };
+    buildControlCenter(data);
+    buildControlCenter(data);
+  } finally {
+    console.warn = original;
+  }
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /"ZZZ-UNKNOWN" has no live practice/);
+});

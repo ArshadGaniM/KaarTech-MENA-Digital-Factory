@@ -72,7 +72,7 @@ describe('ControlCenter', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('showing the last data');
     expect(screen.getByText(/Not live, last updated 14:03:22/)).toBeInTheDocument();
     expect(screen.queryByText(/^Live,/)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 2 })).toBeInTheDocument();
   });
 
   it('raises an alert when the backend returns no departments at all', () => {
@@ -106,23 +106,23 @@ describe('ControlCenter', () => {
     expect(screen.getAllByText('No teams yet')).toHaveLength(DEPARTMENTS.length);
   });
 
-  it('puts every team of a floor on screen and groups them by competency', () => {
+  it('puts every team of a floor on screen and groups them by practice', () => {
     useControlCenter.mockReturnValue(
       loaded(
         snapshot({
           'DEPT-003': [
-            team({ code: 'TEAM-010', name: 'Ten', competencies: ['ABAP'] }),
-            team({ code: 'TEAM-011', name: 'Eleven', competencies: ['ABAP'] }),
-            team({ code: 'TEAM-012', name: 'Twelve', competencies: ['FICO'] }),
+            team({ code: 'TEAM-010', name: 'Ten', competencies: ['ABAP'], practiceName: 'DeepTech', practiceCode: 'PRAC-006' }),
+            team({ code: 'TEAM-011', name: 'Eleven', competencies: ['BTP'], practiceName: 'DeepTech', practiceCode: 'PRAC-006' }),
+            team({ code: 'TEAM-012', name: 'Twelve', competencies: ['FICO'], practiceName: 'Finance', practiceCode: 'PRAC-001' }),
           ],
         })
       )
     );
     render(<ControlCenter />);
 
-    const abap = screen.getByRole('list', { name: 'Name of DEPT-003, ABAP teams' });
-    expect(within(abap).getAllByRole('listitem')).toHaveLength(2);
-    expect(screen.getByRole('list', { name: 'Name of DEPT-003, FICO teams' })).toBeInTheDocument();
+    const deepTech = screen.getByRole('list', { name: 'Name of DEPT-003, DeepTech teams' });
+    expect(within(deepTech).getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByRole('list', { name: 'Name of DEPT-003, Finance teams' })).toBeInTheDocument();
   });
 
   it('asks for the selected month, and changes it from the picker', async () => {

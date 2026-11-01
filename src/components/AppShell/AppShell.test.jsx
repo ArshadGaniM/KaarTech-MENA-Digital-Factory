@@ -49,9 +49,9 @@ describe('AppShell', () => {
     render(<AppShell />);
 
     expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
-    // The Control Center drops the top bar's title; its own page heading names it.
-    expect(screen.queryByRole('heading', { name: controlCenter.label })).not.toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
+    // The top bar names the page here too, like every other section.
+    expect(screen.getByRole('heading', { name: controlCenter.label, level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory', level: 2 })).toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no

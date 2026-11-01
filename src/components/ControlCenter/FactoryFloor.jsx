@@ -3,15 +3,15 @@ import TeamCard from './TeamCard';
 import { teamShape } from './teamShape';
 import styles from './ControlCenter.module.css';
 
-// Teams arrive sorted by main competency, so consecutive teams of one skill
-// form a group.
-function groupByCompetency(teams) {
+// Teams arrive sorted by practice, then by when they become free, so
+// consecutive teams of one practice form a group and keep that order.
+function groupByPractice(teams) {
   const groups = [];
   for (const team of teams) {
-    const label = team.competencies[0] ?? 'No competency';
+    const key = team.practiceCode ?? null;
     const last = groups[groups.length - 1];
-    if (last?.label === label) last.teams.push(team);
-    else groups.push({ label, teams: [team] });
+    if (last && last.key === key) last.teams.push(team);
+    else groups.push({ key, label: team.practiceName ?? 'No practice', teams: [team] });
   }
   return groups;
 }
@@ -33,8 +33,8 @@ function FactoryFloor({ name, level, order, teams, onOpenTeam }) {
         {teams.length === 0 ? (
           <p className={styles.noTeams}>No teams yet</p>
         ) : (
-          groupByCompetency(teams).map((group) => (
-            <section key={group.label} className={styles.group} aria-label={`${group.label} teams`}>
+          groupByPractice(teams).map((group) => (
+            <section key={group.key ?? 'none'} className={styles.group} aria-label={`${group.label} teams`}>
               <h4 className={styles.groupLabel}>{group.label}</h4>
               <ul className={styles.cards} aria-label={`${name}, ${group.label} teams`}>
                 {group.teams.map((team) => (

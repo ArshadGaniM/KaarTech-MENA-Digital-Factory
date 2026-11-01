@@ -25,6 +25,7 @@ export const NAV_ITEMS = [
     route: table.route,
     columns: table.columns,
     singularLabel: table.singularLabel,
+    formLabels: table.formLabels,
     kind: 'table',
   })),
   {

@@ -14,6 +14,7 @@ const tables = {
   resources: [],
   actualCosts: [],
   plannedCosts: [],
+  competencies: [],
 };
 
 function fakeQuery(sql) {
@@ -23,6 +24,7 @@ function fakeQuery(sql) {
     : /from resources\b/.test(sql) ? "resources"
     : sql.includes("from resource_deployment") ? "deployments"
     : sql.includes("from planned_resource_costs") ? "plannedCosts"
+    : sql.includes("from competencies") ? "competencies"
     : sql.includes("from resource_cost") ? "actualCosts"
     : "assignments";
   return Promise.resolve({ rows: tables[key] });
@@ -131,7 +133,7 @@ test("requests made close together share one set of table queries", async () => 
   await Promise.all([1, 2, 3].map(() => fetch(`${baseUrl}/v1/control-center`).then((r) => r.json())));
   server.closeAllConnections();
   server.close();
-  assert.equal(queries, 8); // eight tables, loaded once
+  assert.equal(queries, 9); // nine tables, loaded once
 });
 
 test("a change event makes the next request read the tables again", async () => {
@@ -146,7 +148,7 @@ test("a change event makes the next request read the tables again", async () => 
   await fetch(`${baseUrl}/v1/control-center`);
   server.closeAllConnections();
   server.close();
-  assert.equal(queries, 16);
+  assert.equal(queries, 18);
 });
 
 test("a failed load is not kept: the next request tries again", async () => {

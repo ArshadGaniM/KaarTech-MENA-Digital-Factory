@@ -1,50 +1,46 @@
-# Gate Report: Planned Resource Cost, Control Center costs and assignments, no-overlap rule, pinned sidebar
+# Gate Report: Competency practice, Control Center by practice, Back to the portal link
 
 **Verdict: WARN** (zero FAIL, zero Critical. One accepted security limitation, noted below.)
 
-**Branch:** `claude/trusting-curie-hlx1r6` to `main` (main merged into the branch before the gate, by a real merge)
+**Branch:** `claude/trusting-curie-hlx1r6` to `main`. Main was merged into the branch before the gate. Main's only new commit was the squash of this branch's earlier work (PR #61), and its tree was identical to the branch's earlier commit, so the six conflicted files were resolved to this branch's side, which loses nothing from main.
 **Scope:** `git diff origin/main..HEAD`.
-- New table Planned Resource Cost (`planned_resource_costs`, migration 0030, 33 designations, monthly USD, offshore and onsite). The old Resource Cost is now labelled Actual Resource Cost.
-- Control Center: the team card shows the assignment end date and Allocated Team Cost. The popup has Planned, Actual and Allocated Resource Cost columns, Allocated Team Cost, Month-wise Utilization Percentage and Cost panels, an Onsite/Offshore/Hybrid dot, and Add and Edit Project Assignment for the current assignment.
-- A team's live project assignments cannot share a day (API check under a per-team lock, plus the exclusion constraint in migration 0029).
-- The sidebar stays pinned while the page scrolls.
-**Checks on the final code:** backend 390/390, mcp-server 55/55, frontend 463/463 tests, `vite build` clean. The overlap rule and the exclusion constraint were also exercised against the live database inside a rolled-back transaction: a clashing row was refused, the next day was allowed, and no test row remained.
+- Every competency belongs to one practice: migration 0033 (applied live, the 29 competencies mapped from the owner's list), a required `practiceId` dropdown from the Practices table, a read-only `practiceName` column.
+- The Control Center groups cards by practice (a team's practice is its main competency's practice), in practice code order with no practice last. Inside a practice, teams with no current assignment come first, then the earliest assignment end date.
+- The Control Center title is back in the top bar, and a Back to the portal link tops the sidebar.
+**Checks on the final code:** backend 413/413, mcp-server 57/57, frontend 473/473 tests, `vite build` clean. Migration 0033 was checked on the live database: every practice holds exactly the competencies the owner listed.
 
 ## Agents
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | WARN | Unbounded monthly plan, future assignment looked lost, developer field name in an error, missing limits on the new table |
-| security-auditor | PASS on new defects | Only the accepted client-side gate and open reads |
-| debugger | WARN | Escape did nothing with the form open, edit form could follow a changed assignment, 30 February gave a 500 |
-| test-writer | WARN | New props and helpers without direct tests |
-| refactorer | WARN | Repeated rule checks, a misnamed lock helper |
-| doc-writer | WARN | `api.md` lacked 23P01, MCP README lacked the overlap rule |
-| silent-failure-hunter | WARN | Missing default cost row silently zero, defaulted people invisible on the card, rollback failure swallowed, null lock value silent |
-| pr-test-analyzer | WARN | Route pass-through and cost edge cases untested |
+| code-reviewer | WARN | Two `h1` headings on the Control Center, grouping by name instead of code, name uniqueness |
+| security-auditor | PASS on new defects | Static read-only query, safe migration. Only the accepted limitation |
+| debugger | WARN | Deploy order, migration prerequisites (already met), name uniqueness |
+| test-writer | WARN | `formLabels`, navigation pass-through and MCP competency lacked tests |
+| refactorer | PASS | Group by practice code, not name |
+| doc-writer | PASS | Migration row order only |
+| silent-failure-hunter | WARN | A team silently falling into No practice when its practice was deleted |
+| pr-test-analyzer | WARN | PATCH success, restore with a deleted practice, several competencies, undefined practice name |
 
-The first launch of agents in an earlier gate failed on a model setting, so this gate ran every agent on Sonnet. No agent made a negative file-existence claim that needed a manual cross-check (CLAUDE.md §8).
+All eight agents ran on Sonnet. No agent made a negative file-existence claim that needed a manual cross-check (CLAUDE.md §8).
 
 ## Fixed in this push
 
-- The monthly plan is cut at 120 months (`truncated`), so one absurd end date cannot make the popup compute tens of thousands of months.
-- A future-dated assignment that was just added shows as "Next assignment" in the popup, so a save does not look lost. Edit still applies only to the current assignment.
-- A missing Senior Consultant planned cost no longer makes people silently free: they are tagged Missing. The team card and popup say how many people were costed at the default rate.
-- Escape closes the open form first, then the popup. The Edit form keeps the assignment it was opened on.
-- A date such as 30 February is a 422, not a 500.
-- The overlap message says "team", not a field name (`groupLabel` on the rule).
-- The allocation and overlap checks are one `validateGroupRules` call, and `withAllocationLock` is now `withGroupLock`. A null group value throws, and a failed rollback is logged and its connection dropped.
-- Planned Resource Cost has length and cost limits in the API (and the MCP mirror). The matching check constraints are in migration 0032.
-- `api.md` and the MCP README document the 23P01 mapping and the overlap rule. The backend README documents the new fields.
-- Tests added for each of the above, the cost edge cases, the route pass-through, `validateOverlap`, the error helpers and `RecordFormModal`'s `initialValues` and `lockedKeys`.
+- A practice cannot be deleted while live competencies belong to it (409 `practice_in_use`, a `deleteGuards` entry on the practices descriptor, checked inside the delete itself). Without it, deleting a practice silently moved its teams to No practice.
+- The Control Center logs one warning per competency name that has no live practice, instead of silently grouping its teams under No practice.
+- The floor groups by practice code and shows the name, so two practices with the same name cannot merge.
+- The Control Center roof is an `h2`, so the page has one `h1` (the top-bar title).
+- A live competency name is unique (migration 0034, not yet applied), because the practice lookup and positions find a competency by name.
+- Tests added: `formLabels` in the form, the navigation pass-through, MCP competency requires a practice, PATCH success, restore with a deleted practice, a duplicate name, the practice delete guard (blocked, allowed, not found), a team with several competencies, the warn-once log, an undefined practice name, grouping by code.
+- The README migration list is in order and documents the delete guard and 0034.
 
 ## Accepted, not fixed
 
-- **Client-side password (Low, owner-accepted).** Reads stay open, including the per-person costs the Control Center now returns, and the write key is in the bundle (CLAUDE.md §20). It is not access control.
-- The lock key changed from `hashtext(..)` of an integer to one of text. During a rolling deploy an old and a new backend would briefly use different keys. With one Render instance this is negligible, and the exclusion constraint backs the overlap rule.
-- `teamCosts` builds a per-person map for every team on the card. Harmless at this size.
+- **Client-side password (Low, owner-accepted).** Reads stay open and the write key is in the bundle (CLAUDE.md §20). It is not access control.
+- Migration 0033 has no explicit transaction. It was applied through the Supabase tool, which wraps it, and it is already applied.
+- Deploy order matters slightly: the frontend finishes before the backend, so for a minute the floor would show every team under No practice until the backend redeploys. Cosmetic.
 
 ## Action items
 
-- [ ] Owner: say yes to apply migration 0032 (check constraints on `planned_resource_costs`). The code does not need it.
-- [ ] After merge: run the §21 deployment check. Trigger the Render deploy if none starts. Migrations 0029 to 0031 are already applied.
+- [ ] Owner: yes to apply migration 0034 (unique live competency name). The code does not need it.
+- [ ] After merge: run the §21 deployment check. Trigger the Render deploy if none starts. Migration 0033 is already applied.

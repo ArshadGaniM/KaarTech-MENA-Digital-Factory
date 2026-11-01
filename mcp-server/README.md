@@ -75,7 +75,7 @@ user/auth system exists yet). On create this sets both `createdBy` and
 
 | Table | `add_<table>` requires | `update_<table>` accepts (all optional) |
 |---|---|---|
-| `competency` | `name` | `name` |
+| `competency` | `name`, `practiceId` (string — must be the code of an existing practice, such as `PRAC-007`, required, enforced) | `name`, `practiceId` |
 | `practice` | `name` | `name` |
 | `department` | `name`, `floorNumber` (whole number from 1 to 1000, 1 is the ground floor of the Control Center building, must not be used by another live department), `input` / `output` optional free text, up to 2,000 chars each | `name`, `floorNumber`, `input`, `output` |
 | `resource_deployment` | `employeeId` (number — must reference an existing `resource`'s `employeeId`, enforced), `positionId` (string — must reference an existing `position`'s own auto-generated code, enforced), `allocationPercentage` (number, above 0 up to 100 — a resource's rows across positions may not total more than 100) | `employeeId`, `positionId`, `allocationPercentage` (independently settable) |
