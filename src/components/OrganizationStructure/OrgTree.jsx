@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { initialsOf } from './initialsOf';
 import { pluralize, pluralNoun } from './pluralize';
 import { practiceColor } from './practiceColor';
+import TreeToggle from './TreeToggle';
 import styles from './OrganizationStructure.module.css';
 
 // What is open by default: the first department of the manager, with its
@@ -13,22 +15,6 @@ function defaultOpen(manager) {
 
 const allKeys = (manager) => new Set(manager.departments.flatMap((department) => [department.code, ...department.practices.map((practice) => practice.key)]));
 
-function Toggle({ id, isOpen, onToggle, children }) {
-  return (
-    <button type="button" className={styles.treeRowButton} aria-expanded={isOpen} aria-controls={id} onClick={onToggle}>
-      <span className={styles.treeCaret} aria-hidden="true" />
-      {children}
-    </button>
-  );
-}
-
-Toggle.propTypes = {
-  id: PropTypes.string.isRequired,
-  isOpen: PropTypes.bool.isRequired,
-  onToggle: PropTypes.func.isRequired,
-  children: PropTypes.node.isRequired,
-};
-
 // The same data as the cards, as a tree: Delivery Manager, Project Managers,
 // then for the picked manager its departments, practices, Module Leads and
 // teams. A team under No practice or a seat with no Module Lead shows as the
@@ -39,6 +25,8 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
   const keys = expansion.managerId === selected.id ? expansion.keys : defaultOpen(selected);
   const setKeys = (next) => setExpansion({ managerId: selected.id, keys: next });
   const pick = (id) => {
+    // Picking the manager already shown keeps what the reader opened.
+    if (id === selected.id) return;
     setExpansion({ managerId: null, keys: new Set() });
     onSelect(id);
   };
@@ -96,13 +84,13 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
             return (
               <li key={department.code}>
                 <div className={styles.treeRow}>
-                  <Toggle id={`tree-${department.code}`} isOpen={departmentOpen} onToggle={() => flip(department.code)}>
+                  <TreeToggle id={`tree-${department.code}`} isOpen={departmentOpen} onToggle={() => flip(department.code)}>
                     <span className={styles.treeTag}>Department</span>{' '}
                     <span className={styles.treeName}>{department.name}</span>{' '}
                     <span className={styles.treeCount}>
                       Floor {department.floorNumber} · {department.filled}/{department.seats} seats · {pluralize(department.teamCount, 'team')}
                     </span>
-                  </Toggle>
+                  </TreeToggle>
                   <button
                     type="button"
                     className={styles.linkButton}
@@ -119,14 +107,14 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
                       return (
                         <li key={practice.key}>
                           <div className={styles.treeRow}>
-                            <Toggle id={`tree-${practice.key}`} isOpen={practiceOpen} onToggle={() => flip(practice.key)}>
+                            <TreeToggle id={`tree-${practice.key}`} isOpen={practiceOpen} onToggle={() => flip(practice.key)}>
                               <span className={styles.treeTag}>Practice</span>{' '}
                               <i className={styles.treeDot} style={{ background: practiceColor(practice.code) }} aria-hidden="true" />
                               <span className={styles.treeName}>{practice.name}</span>{' '}
                               <span className={styles.treeCount}>
                                 {practice.filled}/{practice.seats} seats · {pluralize(practice.teamCount, 'team')}
                               </span>
-                            </Toggle>
+                            </TreeToggle>
                           </div>
                           {practiceOpen && (
                             <ul className={styles.treeList} id={`tree-${practice.key}`}>
@@ -135,7 +123,7 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
                                   <div className={styles.treeLead}>
                                     <span className={styles.treeWho}>
                                       <span className={styles.avatar} aria-hidden="true">
-                                        TBD
+                                        {lead.isUnallocated ? 'TBD' : initialsOf(lead.name)}
                                       </span>
                                       <span>
                                         <span className={styles.role}>Module Lead</span>
@@ -145,7 +133,7 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
                                     </span>
                                     <ul className={styles.treeTeams} aria-label={`Teams of ${lead.isUnallocated ? 'the unfilled Module Lead seat' : lead.name}`}>
                                       {lead.teams.map((team) => (
-                                        <li key={team.code} className={team.filled > 0 ? styles.treeTeamFilled : styles.treeTeam}>
+                                        <li key={team.code} className={team.filled > 0 ? styles.treeTeamFilled : undefined}>
                                           {team.name}
                                           <i>
                                             {team.filled}/{team.seats}

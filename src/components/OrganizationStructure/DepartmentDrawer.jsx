@@ -2,16 +2,9 @@ import { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import TeamCard from './TeamCard';
 import { pluralize } from './pluralize';
+import { initialsOf } from './initialsOf';
 import { practiceColor } from './practiceColor';
 import styles from './OrganizationStructure.module.css';
-
-const initialsOf = (name) =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase();
 
 // Mounted only while open, so mounting is "open" and unmounting is "close":
 // focus moves in on mount and goes back to the tile that opened it.

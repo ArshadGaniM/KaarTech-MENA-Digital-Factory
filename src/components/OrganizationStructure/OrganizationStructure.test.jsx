@@ -295,5 +295,51 @@ describe('OrganizationStructure tree view', () => {
 
     expect(screen.getByRole('dialog', { name: 'Configuration Services' })).toBeInTheDocument();
   });
-});
 
+  it('shows initials for a deployed Module Lead and TBD only for an unfilled seat', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+
+    const filled = screen.getByRole('list', { name: 'Teams of Asha Rao' }).closest('div');
+    expect(within(filled).getByText('AR')).toBeInTheDocument();
+    expect(within(filled).queryByText('TBD')).not.toBeInTheDocument();
+    const unfilled = screen.getByRole('list', { name: 'Teams of the unfilled Module Lead seat' }).closest('div');
+    expect(within(unfilled).getAllByText('TBD')).toHaveLength(2);
+  });
+
+  it('closes and reopens a practice without touching its department', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const practice = screen.getByRole('button', { name: /Practice Finance/ });
+
+    await user.click(practice);
+    expect(practice).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('list', { name: 'Teams of Asha Rao' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Department Configuration Services/ })).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(practice);
+    expect(screen.getByRole('list', { name: 'Teams of Asha Rao' })).toBeInTheDocument();
+  });
+
+  it('keeps the open departments when the manager already shown is picked again', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    await user.click(screen.getByRole('button', { name: /Practice Finance/ }));
+
+    await pickManager(user, 3);
+
+    expect(screen.getByRole('button', { name: /Practice Finance/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('names the controlled list only while it is open', async () => {
+    const user = await openTree();
+    await pickManager(user, 3);
+    const department = screen.getByRole('button', { name: /Department Configuration Services/ });
+    expect(department).toHaveAttribute('aria-controls', 'tree-DEPT-009');
+    expect(document.getElementById('tree-DEPT-009')).not.toBeNull();
+
+    await user.click(department);
+
+    expect(department).not.toHaveAttribute('aria-controls');
+  });
+});
