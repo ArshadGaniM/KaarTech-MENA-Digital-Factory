@@ -23,12 +23,13 @@ function ActualDialog({ row, actual, onClose, onSaved }) {
     setMessage(null);
     try {
       await action();
-      onSaved();
     } catch (err) {
       setErrors(err.details ?? {});
       setMessage(err.message);
       setIsBusy(false);
+      return;
     }
+    onSaved();
   }
 
   function handleSubmit(event) {
@@ -48,7 +49,7 @@ function ActualDialog({ row, actual, onClose, onSaved }) {
 
   return (
     <div className={styles.backdrop} role="presentation">
-      <form className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="actual-title" onSubmit={handleSubmit}>
+      <form className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="actual-title" onSubmit={handleSubmit} onKeyDown={(event) => event.key === 'Escape' && !isBusy && onClose()}>
         <h2 id="actual-title" className={styles.title}>Actual progress</h2>
         <p className={styles.activity}>
           {row.slNo} {row.activity}
@@ -56,7 +57,7 @@ function ActualDialog({ row, actual, onClose, onSaved }) {
         <p className={styles.hint}>
           Planned: Week {row.startWeek} to Week {row.endWeek}. This does not change the plan.
         </p>
-        {field('actual-start', 'Actual start week', start, setStart, 'actualStartWeek', { min: 1, max: PLAN_WEEK_COUNT, step: 1, placeholder: 'Not started' })}
+        {field('actual-start', 'Actual start week', start, setStart, 'actualStartWeek', { min: 1, max: PLAN_WEEK_COUNT, step: 1, placeholder: 'Not started', autoFocus: true })}
         {field('actual-end', 'Actual end week', end, setEnd, 'actualEndWeek', { min: 1, max: PLAN_WEEK_COUNT, step: 1, placeholder: 'Not finished' })}
         {field('actual-poc', 'Actual percent complete', poc, setPoc, 'actualPoc', { min: 0, max: 100, step: 1, required: true })}
         {message && <p className={styles.error} role="alert">{message}</p>}

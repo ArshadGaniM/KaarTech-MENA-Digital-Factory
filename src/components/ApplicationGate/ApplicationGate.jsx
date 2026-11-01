@@ -7,16 +7,21 @@ function ApplicationGate({ onUnlock }) {
   const [value, setValue] = useState('');
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [unavailable, setUnavailable] = useState(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setChecking(true);
+    setUnavailable(null);
     try {
       if (await isApplicationPassphrase(value)) {
         onUnlock();
       } else {
         setFailed(true);
       }
+    } catch (err) {
+      console.error(err);
+      setUnavailable(err.message);
     } finally {
       setChecking(false);
     }
@@ -46,6 +51,11 @@ function ApplicationGate({ onUnlock }) {
         {failed && (
           <p id="application-password-error" className={styles.error} role="alert">
             That password is not right. Try again.
+          </p>
+        )}
+        {unavailable && (
+          <p className={styles.error} role="alert">
+            {unavailable}
           </p>
         )}
         <button type="submit" className={styles.submit} disabled={checking || value.trim() === ''}>

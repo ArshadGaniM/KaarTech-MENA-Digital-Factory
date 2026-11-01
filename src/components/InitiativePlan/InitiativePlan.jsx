@@ -21,6 +21,10 @@ import styles from './InitiativePlan.module.css';
 // a bar under each planned bar. Nothing here edits the plan; actuals are kept
 // separately (backend /v1/initiative-plan/actuals).
 
+// The key an activity's actual is stored under: the group number's first digit
+// plus the activity letter ("1e"). Groups use their own Sl. No ("1.0").
+const activityKey = (group, item) => `${group.slNo.charAt(0)}${item.slNo}`;
+
 const WEEKS = Array.from({ length: PLAN_WEEK_COUNT }, (_, index) => index + 1);
 const ALL = 'All';
 const FILTERS = [ALL, ...Object.values(STATUS)];
@@ -92,7 +96,7 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
 
   const behindCount = PLAN_GROUPS.flatMap((group) => [
     [group, group.slNo],
-    ...group.items.map((item) => [item, `${group.slNo.charAt(0)}${item.slNo}`]),
+    ...group.items.map((item) => [item, activityKey(group, item)]),
   ]).filter(([row, key]) => isBehindPlan(row, byKey[key], currentWeek)).length;
 
   function toggle(slNo) {
@@ -177,7 +181,9 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
 
       {error && (
         <p className={styles.error} role="alert">
-          The actual progress could not be loaded: {error.message}
+          {readOnly
+            ? 'The recorded progress could not be loaded right now, so the plan is shown without it.'
+            : `The actual progress could not be loaded: ${error.message}`}
         </p>
       )}
 
@@ -219,7 +225,7 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
               if (filter !== ALL && !matches(group) && shownItems.length === 0) return null;
               return [
                 renderRow(group, group.slNo, { isGroup: true }),
-                ...(collapsed.has(group.slNo) ? [] : shownItems.map((item) => renderRow(item, `${group.slNo.charAt(0)}${item.slNo}`))),
+                ...(collapsed.has(group.slNo) ? [] : shownItems.map((item) => renderRow(item, activityKey(group, item)))),
               ];
             })}
           </tbody>

@@ -14,6 +14,9 @@ function normalise(text) {
 }
 
 async function sha256Hex(text) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('This browser cannot check passwords on a connection that is not secure. Open the site over https.');
+  }
   const bytes = new TextEncoder().encode(text);
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');

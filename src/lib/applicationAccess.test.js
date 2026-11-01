@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isApplicationPassphrase, readApplicationUnlocked, writeApplicationUnlocked } from './applicationAccess';
 
 afterEach(() => window.sessionStorage.clear());
@@ -18,5 +18,28 @@ describe('application unlocked flag', () => {
     expect(readApplicationUnlocked()).toBe(false);
     writeApplicationUnlocked();
     expect(readApplicationUnlocked()).toBe(true);
+  });
+});
+
+describe('when the browser cannot help', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('says so, instead of failing silently, when crypto.subtle is missing', async () => {
+    vi.stubGlobal('crypto', {});
+
+    await expect(isApplicationPassphrase('MENAUOCC')).rejects.toThrow(/not secure/);
+  });
+
+  it('reads as locked, and writing does not throw, when session storage is blocked', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+
+    expect(readApplicationUnlocked()).toBe(false);
+    expect(() => writeApplicationUnlocked()).not.toThrow();
+    vi.restoreAllMocks();
   });
 });

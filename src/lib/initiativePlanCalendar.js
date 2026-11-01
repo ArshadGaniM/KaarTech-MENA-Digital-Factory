@@ -15,7 +15,7 @@ export function weekStart(week) {
 }
 
 export function weekEnd(week) {
-  return new Date(START_MS + (week - 1) * WEEK_MS + 6 * DAY_MS);
+  return new Date(weekStart(week).getTime() + 6 * DAY_MS);
 }
 
 const format = (date, options) => date.toLocaleDateString('en-GB', { timeZone: 'UTC', ...options });

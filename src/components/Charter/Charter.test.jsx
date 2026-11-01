@@ -74,4 +74,24 @@ describe('Charter', () => {
       expect(screen.getByRole('heading', { level: 3, name: section.title })).toBeInTheDocument();
     }
   });
+
+  it('moves between headings with the arrow keys, Home and End, and wraps round', async () => {
+    const user = userEvent.setup();
+    render(<Charter />);
+    await user.tab();
+    expect(screen.getByRole('tab', { name: /Overview/ })).toHaveFocus();
+
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('tab', { name: /Objectives/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /Objectives/ })).toHaveFocus();
+
+    await user.keyboard('{End}');
+    expect(screen.getByRole('tab', { name: /Assumptions/ })).toHaveFocus();
+
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('tab', { name: /Overview/ })).toHaveFocus();
+
+    await user.keyboard('{ArrowUp}');
+    expect(screen.getByRole('tab', { name: /Assumptions/ })).toHaveFocus();
+  });
 });

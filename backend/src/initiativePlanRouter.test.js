@@ -122,3 +122,31 @@ test("DELETE /actuals/:key clears an actual (204) and is 404 when none was recor
   answer = () => ({ rows: [] });
   assert.equal((await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "DELETE", headers: HEADERS })).status, 404);
 });
+
+test("DELETE without the key, or with a wrong one, is 401 and runs no query", async () => {
+  calls = [];
+  const bare = await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "DELETE" });
+  const wrong = await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, { method: "DELETE", headers: { "x-internal-api-key": "nope" } });
+
+  assert.equal(bare.status, 401);
+  assert.equal(wrong.status, 401);
+  assert.equal(calls.length, 0);
+});
+
+test("a database failure is a 500 that hides the cause, for reads and writes", async () => {
+  answer = () => {
+    throw new Error("connection refused at 10.0.0.1");
+  };
+  const read = await fetch(`${baseUrl}/v1/initiative-plan/actuals`);
+  const write = await fetch(`${baseUrl}/v1/initiative-plan/actuals/1a`, {
+    method: "PUT",
+    headers: HEADERS,
+    body: JSON.stringify({ actualStartWeek: 1, actualEndWeek: null, actualPoc: 10 }),
+  });
+
+  for (const res of [read, write]) {
+    assert.equal(res.status, 500);
+    const text = await res.text();
+    assert.ok(!text.includes("10.0.0.1"));
+  }
+});

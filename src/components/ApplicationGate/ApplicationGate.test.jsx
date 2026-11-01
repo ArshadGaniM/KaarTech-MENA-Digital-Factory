@@ -35,4 +35,20 @@ describe('ApplicationGate', () => {
 
     expect(screen.getByRole('button', { name: 'Open the application' })).toBeDisabled();
   });
+
+  it('tells the user when this browser cannot check passwords, and stays locked', async () => {
+    const user = userEvent.setup();
+    const onUnlock = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('crypto', {});
+    render(<ApplicationGate onUnlock={onUnlock} />);
+
+    await user.type(screen.getByLabelText('Password'), 'MENAUOCC');
+    await user.click(screen.getByRole('button', { name: 'Open the application' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/https/);
+    expect(onUnlock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 });

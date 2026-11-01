@@ -183,4 +183,12 @@ describe('InitiativePlan', () => {
     await waitFor(() => expect(screen.getAllByTitle('Actual: Week 14 to Week 18')).toHaveLength(5));
     expect(screen.queryByRole('button', { name: /actual/i })).not.toBeInTheDocument();
   });
+
+  it('keeps the plan and softens the message when the recorded progress cannot load in read-only mode', async () => {
+    fetchPlanActuals.mockRejectedValue(new Error('HTTP 503'));
+    render(<InitiativePlan today={TODAY} readOnly />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('the plan is shown without it');
+    expect(screen.getAllByText('Establish SOP Document')).toHaveLength(3);
+  });
 });

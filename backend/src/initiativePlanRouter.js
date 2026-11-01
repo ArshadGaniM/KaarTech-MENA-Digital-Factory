@@ -6,8 +6,8 @@ import { INITIATIVE_PLAN_KEYS, INITIATIVE_PLAN_WEEKS } from "./initiativePlanKey
 
 // Actual progress against the locked initiative plan (FEAT-28). The plan is not
 // stored or served here: it lives, read-only, in the frontend. This route only
-// records what actually happened, one row per plan activity, so the Project
-// Plan section can draw the actual bar under the planned one. Reads are open
+// records what actually happened, one row per plan activity, so the Initiative
+// Plan can draw the actual bar under the planned one. Reads are open
 // like the other read routes; writes need the internal API key.
 
 const DEFAULT_ACTOR = "Arshad Gani";
