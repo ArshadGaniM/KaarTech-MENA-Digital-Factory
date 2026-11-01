@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { NAV_ITEMS, DASHBOARD_HASH } from './lib/navigation';
@@ -141,7 +141,10 @@ describe('App', () => {
     await unlock();
 
     window.location.hash = DASHBOARD_HASH;
-    await waitFor(() => expect(window.location.hash).toBe(DASHBOARD_HASH));
+    // Give React the chance to handle the hash change before checking that nothing re-locked.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Workspace sections' })).toBeInTheDocument();
   });
@@ -170,5 +173,16 @@ describe('App', () => {
       expect(await screen.findByRole('link', { name: 'Read SOP, Design Services' })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { level: 1, name: 'Design Services' })).not.toBeInTheDocument();
     });
+  });
+
+  it('does not keep the unlock across a reload', async () => {
+    window.location.hash = NAV_ITEMS[0].hash;
+    const { unmount } = render(<App />);
+    await unlock();
+    unmount();
+
+    render(<App />);
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
   });
 });

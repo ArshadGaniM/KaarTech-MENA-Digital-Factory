@@ -25,7 +25,7 @@ describe('SOP links', () => {
     expect(codeFromSopHash(sopHash('A B/C'))).toBe('A B/C');
   });
 
-  it.each(['', '#services', '#sop', '#dashboard'])('does not read %j as an SOP link', (hash) => {
+  it.each(['', '#services', '#sop', '#sop/', '#dashboard'])('does not read %j as an SOP link', (hash) => {
     expect(codeFromSopHash(hash)).toBeNull();
   });
 

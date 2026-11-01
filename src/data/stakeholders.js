@@ -17,7 +17,7 @@ export const TRACKS = [
   'Managed Services Projects',
 ];
 
-export const VERTICALS = ['Platinum', 'Services', 'EOG', 'A&D'];
+const VERTICALS = ['Platinum', 'Services', 'EOG', 'A&D'];
 
 const person = (name, designation, role, track = null) => ({ name, designation, role, track });
 

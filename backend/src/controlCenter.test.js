@@ -419,6 +419,15 @@ test("an allocated team with nothing utilized comes before an allocated team tha
   assert.deepEqual(finance, ["TEAM-B", "TEAM-A", "TEAM-C"]);
 });
 
+test("inside a band the earlier end date comes first, even when its team code is later", () => {
+  const financeOrder = (data) => buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  // Nobody utilized: B ends 20 Nov, A ends 5 Dec, so B leads although its code is later.
+  assert.deepEqual(financeOrder({ ...practiceData, deployments: [] }), ["TEAM-B", "TEAM-A", "TEAM-C"]);
+  // Both utilized (A in seat P-0, B in seat P-1): the same rule applies in the second band.
+  const bothUtilized = { ...practiceData, deployments: [...practiceData.deployments, { employeeId: 2, employeeName: "Other", positionCode: "P-1", allocationPercentage: 100 }] };
+  assert.deepEqual(financeOrder(bothUtilized), ["TEAM-B", "TEAM-A", "TEAM-C"]);
+});
+
 test("a team whose assignment has ended counts as unallocated and falls to the end of its practice", () => {
   const teams = buildControlCenter({ ...practiceData, today: "2026-12-10" }).departments[0].teams;
   const finance = teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);

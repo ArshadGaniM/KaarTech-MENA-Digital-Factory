@@ -1,10 +1,8 @@
-import { fetchMasterDataTable } from './masterDataApi';
+import { fetchAllMasterDataTableRows } from './masterDataApi';
 
 // The services on the portal are the live departments in the application. A
 // department's name is the service title and its Output is the description.
-// Departments are listed by floor number, lowest first.
-const MAX_DEPARTMENTS = 100;
-
+// Departments are listed by floor number, lowest first. Every page is read, so no service is cut off.
 export function toServices(rows) {
   return rows
     .filter((row) => row.markedDeleted !== 'Yes')
@@ -17,6 +15,5 @@ export function toServices(rows) {
 }
 
 export async function fetchServices() {
-  const { rows } = await fetchMasterDataTable('departments', { limit: MAX_DEPARTMENTS });
-  return toServices(rows);
+  return toServices(await fetchAllMasterDataTableRows('departments'));
 }

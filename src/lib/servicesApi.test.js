@@ -1,12 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchServices, toServices } from './servicesApi';
-import { fetchMasterDataTable } from './masterDataApi';
+import { fetchAllMasterDataTableRows } from './masterDataApi';
 
 vi.mock('./masterDataApi');
 
 const row = (overrides) => ({ code: 'DEPT-001', name: 'Design Services', floorNumber: 2, output: 'Designs things.', markedDeleted: 'No', ...overrides });
 
 describe('toServices', () => {
+  it('does not change the rows it is given', () => {
+    const rows = [row({ code: 'B', floorNumber: 2 }), row({ code: 'A', floorNumber: 1 })];
+    const snapshot = JSON.stringify(rows);
+    toServices(rows);
+    expect(JSON.stringify(rows)).toBe(snapshot);
+  });
+
   it('turns the department name into the title and the Output into the description', () => {
     expect(toServices([row()])).toEqual([{ code: 'DEPT-001', title: 'Design Services', description: 'Designs things.' }]);
   });
@@ -29,14 +36,14 @@ describe('toServices', () => {
 describe('fetchServices', () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it('reads the departments at the largest page size', async () => {
-    fetchMasterDataTable.mockResolvedValue({ rows: [row()], total: 1 });
-    expect(await fetchServices()).toHaveLength(1);
-    expect(fetchMasterDataTable).toHaveBeenCalledWith('departments', { limit: 100 });
+  it('reads every page of departments, so none is cut off past one page', async () => {
+    fetchAllMasterDataTableRows.mockResolvedValue(Array.from({ length: 150 }, (_, i) => row({ code: `DEPT-${String(i).padStart(3, '0')}`, floorNumber: i })));
+    expect(await fetchServices()).toHaveLength(150);
+    expect(fetchAllMasterDataTableRows).toHaveBeenCalledWith('departments');
   });
 
   it('lets a failed request reach the caller', async () => {
-    fetchMasterDataTable.mockRejectedValue(new Error('down'));
+    fetchAllMasterDataTableRows.mockRejectedValue(new Error('down'));
     await expect(fetchServices()).rejects.toThrow('down');
   });
 });

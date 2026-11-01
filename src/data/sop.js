@@ -19,11 +19,13 @@ export const SOP_SECTIONS = [
 export const SOP_CONTENT = {};
 
 export const sopHash = (code) => `#sop/${encodeURIComponent(code)}`;
-export const SOP_HASH_PREFIX = '#sop/';
+const SOP_HASH_PREFIX = '#sop/';
+// Null for any hash that is not an SOP link: another section, a bare "#sop/", or a broken escape.
+// App then shows the portal home page instead of an SOP screen.
 export const codeFromSopHash = (hash) => {
   if (!hash.startsWith(SOP_HASH_PREFIX)) return null;
   try {
-    return decodeURIComponent(hash.slice(SOP_HASH_PREFIX.length));
+    return decodeURIComponent(hash.slice(SOP_HASH_PREFIX.length)) || null;
   } catch {
     return null;
   }

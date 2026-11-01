@@ -290,6 +290,10 @@
 }
 
 .cardName {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.25;
@@ -311,21 +315,6 @@
   gap: 4px;
   min-height: 24px;
   overflow: hidden;
-}
-
-.chip,
-.chipMuted {
-  white-space: nowrap;
-}
-
-.chipMore {
-  flex-shrink: 0;
-}
-
-.chip {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* The full list of competencies, shown over the card on hover or keyboard focus. */
@@ -353,12 +342,23 @@
 
 .chip,
 .chipMuted {
+  white-space: nowrap;
   padding: 1px 8px;
   font-size: 12px;
   font-weight: 600;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.chip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chipMore {
+  flex-shrink: 0;
 }
 
 .chipMuted {
@@ -666,10 +666,9 @@
 /* Team card: assignment end date and allocated team cost */
 .cardFacts {
   display: flex;
-  margin-bottom: auto;
   justify-content: space-between;
   gap: var(--space-1);
-  margin-top: var(--space-1);
+  margin: var(--space-1) 0 auto;
 }
 
 .factValue {
