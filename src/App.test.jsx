@@ -25,6 +25,7 @@ afterEach(() => {
 
 describe('App', () => {
   it('renders AppShell alone (no marketing Header/Footer) for an app-shell hash — locks in AC-1', () => {
+    window.sessionStorage.setItem('application-unlocked', 'yes');
     window.location.hash = NAV_ITEMS[0].hash;
     render(<App />);
 
@@ -34,6 +35,7 @@ describe('App', () => {
   });
 
   it('landing on the Dashboard hash — the same value Header\'s "Dashboard" link uses — resolves to the Dashboard section', async () => {
+    window.sessionStorage.setItem('application-unlocked', 'yes');
     window.location.hash = DASHBOARD_HASH;
     render(<App />);
 
@@ -57,39 +59,52 @@ describe('App', () => {
     expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
   });
 
-  describe('portal password screen', () => {
-    it('shows the header and hero but hides the sections below behind a password screen', () => {
+  describe('password screen in front of the application', () => {
+    it('keeps the whole portal public, with no password asked', () => {
       window.location.hash = '';
       render(<App />);
 
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-      expect(screen.getByLabelText('Password')).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: 'Charter' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
-    });
-
-    it('opens the sections, including the Charter, after the right password and stays open for the tab', async () => {
-      const user = userEvent.setup();
-      window.location.hash = '';
-      const { unmount } = render(<App />);
-
-      await user.type(screen.getByLabelText('Password'), 'Meena UOCC');
-      await user.click(screen.getByRole('button', { name: 'Open the portal' }));
-
-      expect(await screen.findByRole('heading', { name: 'Charter' })).toBeInTheDocument();
-      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Charter' })).toBeInTheDocument();
       expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-
-      unmount();
-      render(<App />);
-      await waitFor(() => expect(screen.getByRole('heading', { name: 'Charter' })).toBeInTheDocument());
+      expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     });
 
-    it('is not asked again inside the application', () => {
+    it('asks for the password instead of opening the application, and links back to the portal', () => {
       window.location.hash = NAV_ITEMS[0].hash;
       render(<App />);
 
+      expect(screen.getByLabelText('Password')).toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Back to the portal' })).toHaveAttribute('href', '#top');
+    });
+
+    it('opens the application on the section asked for after the right password, and stays open for the tab', async () => {
+      const user = userEvent.setup();
+      window.location.hash = DASHBOARD_HASH;
+      const { unmount } = render(<App />);
+
+      await user.type(screen.getByLabelText('Password'), 'Meena UOCC');
+      await user.click(screen.getByRole('button', { name: 'Open the application' }));
+
+      expect(await screen.findByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
       expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+
+      unmount();
+      render(<App />);
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toBeInTheDocument());
+    });
+
+    it('stays locked on a wrong password', async () => {
+      const user = userEvent.setup();
+      window.location.hash = NAV_ITEMS[0].hash;
+      render(<App />);
+
+      await user.type(screen.getByLabelText('Password'), 'nope');
+      await user.click(screen.getByRole('button', { name: 'Open the application' }));
+
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
     });
   });
 });
