@@ -10,6 +10,7 @@ export function useCrossFilters(initial) {
   return {
     filters,
     toggle: (field, value) => setFilters((current) => ({ ...current, [field]: current[field] === value ? null : value })),
+    set: (field, value) => setFilters((current) => ({ ...current, [field]: value })),
     clear: (field) => setFilters((current) => ({ ...current, [field]: null })),
     clearAll: () => setFilters(initial),
     retries,
