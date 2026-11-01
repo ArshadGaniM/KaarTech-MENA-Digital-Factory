@@ -81,4 +81,14 @@ describe('TeamCard', () => {
     expect(card).toHaveTextContent('No current assignment');
     expect(card).toHaveTextContent('Allocated Team Cost$0.00');
   });
+
+  it('says how many people were costed at the default rate, and says nothing when none were', () => {
+    renderCard({ ...base, defaultedCostCount: 2 });
+    expect(screen.getByRole('button', { name: /Gamma, TEAM-007/ })).toHaveTextContent('2 at the default rate');
+  });
+
+  it('does not mention the default rate when nobody was costed that way', () => {
+    renderCard({ ...base, defaultedCostCount: 0 });
+    expect(screen.getByRole('button', { name: /Gamma, TEAM-007/ })).not.toHaveTextContent('default rate');
+  });
 });

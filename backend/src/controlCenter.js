@@ -66,10 +66,13 @@ function costOf(costs, employeeId, allocationPercentage) {
   const side = designationKey(employee?.locationType) === "onsite" ? "onsiteCost" : "offshoreCost";
   const actual = costs.actualByEmployee.get(employeeId)?.[side] ?? null;
   const own = costs.plannedByDesignation.get(designationKey(employee?.designation))?.[side] ?? null;
-  const fallback = costs.plannedByDesignation.get(designationKey(DEFAULT_COST_DESIGNATION))?.[side] ?? 0;
+  const fallback = costs.plannedByDesignation.get(designationKey(DEFAULT_COST_DESIGNATION))?.[side] ?? null;
   const planned = own ?? fallback;
-  const source = actual !== null ? "Actual" : own !== null ? "Planned" : "Default";
-  const base = actual ?? planned;
+  // "Missing": no actual cost, no planned cost for the designation, and the
+  // Senior Consultant row itself is gone, so the person is costed at zero. The
+  // tag makes that visible instead of letting a team look cheaper.
+  const source = actual !== null ? "Actual" : own !== null ? "Planned" : fallback !== null ? "Default" : "Missing";
+  const base = actual ?? planned ?? 0;
   return {
     locationType: side === "onsiteCost" ? "Onsite" : "Offshore",
     plannedResourceCost: planned,
@@ -86,16 +89,19 @@ function teamCosts({ teamPositions, deploymentsByPosition, costs }) {
   const byPerson = new Map();
   const locations = new Set();
   let total = 0;
+  let defaulted = 0;
   for (const seat of teamPositions.filter((p) => COUNTED_POSITIONS.has(p.name))) {
     for (const d of deploymentsByPosition.get(seat.code) ?? []) {
       const cost = costOf(costs, d.employeeId, d.allocationPercentage);
       byPerson.set(`${seat.code}:${d.employeeId}`, cost);
       locations.add(cost.locationType);
       total += cost.allocatedResourceCost;
+      if (cost.costSource === "Default" || cost.costSource === "Missing") defaulted += 1;
     }
   }
   return {
     byPerson,
+    defaultedCostCount: defaulted,
     allocatedTeamCost: round2(total),
     locationMix: locations.size === 0 ? null : locations.size > 1 ? "Hybrid" : [...locations][0],
   };
@@ -107,16 +113,29 @@ function currentAssignmentOf(assignments, today) {
   return assignments.find((a) => a.start <= today && today <= a.end) ?? null;
 }
 
+// The earliest assignment that starts after `today`, shown as information so a
+// future assignment that was just added does not look lost.
+function nextAssignmentOf(assignments, today) {
+  return assignments.filter((a) => a.start > today).sort((a, b) => a.start.localeCompare(b.start))[0] ?? null;
+}
+
 // Planned utilization and cost for each month the assignment touches, from its
 // start month to its end month. A month's share is the days the assignment
 // covers; the cost is the team's monthly allocated cost scaled by that share.
+// A very long assignment is cut at MAX_PLAN_MONTHS (`truncated` says so), so one
+// absurd end date cannot make every popup fetch compute tens of thousands of months.
+const MAX_PLAN_MONTHS = 120;
+
 function monthlyPlan(assignment, allocatedTeamCost) {
-  if (!assignment) return { months: [], totalCost: 0 };
+  if (!assignment) return { months: [], totalCost: 0, truncated: false };
   const [startYear, startMonth] = assignment.start.split("-").map(Number);
   const [endYear, endMonth] = assignment.end.split("-").map(Number);
   const months = [];
   let totalCost = 0;
-  for (let index = startYear * 12 + startMonth - 1; index <= endYear * 12 + endMonth - 1; index += 1) {
+  const first = startYear * 12 + startMonth - 1;
+  const last = endYear * 12 + endMonth - 1;
+  const truncated = last - first + 1 > MAX_PLAN_MONTHS;
+  for (let index = first; index <= Math.min(last, first + MAX_PLAN_MONTHS - 1); index += 1) {
     const month = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
     const window = monthWindow(month);
     const share = coveredDays([assignment], window) / window.days;
@@ -124,7 +143,7 @@ function monthlyPlan(assignment, allocatedTeamCost) {
     totalCost += cost;
     months.push({ month, utilizationPercent: round2(share * 100), cost: round2(cost) });
   }
-  return { months, totalCost: round2(totalCost) };
+  return { months, totalCost: round2(totalCost), truncated };
 }
 
 function splitCompetencies(text) {
@@ -233,7 +252,9 @@ export function buildControlCenter({ departments, teams, positions, deployments,
         window,
       }),
       assignmentEndDate: currentAssignmentOf(teamAssignments, today)?.end ?? null,
-      allocatedTeamCost: teamCosts({ teamPositions, deploymentsByPosition, costs }).allocatedTeamCost,
+      ...(({ allocatedTeamCost, defaultedCostCount }) => ({ allocatedTeamCost, defaultedCostCount }))(
+        teamCosts({ teamPositions, deploymentsByPosition, costs })
+      ),
     };
   };
 
@@ -297,7 +318,11 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
       ? [{ id: current.id, projectId: current.projectId, projectName: current.projectName, start: current.start, end: current.end }]
       : [],
     assignmentEndDate: current?.end ?? null,
+    nextAssignment: (({ id, projectId, projectName, start, end }) => ({ id, projectId, projectName, start, end }))(
+      nextAssignmentOf(assignments, today) ?? { id: null, projectId: null, projectName: null, start: null, end: null }
+    ),
     allocatedTeamCost: teamCost.allocatedTeamCost,
+    defaultedCostCount: teamCost.defaultedCostCount,
     locationMix: teamCost.locationMix,
     monthlyPlan: monthlyPlan(current, teamCost.allocatedTeamCost),
     ...teamHours({ teamPositions: positions, deploymentsByPosition, teamAssignments: assignments, window }),

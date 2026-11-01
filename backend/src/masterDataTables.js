@@ -129,10 +129,10 @@ export const MASTER_DATA_TABLES = [
     identityField: "designation",
     sortColumn: "designation",
     fields: [
-      { key: "designation", column: "designation", required: true, type: "string" },
-      { key: "grade", column: "grade", required: true, type: "string" },
-      { key: "offshoreCost", column: "offshore_cost", required: true, type: "number", min: 0, numeric: true },
-      { key: "onsiteCost", column: "onsite_cost", required: true, type: "number", min: 0, numeric: true },
+      { key: "designation", column: "designation", required: true, type: "string", maxLength: 100 },
+      { key: "grade", column: "grade", required: true, type: "string", maxLength: 20 },
+      { key: "offshoreCost", column: "offshore_cost", required: true, type: "number", min: 0, max: 1000000, numeric: true },
+      { key: "onsiteCost", column: "onsite_cost", required: true, type: "number", min: 0, max: 1000000, numeric: true },
     ],
   },
   {
@@ -473,6 +473,7 @@ export const MASTER_DATA_TABLES = [
     // (migration 0029) behind it.
     overlapRule: {
       groupKey: "teamId",
+      groupLabel: "team",
       groupColumn: "team_code",
       startKey: "projectAssignmentStartDate",
       startColumn: "project_assignment_start_date",

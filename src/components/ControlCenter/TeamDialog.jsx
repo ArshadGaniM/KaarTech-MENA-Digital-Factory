@@ -14,6 +14,15 @@ const percent = (value) => (value === null ? '—' : `${value}%`);
 const ASSIGNMENTS_TABLE = MASTER_DATA_TABLES.find((table) => table.route === 'project-assignments');
 const ASSIGNMENT_LABELS = Object.fromEntries(ASSIGNMENTS_TABLE.columns.map((column) => [column.key, column.label]));
 const LOCATIONS = ['Onsite', 'Offshore', 'Hybrid'];
+
+// The row the Edit form opens on: the field names the Project Assignments table uses.
+const assignmentRecord = (teamCode, assignment) => ({
+  id: assignment.id,
+  projectId: assignment.projectId,
+  teamId: teamCode,
+  projectAssignmentStartDate: assignment.start,
+  projectAssignmentEndDate: assignment.end,
+});
 const LOCATION_CLASS = { Onsite: styles.dotOnsite, Offshore: styles.dotOffshore, Hybrid: styles.dotHybrid };
 
 function CostCell({ value }) {
@@ -66,7 +75,9 @@ MonthPanel.propTypes = {
 // the page's refreshes, so while those fail it must not claim to be live.
 function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   const [reloads, setReloads] = useState(0);
-  const [form, setForm] = useState(null); // null, 'add' or 'edit'
+  // null, { mode: 'add' } or { mode: 'edit', record }. The record is taken when the
+  // form opens, so a refetch cannot change which assignment an open form saves to.
+  const [form, setForm] = useState(null);
   const { data: team, isLoading, error } = useTeamDetail(code, month, `${updatedAt.getTime()}-${reloads}`);
   const closeRef = useRef(null);
 
@@ -79,7 +90,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
 
   // Escape closes the form first when one is open, then the popup.
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && !form && onClose();
+    const onKey = (e) => e.key === 'Escape' && (form ? setForm(null) : onClose());
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, form]);
@@ -112,7 +123,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
             </div>
             <div className={styles.dialogActions}>
               {team && (
-                <button type="button" className={styles.addAssignment} onClick={() => setForm('add')}>
+                <button type="button" className={styles.addAssignment} onClick={() => setForm({ mode: 'add' })}>
                   Add Project Assignment
                 </button>
               )}
@@ -161,6 +172,11 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                 <li>
                   <span className={styles.hoursLabel}>Allocated Team Cost</span>
                   <span className={styles.statValue}>{formatUsd(team.allocatedTeamCost)}</span>
+                  {team.defaultedCostCount > 0 && (
+                    <span className={styles.rowMeta}>
+                      {team.defaultedCostCount} {team.defaultedCostCount === 1 ? 'person' : 'people'} costed at the default rate
+                    </span>
+                  )}
                 </li>
                 <li className={`${styles.statusPill} ${statusClass(styles, team.status)}`}>{STATUS_LABELS[team.status]}</li>
               </ul>
@@ -176,11 +192,22 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                     <ul className={styles.projectList}>
                       <li>
                         {current.projectName ?? current.projectId}, {current.start} to {current.end}
-                        <button type="button" className={styles.editAssignment} onClick={() => setForm('edit')}>
+                        <button
+                          type="button"
+                          className={styles.editAssignment}
+                          onClick={() => setForm({ mode: 'edit', record: assignmentRecord(team.code, current) })}
+                        >
                           Edit
                         </button>
                       </li>
                     </ul>
+                  )}
+
+                  {team.nextAssignment?.start && (
+                    <p className={styles.dialogLine}>
+                      Next assignment: {team.nextAssignment.projectName ?? team.nextAssignment.projectId}, {team.nextAssignment.start} to{' '}
+                      {team.nextAssignment.end}
+                    </p>
                   )}
 
                   <h3 className={styles.dialogHeading}>Positions and people</h3>
@@ -278,21 +305,11 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
 
       {form && team && (
         <RecordFormModal
-          key={form}
+          key={form.mode}
           route="project-assignments"
           singularLabel="Project Assignment"
           labelByKey={ASSIGNMENT_LABELS}
-          record={
-            form === 'edit' && current
-              ? {
-                  id: current.id,
-                  projectId: current.projectId,
-                  teamId: team.code,
-                  projectAssignmentStartDate: current.start,
-                  projectAssignmentEndDate: current.end,
-                }
-              : undefined
-          }
+          record={form.record}
           initialValues={{ teamId: team.code }}
           lockedKeys={['teamId']}
           onClose={() => setForm(null)}

@@ -14,6 +14,13 @@ describe('formatUsd', () => {
   });
 });
 
+describe('formatDay edge cases', () => {
+  it('does not shift a leap day or a year end', () => {
+    expect(formatDay('2028-02-29')).toBe('29 Feb 2028');
+    expect(formatDay('2026-12-31')).toBe('31 Dec 2026');
+  });
+});
+
 describe('formatDay', () => {
   it('shows a calendar day without moving it by time zone', () => {
     expect(formatDay('2026-12-05')).toBe('5 Dec 2026');

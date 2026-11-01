@@ -311,5 +311,55 @@ test("a start part way through a month is prorated too, and the plan crosses a y
 
 test("a team with no current assignment shows no projects and an empty plan", () => {
   const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "2026-02-01" }] });
-  assert.deepEqual([detail.projects, detail.assignmentEndDate, detail.monthlyPlan], [[], null, { months: [], totalCost: 0 }]);
+  assert.deepEqual([detail.projects, detail.assignmentEndDate, detail.monthlyPlan], [[], null, { months: [], totalCost: 0, truncated: false }]);
+});
+
+test("when even the Senior Consultant planned cost is gone, a person costs zero and is tagged Missing, not Default", () => {
+  const detail = detailOf({ plannedCosts: PLANNED.filter((c) => c.designation !== "Senior Consultant" && c.designation !== "Consultant") });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost, seatOf(detail, 2).plannedResourceCost], ["Missing", 0, null]);
+});
+
+test("a person who is not in the resources list is costed offshore at the default rate", () => {
+  const detail = detailOf({ resources: [PEOPLE[1]] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Default", 1800]);
+});
+
+test("a partial allocation scales an actual cost too", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 3, offshoreCost: 900, onsiteCost: 2000 }] });
+  // Onsite, 50%: 2000 x 0.5.
+  assert.equal(seatOf(detail, 3).allocatedResourceCost, 1000);
+});
+
+test("a person deployed in a Module Lead seat is not costed and not counted in the team cost", () => {
+  const detail = detailOf();
+  const moduleLead = detail.seats.find((s) => s.positionCode === "POS-1");
+  assert.equal(moduleLead.employeeId, 1);
+  assert.deepEqual([moduleLead.allocatedResourceCost, moduleLead.costSource], [null, null]);
+  assert.equal(detail.allocatedTeamCost, 2375);
+});
+
+test("the team counts how many people were costed at the default rate", () => {
+  const defaulted = detailOf({ resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]] });
+  assert.equal(defaulted.defaultedCostCount, 1);
+  assert.equal(detailOf().defaultedCostCount, 0);
+  const card = teamOf(buildControlCenter({ ...base, today: "2026-10-15", resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]], actualCosts: [], plannedCosts: PLANNED }), "TEAM-001");
+  assert.equal(card.defaultedCostCount, 1);
+});
+
+test("an assignment that starts after today is shown as the next assignment, never as the current one", () => {
+  const detail = detailOf({
+    assignments: [
+      { id: "L", teamCode: "TEAM-001", projectId: "P2", projectName: "Later", start: "2027-03-01", end: "2027-04-01" },
+      { id: "N", teamCode: "TEAM-001", projectId: "P1", projectName: "Next", start: "2026-12-06", end: "2027-01-31" },
+    ],
+  });
+  assert.deepEqual(detail.projects, []);
+  assert.deepEqual(detail.nextAssignment, { id: "N", projectId: "P1", projectName: "Next", start: "2026-12-06", end: "2027-01-31" });
+});
+
+test("a very long assignment is cut at 120 months and says so", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "9999-12-31" }] });
+  assert.equal(detail.monthlyPlan.months.length, 120);
+  assert.equal(detail.monthlyPlan.truncated, true);
+  assert.equal(detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-09-01", end: "2026-12-05" }] }).monthlyPlan.truncated, false);
 });

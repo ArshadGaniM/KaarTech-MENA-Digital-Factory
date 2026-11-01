@@ -15,4 +15,5 @@ export const teamShape = PropTypes.shape({
   status: PropTypes.oneOf(Object.keys(STATUS_LABELS)).isRequired,
   assignmentEndDate: PropTypes.string,
   allocatedTeamCost: PropTypes.number,
+  defaultedCostCount: PropTypes.number,
 });

@@ -116,3 +116,16 @@ registerDeleteTests({
   tableName: "planned_resource_costs",
   resourceName: "planned_resource_cost",
 });
+
+test("POST is 422 for an absurd cost or an over-long designation or grade", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [row()] }));
+  for (const body of [
+    { ...VALID, offshoreCost: 1e300 },
+    { ...VALID, onsiteCost: 1000001 },
+    { ...VALID, designation: "x".repeat(101) },
+    { ...VALID, grade: "K".repeat(21) },
+  ]) {
+    const res = await fetch(`${baseUrl}/v1/planned-resource-costs`, { method: "POST", headers: HEADERS, body: JSON.stringify(body) });
+    assert.equal(res.status, 422);
+  }
+});

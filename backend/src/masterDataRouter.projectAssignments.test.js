@@ -26,7 +26,7 @@ let server;
 let baseUrl;
 
 // Writes run on a pooled client inside a transaction holding a per-team
-// advisory lock (withAllocationLock in masterDataRouter.js). The client answers
+// advisory lock (withGroupLock in masterDataRouter.js). The client answers
 // the transaction plumbing and the no-overlap lookup itself (`overlapRows`,
 // recording the parameters it was asked with) and delegates every other
 // statement to whatever pool.query mock the current test installed.
@@ -500,4 +500,13 @@ test("POST /v1/project-assignments maps a database exclusion violation (a race p
 
   assert.equal(res.status, 422);
   assert.ok((await res.json()).error.details.projectAssignmentStartDate);
+});
+
+test("POST /v1/project-assignments is 422, not 500, for a date that is not a real calendar day", async (t) => {
+  t.mock.method(pool, "query", async () => ({ rows: [{}] }));
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST", headers: writeHeaders, body: JSON.stringify({ ...VALID_BODY, projectAssignmentEndDate: "2026-02-30" }),
+  });
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.projectAssignmentEndDate);
 });

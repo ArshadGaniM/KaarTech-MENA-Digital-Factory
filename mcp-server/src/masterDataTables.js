@@ -113,10 +113,10 @@ export const MASTER_DATA_TABLES = [
     route: "planned-resource-costs",
     label: "Planned Resource Cost",
     fields: [
-      { key: "designation", label: "employee designation, exactly as on the Resources table (unique: one planned cost per designation)", required: true, type: "string" },
-      { key: "grade", label: "grade, for example K16 (not unique)", required: true, type: "string" },
-      { key: "offshoreCost", label: "monthly offshore cost in USD (0 or more)", required: true, type: "number", min: 0 },
-      { key: "onsiteCost", label: "monthly onsite cost in USD (0 or more)", required: true, type: "number", min: 0 },
+      { key: "designation", label: "employee designation, exactly as on the Resources table (unique: one planned cost per designation, at most 100 characters)", required: true, type: "string", maxLength: 100 },
+      { key: "grade", label: "grade, for example K16 (not unique, at most 20 characters)", required: true, type: "string", maxLength: 20 },
+      { key: "offshoreCost", label: "monthly offshore cost in USD (0 to 1,000,000)", required: true, type: "number", min: 0, max: 1000000 },
+      { key: "onsiteCost", label: "monthly onsite cost in USD (0 to 1,000,000)", required: true, type: "number", min: 0, max: 1000000 },
     ],
   },
   {

@@ -22,8 +22,7 @@ import {
   lookupJoinSql,
   lookupSelectSql,
   allocationSelectSql,
-  validateAllocation,
-  validateOverlap,
+  validateGroupRules,
   normalizeLists,
   searchSql,
   searchTermOf,
@@ -101,9 +100,12 @@ export function createMasterDataRouter(table) {
   // can't both pass validateAllocation / validateOverlap and break the rule.
   // Tables with neither rule skip the transaction entirely.
   const groupRule = table.allocationRule ?? table.overlapRule;
-  async function withAllocationLock(groupValue, fn) {
+  async function withGroupLock(groupValue, fn) {
     if (!groupRule) return fn(pool);
+    // A null group value would make the lock a silent no-op, so refuse it.
+    if (groupValue == null) throw new Error(`${tableName}: the group value for the write lock is missing.`);
     const client = await pool.connect();
+    let rollbackFailed = false;
     try {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(hashtext($1), hashtext($2::text))", [tableName, groupValue]);
@@ -111,10 +113,14 @@ export function createMasterDataRouter(table) {
       await client.query("commit");
       return out;
     } catch (err) {
-      await client.query("rollback").catch(() => {});
+      await client.query("rollback").catch((rollbackError) => {
+        rollbackFailed = true;
+        console.error("rollback failed", rollbackError);
+      });
       throw err;
     } finally {
-      client.release();
+      // A connection that could not roll back is dropped, not reused.
+      client.release(rollbackFailed);
     }
   }
 
@@ -246,10 +252,9 @@ export function createMasterDataRouter(table) {
       const values = [...fields.map((f) => req.body[f.key]), actor, actor];
       const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
 
-      const created = await withAllocationLock(req.body[groupRule?.groupKey], async (db) => {
+      const created = await withGroupLock(req.body[groupRule?.groupKey], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]]));
-        await validateAllocation(db, table, candidate);
-        await validateOverlap(db, table, candidate);
+        await validateGroupRules(db, table, candidate);
         const result = await db.query(
           `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
           values
@@ -288,10 +293,9 @@ export function createMasterDataRouter(table) {
       const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
 
       const groupIndex = fields.findIndex((f) => f.key === groupRule?.groupKey);
-      const updated = await withAllocationLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
+      const updated = await withGroupLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
         const candidate = Object.fromEntries(fields.map((f, i) => [f.column, merged[i]]));
-        await validateAllocation(db, table, candidate, req.params.id);
-        await validateOverlap(db, table, candidate, req.params.id);
+        await validateGroupRules(db, table, candidate, req.params.id);
         const result = await db.query(
           `update ${tableName} set ${setClause}
            where id = $${values.length + 1} and deleted_at is null returning *`,
@@ -354,10 +358,9 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, referenceBody, { partial: true });
 
       const actor = actorOf(req.body);
-      const restored = await withAllocationLock(current[groupRule?.groupColumn], async (db) => {
+      const restored = await withGroupLock(current[groupRule?.groupColumn], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, current[f.column]]));
-        await validateAllocation(db, table, candidate, req.params.id);
-        await validateOverlap(db, table, candidate, req.params.id);
+        await validateGroupRules(db, table, candidate, req.params.id);
         const result = await db.query(
           `update ${tableName} set deleted_at = null, updated_by = $1
            where id = $2 and deleted_at is not null${liveParentsSql} returning *`,

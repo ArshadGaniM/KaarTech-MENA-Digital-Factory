@@ -291,11 +291,48 @@ describe('TeamDialog', () => {
       await user.click(screen.getByRole('button', { name: 'Add Project Assignment' }));
 
       await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: 'form add' })).not.toBeInTheDocument();
       expect(onClose).not.toHaveBeenCalled();
 
-      await user.click(screen.getByRole('button', { name: 'close form' }));
       await user.keyboard('{Escape}');
       expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('what the gate asked for', () => {
+    it('shows the next assignment as information, without an Edit button of its own', () => {
+      useTeamDetail.mockReturnValue({
+        data: { ...detail, projects: [], nextAssignment: { id: 'N', projectId: 'P2', projectName: 'Next Rollout', start: '2026-12-06', end: '2027-01-31' } },
+        isLoading: false,
+        error: null,
+      });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText(/Next assignment: Next Rollout, 2026-12-06 to 2027-01-31/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    });
+
+    it('says how many people were costed at the default rate, and tags a missing cost', () => {
+      useTeamDetail.mockReturnValue({
+        data: { ...detail, defaultedCostCount: 2, seats: detail.seats.map((s) => (s.employeeId === 3 ? { ...s, costSource: 'Missing', allocatedResourceCost: 0 } : s)) },
+        isLoading: false,
+        error: null,
+      });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('2 people costed at the default rate')).toBeInTheDocument();
+      expect(within(screen.getByRole('row', { name: /Sam Split/ })).getByText('Missing')).toBeInTheDocument();
+    });
+
+    it('keeps editing the assignment it was opened on, even if a refetch changes the current one', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+      const { rerender } = render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+      useTeamDetail.mockReturnValue({ data: { ...detail, projects: [{ ...detail.projects[0], id: 'A-2' }] }, isLoading: false, error: null });
+      rerender(<TeamDialog {...props} />);
+
+      const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form edit' })).getByText(/route/).textContent);
+      expect(passed.record.id).toBe('A-1');
     });
   });
 });

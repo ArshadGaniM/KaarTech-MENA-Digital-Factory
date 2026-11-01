@@ -44,7 +44,7 @@ export function isExclusionViolation(err) {
 
 export function overlapRaceError(rule) {
   return validationError({
-    [rule.startKey]: `This ${rule.groupKey === "teamId" ? "team" : "group"} already has an assignment on some of these dates.`,
+    [rule.startKey]: `This ${rule.groupLabel} already has an assignment on some of these dates.`,
   });
 }
 

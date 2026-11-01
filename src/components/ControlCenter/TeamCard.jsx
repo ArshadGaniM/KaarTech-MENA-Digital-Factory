@@ -69,6 +69,7 @@ function TeamCard({ team, onOpen }) {
           <span>
             <span className={styles.hoursLabel}>Allocated Team Cost</span>
             <span className={styles.factValue}>{formatUsd(team.allocatedTeamCost ?? 0)}</span>
+            {team.defaultedCostCount > 0 && <span className={styles.hoursLabel}>{team.defaultedCostCount} at the default rate</span>}
           </span>
         </span>
         <span className={styles.statusText}>{STATUS_LABELS[team.status]}</span>

@@ -26,7 +26,7 @@ let server;
 let baseUrl;
 
 // Writes run on a pooled client inside a transaction holding a per-resource
-// advisory lock (see withAllocationLock in masterDataRouter.js). The client
+// advisory lock (see withGroupLock in masterDataRouter.js). The client
 // here delegates to whatever pool.query mock the current test installed, and
 // answers the transaction plumbing and the post-write re-select itself.
 let lastWrittenRow = null;
