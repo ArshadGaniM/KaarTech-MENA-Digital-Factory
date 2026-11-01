@@ -9,7 +9,7 @@ describe('ApplicationGate', () => {
     const onUnlock = vi.fn();
     render(<ApplicationGate onUnlock={onUnlock} />);
 
-    await user.type(screen.getByLabelText('Password'), 'Meena UOCC');
+    await user.type(screen.getByLabelText('Password'), 'MENAUOCC');
     await user.click(screen.getByRole('button', { name: 'Open the application' }));
 
     await waitFor(() => expect(onUnlock).toHaveBeenCalledTimes(1));

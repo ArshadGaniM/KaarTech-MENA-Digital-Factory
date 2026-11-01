@@ -4,11 +4,11 @@ import { isApplicationPassphrase, readApplicationUnlocked, writeApplicationUnloc
 afterEach(() => window.sessionStorage.clear());
 
 describe('isApplicationPassphrase', () => {
-  it.each(['Meena UOCC', 'MENA UOCC', '  meena   uocc ', 'menauocc'])('accepts %j', async (text) => {
+  it.each(['MENAUOCC', 'menauocc', 'MENA UOCC'])('accepts %j', async (text) => {
     expect(await isApplicationPassphrase(text)).toBe(true);
   });
 
-  it.each(['', 'Meena', 'meena uocc!', 'password'])('rejects %j', async (text) => {
+  it.each(['', 'MENA', 'Meena UOCC', 'MENAUOCC!', 'password'])('rejects %j', async (text) => {
     expect(await isApplicationPassphrase(text)).toBe(false);
   });
 });

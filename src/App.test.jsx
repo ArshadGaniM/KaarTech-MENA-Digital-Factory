@@ -84,7 +84,7 @@ describe('App', () => {
       window.location.hash = DASHBOARD_HASH;
       const { unmount } = render(<App />);
 
-      await user.type(screen.getByLabelText('Password'), 'Meena UOCC');
+      await user.type(screen.getByLabelText('Password'), 'MENAUOCC');
       await user.click(screen.getByRole('button', { name: 'Open the application' }));
 
       expect(await screen.findByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
