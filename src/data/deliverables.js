@@ -23,6 +23,7 @@ export const DELIVERABLE_DETAILS = {
   'sop-DEPT-001': { owner: SURYA }, // Digital/AI Transformation Consulting Services
   'sop-DEPT-006': { owner: SURYA }, // Assessment Services
   'sop-DEPT-007': { owner: FAIZAN }, // Audit Services
+  'sop-DEPT-014': { owner: RUSHIKESH }, // Analyse Services
   'sop-DEPT-002': { owner: SURYA }, // Design Services
   'sop-DEPT-009': { owner: RUSHIKESH }, // Configuration Services
   'sop-DEPT-003': { owner: RUSHIKESH }, // Development Services

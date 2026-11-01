@@ -48,6 +48,7 @@ describe('buildDeliverables', () => {
       ['DEPT-001', 'Digital/AI Transformation Consulting Services', 'Surya M'],
       ['DEPT-006', 'Assessment Services', 'Surya M'],
       ['DEPT-007', 'Audit Services', 'Faizan R'],
+      ['DEPT-014', 'Analyse Services', 'Rushikesh Subhash Nikam'],
       ['DEPT-002', 'Design Services', 'Surya M'],
       ['DEPT-009', 'Configuration Services', 'Rushikesh Subhash Nikam'],
       ['DEPT-003', 'Development Services', 'Rushikesh Subhash Nikam'],
