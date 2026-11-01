@@ -5,6 +5,7 @@ import Charter from './Charter';
 import { SECTIONS } from './charterSections';
 import { fetchPlanActuals } from '../../lib/initiativePlanApi';
 import { fetchServices } from '../../lib/servicesApi';
+import { PLAN_GROUPS } from '../../data/initiativePlan';
 
 vi.mock('../../lib/initiativePlanApi');
 vi.mock('../../lib/servicesApi');
@@ -270,11 +271,19 @@ describe('Charter', () => {
     it('gives each milestone the status of its step in the plan', async () => {
       await open();
       const rows = within(screen.getByRole('table', { name: 'Milestones' })).getAllByRole('row').slice(1);
+      const expected = PLAN_GROUPS.flatMap((group) => ['f', 'g', 'h', 'i'].map((slNo) => group.items.find((item) => item.slNo === slNo).status));
 
-      // Every status shown is one of the plan's three, and they come from the plan data, not from a new source.
-      const statuses = new Set(rows.map((row) => cellsOf(row)[3]));
-      expect([...statuses].every((status) => ['Yet to Start', 'In Progress', 'Completed'].includes(status))).toBe(true);
-      expect(statuses.size).toBeGreaterThan(0);
+      expect(rows.map((row) => cellsOf(row)[3])).toEqual(expected);
+    });
+
+    it('follows the plan when a step has another status, never a fixed one', async () => {
+      const original = PLAN_GROUPS[0].items.find((item) => item.slNo === 'g');
+      expect(['Yet to Start', 'In Progress', 'Completed']).toContain(original.status);
+      await open();
+      const row = within(screen.getByRole('table', { name: 'Milestones' })).getAllByRole('row')[2];
+
+      expect(cellsOf(row)[1]).toBe('SOP document');
+      expect(cellsOf(row)[3]).toBe(original.status);
     });
 
     it('lists a deliverables table below the milestones, with Owner, Due date and Status', async () => {

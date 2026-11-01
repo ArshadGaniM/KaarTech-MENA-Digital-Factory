@@ -43,8 +43,9 @@ export function duplicateFieldError(err, fields) {
 }
 
 // Postgres exclusion_violation (23P01): the backstop for the project assignment
-// no-overlap rule. validateOverlap gives the friendly message first; this only
-// fires if two writes race past it.
+// no-overlap rule and for the resource deployment rule that one resource may not
+// hold a position twice on a shared day. The app check gives the friendly message
+// first; this only fires if two writes race past it.
 export function isExclusionViolation(err) {
   return err?.code === "23P01";
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildControlCenter, buildTeamDetail, deployedOn, referenceDay, isValidMonth, monthWindow, HOURS_PER_PERSON } from "./controlCenter.js";
+import { buildControlCenter, buildTeamDetail, deployedOn, referenceDay, isValidMonth, monthWindow, loadControlCenterRows, HOURS_PER_PERSON } from "./controlCenter.js";
 
 const month = "2026-10"; // 31 days
 
@@ -557,4 +557,16 @@ test("the team popup shows only the deployments running on the day, for the seat
   assert.equal(running.seats[0].employeeId, 2);
   // 100% here plus 40% elsewhere is over 100%, so nothing is left.
   assert.equal(running.seats[0].availablePercentage, 0);
+});
+
+test("the loader reads each deployment's start and end date as text, so the read model compares plain days", async () => {
+  const sqls = [];
+  await loadControlCenterRows(async (sql) => {
+    sqls.push(sql);
+    return { rows: [] };
+  });
+
+  const deploymentSql = sqls.find((sql) => sql.includes("from resource_deployment rd"));
+  assert.match(deploymentSql, /rd\.start_date::text as start/);
+  assert.match(deploymentSql, /rd\.end_date::text as "end"/);
 });

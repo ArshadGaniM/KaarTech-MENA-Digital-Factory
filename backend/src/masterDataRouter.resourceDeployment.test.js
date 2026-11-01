@@ -65,8 +65,9 @@ function baseRow(overrides = {}) {
     id: RESOURCE_DEPLOYMENT_ID,
     employee_id: 42,
     position_code: "POS-001",
-    start_date: "2026-08-01",
-    end_date: "2027-03-31",
+    // The pg driver gives a `date` column as a Date at local midnight, so the stored row does too.
+    start_date: new Date(2026, 7, 1),
+    end_date: new Date(2027, 2, 31),
     created_by: "Arshad Gani",
     created_at: "2026-01-01T00:00:00Z",
     updated_by: "Arshad Gani",
@@ -628,4 +629,98 @@ test("the list shows each resource's total from the rows deployed today only", (
 
   assert.match(sql, /a\.start_date <= current_date and a\.end_date >= current_date/);
   assert.match(sql, /a\.deleted_at is null/);
+});
+
+// A stored row read back for PATCH or restore carries its dates as Date objects.
+const patchDeployment = (body) =>
+  fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify(body),
+  });
+
+test("PATCH of only the percentage still checks the stored dates: another row on the same days leaves too little", async (t) => {
+  // The stored row runs 2026-08-01 to 2027-03-31 (as Dates). Another row holds 60% on the same days.
+  allocationMock(t, [["POS-002", "60.00", "2026-08-01", "2027-03-31"]]);
+
+  const res = await patchDeployment({ allocationPercentage: 50 });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /on 2026-08-01 60% is already allocated, so at most 40% remains/);
+});
+
+test("PATCH of only the percentage ignores another row that does not share a day with the stored dates", async (t) => {
+  allocationMock(t, [["POS-002", "60.00", "2025-01-01", "2026-07-31"]]);
+
+  const res = await patchDeployment({ allocationPercentage: 100 });
+
+  assert.equal(res.status, 200);
+});
+
+test("PATCH that moves only the start date earlier is checked against the rows it now overlaps", async (t) => {
+  allocationMock(t, [["POS-003", "60.00", "2026-02-01", "2026-05-31"]]);
+
+  const clash = await patchDeployment({ startDate: "2026-01-01", allocationPercentage: 50 });
+  assert.equal(clash.status, 422);
+  assert.match((await clash.json()).error.details.allocationPercentage, /on 2026-02-01 60% is already allocated/);
+
+  allocationMock(t, [["POS-003", "60.00", "2026-02-01", "2026-05-31"]]);
+  const clear = await patchDeployment({ startDate: "2026-06-01", allocationPercentage: 50 });
+  assert.equal(clear.status, 200);
+});
+
+test("PATCH of only the end date earlier than the stored start date is a 422 on endDate", async (t) => {
+  allocationMock(t, []);
+
+  const res = await patchDeployment({ endDate: "2026-07-01" });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.endDate, /not be earlier than startDate/);
+});
+
+test("PATCH leaves the row being edited out of its own check", async (t) => {
+  const seen = [];
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.startsWith("select 1 from")) return { rows: [{}] };
+    if (sql.startsWith("select * from resource_deployment where id")) return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    if (sql.startsWith("select position_code as unique_value")) {
+      seen.push(params);
+      return { rows: [] };
+    }
+    if (sql.startsWith("update")) return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  await patchDeployment({ allocationPercentage: 50 });
+
+  assert.deepEqual(seen, [[42, RESOURCE_DEPLOYMENT_ID]]);
+});
+
+test("restore is refused when the stored dates now overlap another row that leaves too little", async (t) => {
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from resource_deployment where id")) {
+      return { rows: [baseRow({ allocation_percentage: "50.00", deleted_at: new Date(2026, 1, 1) })] };
+    }
+    if (sql.startsWith("select 1 from")) return { rows: [{}] };
+    if (sql.startsWith("select position_code as unique_value")) {
+      return { rows: [{ unique_value: "POS-002", value: "70.00", start: "2027-03-31", end: "2027-06-30" }] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}/restore`, {
+    method: "POST",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  // The other row shares only 2027-03-31, the stored last day, and is still counted there.
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /on 2027-03-31 70% is already allocated/);
+});
+
+test("validateAllocation refuses to run without both dates, rather than passing by default", async () => {
+  const { validateAllocation } = await import("./masterDataSchema.js");
+  const db = { query: async () => ({ rows: [] }) };
+
+  await assert.rejects(() => validateAllocation(db, resourceDeploymentTable, { employee_id: 42, position_code: "POS-001", allocation_percentage: 50, start_date: null, end_date: null }), /needs start_date and end_date/);
 });

@@ -149,7 +149,7 @@ percentages. `buckets` always holds the same four keys in this order, with
 |---|---|
 | `full` | total is exactly 100 |
 | `partial` | total is above 0 and below 100 |
-| `none` | no live deployment at all |
+| `none` | no live deployment running today (none at all, or only ones that have ended or not started) |
 | `over` | total is above 100. The allocation rule should make this impossible, so it is reported only so a broken rule cannot hide |
 
 Without a `position` filter, every live resource is in exactly one bucket. `positions` counts the
@@ -197,7 +197,9 @@ Hour rules, all measured in the selected month:
   positions are never counted.
 - **Available hours** = seats x 160.
 - **Allocated hours** = for each seat with someone deployed, 160 scaled by the
-  deployment's `allocation_percentage` (a seat never exceeds 160).
+  deployment's `allocation_percentage` (a seat never exceeds 160). Only deployments
+  running on the day the page looks at count: today when it falls in the month, else
+  the month's first day (both the start date and the end date included).
 - **Utilized hours** = allocated hours x the share of the month's days that
   fall inside any of the team's project assignments (overlaps count once).
 - `status`: `unstaffed` (no allocated hours), `full` (utilized equals
@@ -343,7 +345,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0018_create_project_assignments.sql` | New table `project_assignments`, created directly with its full real shape in one migration (table starts empty). No `name`/`hasCode` — `project_id` (FK to `projects.project_id`, `fk_project_assignments_projects`, `ix_project_assignments_project_id` index) and `team_code` (FK to `teams.code`, `fk_project_assignments_teams`, `ix_project_assignments_team_code` index) are both pick-list-only references, the second table (after `resource_deployment`/0016) with two FK constraints at once. `project_assignment_start_date`/`project_assignment_end_date` are plain `date` columns with a DB-layer `CHECK (project_assignment_end_date >= project_assignment_start_date)` mirroring the app-layer cross-field validation as defense-in-depth. No `department_code` column — department fields are resolved entirely through the chained lookup via `teams.department_code`, so there's nothing to store for them here. |
 | `0019_add_department_input_output.sql` | `departments`-specific: two optional free-text columns, `input` and `output` (nullable, no default — purely additive, existing rows stay valid). |
 | `0020_add_resource_deployment_allocation.sql` | `resource_deployment.allocation_percentage numeric(5,2) not null` with a `ck_resource_deployment_allocation_percentage` check (above 0, up to 100). Existing rows backfilled to 100; the default is dropped afterwards so new rows must state a percentage. |
-| `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule. The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
+| `0021_unique_live_resource_deployment_position.sql` | Partial unique index `ux_resource_deployment_employee_position_live` on `(employee_id, position_code) where deleted_at is null` — database backstop for the one-row-per-resource-and-position rule (dropped by migration 0035, which replaced it with a rule per shared day). The 100% total is enforced in the app under a per-resource advisory lock (`pg_advisory_xact_lock`) so concurrent writes cannot both pass the check. |
 | `0022_add_position_competencies.sql` | `positions.competencies text` (nullable). Validated in the app against the competencies table, like the other references. |
 | `0023_control_center_notify.sql` | `notify_control_center_changed()` plus a statement-level `trg_control_center_notify` trigger on `departments`, `teams`, `positions`, `competencies`, `resource_deployment`, `project_assignments`, `projects` and `resources`. Each insert, update or delete sends one `NOTIFY control_center_changed`, which the backend turns into the Control Center stream's `changed` event. Not applied automatically. |
 | `0024_enable_pg_trgm.sql` | Enables the `pg_trgm` extension (in the `public` schema, because the backend's role cannot use the `extensions` schema), used by the list routes' fuzzy `?q=` search. |

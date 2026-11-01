@@ -316,7 +316,16 @@ export function allocationSelectSql(table) {
   ];
 }
 
-const dayOf = (value) => String(value).slice(0, 10);
+// A day as YYYY-MM-DD. The pg driver returns a `date` column as a Date at local midnight, so
+// a stored date (read back on PATCH or restore) is cut from its local parts. A string from the
+// request body is already ISO text.
+function dayOf(value) {
+  if (value instanceof Date) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+  }
+  return String(value).slice(0, 10);
+}
 
 // Rejects a row that would push its group (resource) past the rule's total on
 // any day, or hold a unique value (position) twice on one day. Only rows that
@@ -334,6 +343,10 @@ export async function validateAllocation(pool, table, candidate, excludeId = nul
      where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)`,
     [candidate[rule.groupColumn], excludeId]
   );
+  // validateBody has already required both dates; a caller that skipped it must not pass by default.
+  if (candidate[rule.startColumn] == null || candidate[rule.endColumn] == null) {
+    throw new Error(`validateAllocation needs ${rule.startColumn} and ${rule.endColumn}.`);
+  }
   const from = dayOf(candidate[rule.startColumn]);
   const to = dayOf(candidate[rule.endColumn]);
   const sharing = rows.filter((row) => dayOf(row.start) <= to && dayOf(row.end) >= from);

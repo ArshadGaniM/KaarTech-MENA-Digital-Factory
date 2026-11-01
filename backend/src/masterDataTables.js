@@ -265,7 +265,6 @@ export const MASTER_DATA_TABLES = [
       uniqueColumn: "position_code",
       valueKey: "allocationPercentage",
       valueColumn: "allocation_percentage",
-      startKey: "startDate",
       startColumn: "start_date",
       endColumn: "end_date",
       total: 100,
