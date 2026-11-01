@@ -421,3 +421,36 @@ test("ties on the end date break by team code", () => {
   const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
   assert.deepEqual(finance, ["TEAM-C", "TEAM-A", "TEAM-B"]);
 });
+
+test("a team with several competencies takes the practice of the one used by most of its positions, ties by name", () => {
+  const data = {
+    ...practiceData,
+    teams: [{ code: "TEAM-M", name: "Mixed", departmentCode: "D" }, { code: "TEAM-T", name: "Tied", departmentCode: "D" }],
+    positions: [
+      { code: "M1", name: "Consultant", teamCode: "TEAM-M", competencies: "MM, FICO" },
+      { code: "M2", name: "Consultant", teamCode: "TEAM-M", competencies: "FICO" },
+      { code: "M3", name: "Consultant", teamCode: "TEAM-M", competencies: "FICO, ECP" },
+      { code: "T1", name: "Consultant", teamCode: "TEAM-T", competencies: "MM" },
+      { code: "T2", name: "Consultant", teamCode: "TEAM-T", competencies: "FICO" },
+    ],
+    assignments: [],
+  };
+  const teams = buildControlCenter(data).departments[0].teams;
+  assert.equal(teams.find((t) => t.code === "TEAM-M").practiceCode, "PRAC-001"); // FICO is on three positions
+  assert.equal(teams.find((t) => t.code === "TEAM-T").practiceCode, "PRAC-001"); // MM and FICO tie, FICO sorts first
+});
+
+test("a team whose main competency has no live practice is reported once, not on every request", () => {
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (message) => warnings.push(message);
+  try {
+    const data = { ...practiceData, teams: [practiceData.teams[7]], positions: [{ code: "Z", name: "Consultant", teamCode: "TEAM-H", competencies: "ZZZ-UNKNOWN" }], assignments: [] };
+    buildControlCenter(data);
+    buildControlCenter(data);
+  } finally {
+    console.warn = original;
+  }
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /"ZZZ-UNKNOWN" has no live practice/);
+});

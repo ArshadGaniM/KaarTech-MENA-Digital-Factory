@@ -28,6 +28,8 @@ const toUtcDay = (isoDate) => {
 };
 const round1 = (n) => Math.round(n * 10) / 10;
 const round2 = (n) => Math.round(n * 100) / 100;
+// Names already reported, so a busy page does not repeat the same warning.
+const warnedCompetencies = new Set();
 const DEFAULT_COST_DESIGNATION = "Senior Consultant";
 const designationKey = (text) => (text ?? "").trim().toLowerCase();
 
@@ -250,6 +252,10 @@ export function buildControlCenter({ departments, teams, positions, deployments,
     const teamAssignments = assignmentsByTeam.get(team.code) ?? [];
     // The team's practice is its main competency's practice.
     const practice = practiceByCompetency.get(teamCompetencies.primary);
+    if (teamCompetencies.primary && !practice && !warnedCompetencies.has(teamCompetencies.primary)) {
+      warnedCompetencies.add(teamCompetencies.primary);
+      console.warn(`Control Center: competency "${teamCompetencies.primary}" has no live practice, so its teams are shown under No practice.`);
+    }
     return {
       code: team.code,
       name: team.name,
@@ -374,6 +380,8 @@ export async function loadControlCenterRows(query) {
       `select designation, offshore_cost::float as "offshoreCost", onsite_cost::float as "onsiteCost"
          from planned_resource_costs where deleted_at is null`
     ),
+    // Only competencies whose practice is live resolve to a practice, and a
+    // practice cannot be deleted while live competencies belong to it.
     query(
       `select c.name, c.practice_code as "practiceCode", p.name as "practiceName"
          from competencies c

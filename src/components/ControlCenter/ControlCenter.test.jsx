@@ -72,7 +72,7 @@ describe('ControlCenter', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('showing the last data');
     expect(screen.getByText(/Not live, last updated 14:03:22/)).toBeInTheDocument();
     expect(screen.queryByText(/^Live,/)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 2 })).toBeInTheDocument();
   });
 
   it('raises an alert when the backend returns no departments at all', () => {
@@ -111,9 +111,9 @@ describe('ControlCenter', () => {
       loaded(
         snapshot({
           'DEPT-003': [
-            team({ code: 'TEAM-010', name: 'Ten', competencies: ['ABAP'], practiceName: 'DeepTech' }),
-            team({ code: 'TEAM-011', name: 'Eleven', competencies: ['BTP'], practiceName: 'DeepTech' }),
-            team({ code: 'TEAM-012', name: 'Twelve', competencies: ['FICO'], practiceName: 'Finance' }),
+            team({ code: 'TEAM-010', name: 'Ten', competencies: ['ABAP'], practiceName: 'DeepTech', practiceCode: 'PRAC-006' }),
+            team({ code: 'TEAM-011', name: 'Eleven', competencies: ['BTP'], practiceName: 'DeepTech', practiceCode: 'PRAC-006' }),
+            team({ code: 'TEAM-012', name: 'Twelve', competencies: ['FICO'], practiceName: 'Finance', practiceCode: 'PRAC-001' }),
           ],
         })
       )

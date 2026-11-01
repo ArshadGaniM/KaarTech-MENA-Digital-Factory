@@ -53,3 +53,10 @@ describe('NAV_ITEMS and the portal', () => {
     expect(APP_SHELL_HASHES).not.toContain('#charter');
   });
 });
+
+describe('NAV_ITEMS form labels', () => {
+  it('passes the competencies form label override through, and leaves other tables without one', () => {
+    expect(NAV_ITEMS.find((item) => item.id === 'competencies').formLabels).toEqual({ practiceId: 'Practice' });
+    expect(NAV_ITEMS.find((item) => item.id === 'teams').formLabels).toBeUndefined();
+  });
+});

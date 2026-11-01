@@ -11,6 +11,7 @@ import {
   isInvalidTextRepresentation,
   invalidValueError,
   isExclusionViolation,
+  inUse,
   overlapRaceError,
 } from "./errors.js";
 import {
@@ -312,12 +313,23 @@ export function createMasterDataRouter(table) {
 
   router.delete("/:id", requireInternalApiKey, async (req, res, next) => {
     try {
+      // Table and column names come only from the fixed descriptor.
+      const guardSql = (table.deleteGuards ?? [])
+        .map((g) => ` and not exists (select 1 from ${g.table} d where d.${g.column} = ${tableName}.${g.ownColumn} and d.deleted_at is null)`)
+        .join("");
       const result = await pool.query(
         `update ${tableName} set deleted_at = now()
-         where id = $1 and deleted_at is null returning id`,
+         where id = $1 and deleted_at is null${guardSql} returning id`,
         [req.params.id]
       );
-      if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
+      if (result.rows.length === 0) {
+        // Either there is no such live row, or a guard blocked the delete.
+        const live = table.deleteGuards
+          ? await pool.query(`select 1 from ${tableName} where id = $1 and deleted_at is null`, [req.params.id])
+          : { rows: [] };
+        if (live.rows.length > 0) throw inUse(resourceName, table.deleteGuards[0].noun);
+        throw notFound(resourceName, req.params.id);
+      }
       res.status(204).send();
     } catch (err) {
       next(err);

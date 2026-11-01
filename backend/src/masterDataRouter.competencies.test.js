@@ -109,5 +109,52 @@ test("the list joins the practice, so each competency carries its practice name"
   assert.equal((await res.json()).data[0].practiceName, "Finance");
 });
 
+test("PATCH to another live practice succeeds and saves the new practice code", async (t) => {
+  let params;
+  t.mock.method(pool, "query", async (sql, p) => {
+    if (sql.startsWith("select * from competencies where id")) return { rows: [row()] };
+    if (sql.includes("select 1 from practices where code")) return { rows: [{}] };
+    if (sql.startsWith("update competencies")) {
+      params = p;
+      return { rows: [row({ practice_code: "PRAC-007" })] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/competencies/${ID}`, { method: "PATCH", headers: HEADERS, body: JSON.stringify({ practiceId: "PRAC-007" }) });
+
+  assert.equal(res.status, 200);
+  assert.ok(params.includes("PRAC-007"));
+  assert.equal((await res.json()).data.practiceId, "PRAC-007");
+});
+
+test("restoring a competency whose practice has since been deleted is a 422 on practiceId, and nothing is restored", async (t) => {
+  let restored = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from competencies where id")) return { rows: [row({ deleted_at: "2026-11-01T00:00:00Z" })] };
+    if (sql.includes("select 1 from practices where code")) return { rows: [] };
+    if (sql.startsWith("update competencies")) restored = true;
+    return { rows: [row()] };
+  });
+
+  const res = await fetch(`${baseUrl}/v1/competencies/${ID}/restore`, { method: "POST", headers: HEADERS });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.practiceId);
+  assert.equal(restored, false);
+});
+
+test("a second live competency with the same name is a 422 on name", async (t) => {
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.includes("select 1 from practices where code")) return { rows: [{}] };
+    throw Object.assign(new Error("duplicate"), { code: "23505", constraint: "ux_competencies_name_live" });
+  });
+
+  const res = await fetch(`${baseUrl}/v1/competencies`, { method: "POST", headers: HEADERS, body: JSON.stringify({ name: "FICO", practiceId: "PRAC-001" }) });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.name);
+});
+
 registerAuthGateTests({ getBaseUrl: () => baseUrl, route: "competencies", getId: () => ID, postBody: { name: "X", practiceId: "PRAC-001" }, patchBody: { name: "Y" } });
 registerDeleteTests({ getBaseUrl: () => baseUrl, route: "competencies", getId: () => ID, tableName: "competencies", resourceName: "competency" });

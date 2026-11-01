@@ -85,6 +85,34 @@ describe('MasterDataTable', () => {
     expect(screen.getByRole('button', { name: 'Add Practice' })).toBeInTheDocument();
   });
 
+  describe('formLabels', () => {
+    const entity = { route: 'competencies', fields: [{ key: 'name', type: 'string', required: true }, { key: 'practiceId', type: 'string', required: true }] };
+    const columns = [{ key: 'name', label: 'Name' }, { key: 'practiceName', label: 'Practice' }];
+
+    it('labels the form field with the override while the table column keeps its own label', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      useEntityRelationships.mockReturnValue({ data: [entity], isLoading: false, error: null });
+      render(<MasterDataTable route="competencies" columns={columns} singularLabel="Competency" formLabels={{ practiceId: 'Practice' }} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Competency' }));
+
+      expect(screen.getByLabelText('Practice *')).toBeInTheDocument();
+      expect(screen.queryByLabelText('practiceId *')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the field key when there is no override and no column for it', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      useEntityRelationships.mockReturnValue({ data: [entity], isLoading: false, error: null });
+      render(<MasterDataTable route="competencies" columns={columns} singularLabel="Competency" />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Competency' }));
+
+      expect(screen.getByLabelText('practiceId *')).toBeInTheDocument();
+    });
+  });
+
   it('opens the Add-record modal when the button is clicked, and Cancel closes it without submitting or refetching', async () => {
     const user = userEvent.setup();
     const refetch = vi.fn();

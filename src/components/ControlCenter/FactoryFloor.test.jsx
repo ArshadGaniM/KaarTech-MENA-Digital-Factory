@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import FactoryFloor from './FactoryFloor';
 
+const PRACTICE_CODES = { Finance: 'PRAC-001', 'Logistics Buy Side': 'PRAC-002' };
 const team = (code, competencies, practiceName = null) => ({
   code,
   name: `Team ${code}`,
   competencies,
   practiceName,
+  practiceCode: practiceName ? PRACTICE_CODES[practiceName] : null,
   memberCount: 1,
   seatCount: 2,
   vacantSeatCount: 1,
@@ -65,5 +67,18 @@ describe('FactoryFloor', () => {
   it('does not group by competency any more: two competencies of one practice share a group', () => {
     renderFloor([team('T-1', ['FICO'], 'Finance'), team('T-2', ['FM'], 'Finance')]);
     expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(1);
+  });
+
+  it('groups by practice code, so two practices that share a name stay separate groups', () => {
+    renderFloor([
+      { ...team('T-1', ['FICO'], 'Finance'), practiceCode: 'PRAC-001' },
+      { ...team('T-2', ['FICO'], 'Finance'), practiceCode: 'PRAC-777' },
+    ]);
+    expect(screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Finance', 'Finance']);
+  });
+
+  it('shows No practice for a team whose practice name is missing, not only when it is null', () => {
+    renderFloor([{ ...team('T-1', ['FICO']), practiceName: undefined, practiceCode: undefined }]);
+    expect(screen.getByRole('heading', { name: 'No practice', level: 4 })).toBeInTheDocument();
   });
 });

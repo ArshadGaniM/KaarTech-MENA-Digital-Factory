@@ -8,10 +8,10 @@ import styles from './ControlCenter.module.css';
 function groupByPractice(teams) {
   const groups = [];
   for (const team of teams) {
-    const label = team.practiceName ?? 'No practice';
+    const key = team.practiceCode ?? null;
     const last = groups[groups.length - 1];
-    if (last?.label === label) last.teams.push(team);
-    else groups.push({ label, teams: [team] });
+    if (last && last.key === key) last.teams.push(team);
+    else groups.push({ key, label: team.practiceName ?? 'No practice', teams: [team] });
   }
   return groups;
 }
@@ -34,7 +34,7 @@ function FactoryFloor({ name, level, order, teams, onOpenTeam }) {
           <p className={styles.noTeams}>No teams yet</p>
         ) : (
           groupByPractice(teams).map((group) => (
-            <section key={group.label} className={styles.group} aria-label={`${group.label} teams`}>
+            <section key={group.key ?? 'none'} className={styles.group} aria-label={`${group.label} teams`}>
               <h4 className={styles.groupLabel}>{group.label}</h4>
               <ul className={styles.cards} aria-label={`${name}, ${group.label} teams`}>
                 {group.teams.map((team) => (

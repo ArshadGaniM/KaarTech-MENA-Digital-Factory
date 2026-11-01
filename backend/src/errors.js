@@ -11,6 +11,13 @@ export function notFound(resource, id) {
   return new ApiError(404, `${resource}_not_found`, `No ${resource} with id '${id}' exists.`);
 }
 
+// 409: the row exists but live rows of another table still depend on it
+// (a practice that competencies still belong to), so deleting it would
+// silently orphan them.
+export function inUse(resource, noun) {
+  return new ApiError(409, `${resource}_in_use`, `This ${resource} cannot be deleted while live ${noun} still belong to it. Move or delete them first.`);
+}
+
 // 409, not 404: the row exists, it just isn't in the state the action needs
 // (restore of a row that isn't deleted — e.g. two clients both hit Undo).
 export function notDeleted(resource, id) {

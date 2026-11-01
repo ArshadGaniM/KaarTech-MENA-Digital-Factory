@@ -27,6 +27,9 @@ export const MASTER_DATA_TABLES = [
     tableName: "practices",
     resourceName: "practice",
     hasCode: true,
+    // A practice cannot be deleted while live competencies belong to it: they
+    // would silently drop out of the Control Center's practice groups.
+    deleteGuards: [{ table: "competencies", column: "practice_code", ownColumn: "code", noun: "competencies" }],
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
   {

@@ -300,3 +300,24 @@ test("fieldSchema maps a 'date' field to a zod string that accepts an ISO date a
   assert.equal(startDate.safeParse("not-a-date").success, false);
   assert.equal(startDate.safeParse(20260101).success, false);
 });
+
+// Competencies belong to a practice (backend migration 0033).
+function competencyTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "competency");
+  assert.ok(table, "competency entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("competency's writable fields are name and a required practiceId, and never the practiceName lookup", () => {
+  const { fields } = competencyTable();
+  assert.deepEqual(fields.map((f) => f.key).sort(), ["name", "practiceId"]);
+  const practiceId = fields.find((f) => f.key === "practiceId");
+  assert.equal(practiceId.required, true);
+  assert.equal(practiceId.type, "string");
+});
+
+test("a competency tool call without a practiceId is refused before it reaches the backend", () => {
+  const practiceId = fieldSchema(competencyTable().fields.find((f) => f.key === "practiceId"));
+  assert.equal(practiceId.safeParse(undefined).success, false);
+  assert.equal(practiceId.safeParse("PRAC-001").success, true);
+});
