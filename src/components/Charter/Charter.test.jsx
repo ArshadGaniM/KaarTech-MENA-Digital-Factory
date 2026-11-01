@@ -1,11 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Charter from './Charter';
 import { SECTIONS } from './charterSections';
 import { fetchPlanActuals } from '../../lib/initiativePlanApi';
+import { fetchServices } from '../../lib/servicesApi';
 
 vi.mock('../../lib/initiativePlanApi');
+vi.mock('../../lib/servicesApi');
+
+const SERVICES = [
+  { code: 'DEPT-013', title: 'Digital/AI Transformation Consulting Services', description: '' },
+  { code: 'DEPT-010', title: 'Design Services', description: '' },
+  { code: 'DEPT-001', title: 'L3 Operational Support Services', description: '' },
+];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  fetchServices.mockResolvedValue(SERVICES);
+});
 
 describe('Charter', () => {
   it('lists its headings in order, with the Initiative Plan as one of them', () => {
@@ -190,8 +203,8 @@ describe('Charter', () => {
     expect(within(scope).getByText('30 Dec 2026 to 28 Sept 2027')).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: /Deliverables/ }));
-    const deliverables = screen.getByRole('table', { name: 'Deliverables and milestones' });
-    expect(within(deliverables).getAllByRole('row')).toHaveLength(1 + 3 * 4);
+    const milestones = screen.getByRole('table', { name: 'Milestones' });
+    expect(within(milestones).getAllByRole('row')).toHaveLength(1 + 3 * 4);
   });
 
   it('says "To be confirmed" for what the owner has not given, instead of inventing it', async () => {
@@ -233,5 +246,91 @@ describe('Charter', () => {
 
     await user.keyboard('{ArrowUp}');
     expect(screen.getByRole('tab', { name: /Assumptions/ })).toHaveFocus();
+  });
+
+  describe('Deliverables and Milestones', () => {
+    const open = async () => {
+      const user = userEvent.setup();
+      render(<Charter />);
+      await user.click(screen.getByRole('tab', { name: /Deliverables and Milestones/ }));
+      return user;
+    };
+    const cellsOf = (row) => within(row).getAllByRole('cell').map((cell) => cell.textContent);
+
+    it('shows the milestones with Stream, Milestone, Due date and Status, and no week column', async () => {
+      await open();
+      const table = screen.getByRole('table', { name: 'Milestones' });
+
+      expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Stream', 'Milestone', 'Due date', 'Status']);
+      const rows = within(table).getAllByRole('row').slice(1);
+      expect(cellsOf(rows[0])).toEqual(['Development & Enhancement Projects', 'KPI governance framework for utilization', '8 Dec 2026', 'Yet to Start']);
+      expect(table).not.toHaveTextContent(/Week \d/);
+    });
+
+    it('gives each milestone the status of its step in the plan', async () => {
+      await open();
+      const rows = within(screen.getByRole('table', { name: 'Milestones' })).getAllByRole('row').slice(1);
+
+      // Every status shown is one of the plan's three, and they come from the plan data, not from a new source.
+      const statuses = new Set(rows.map((row) => cellsOf(row)[3]));
+      expect([...statuses].every((status) => ['Yet to Start', 'In Progress', 'Completed'].includes(status))).toBe(true);
+      expect(statuses.size).toBeGreaterThan(0);
+    });
+
+    it('lists a deliverables table below the milestones, with Owner, Due date and Status', async () => {
+      await open();
+      const milestones = screen.getByRole('table', { name: 'Milestones' });
+      const deliverables = await screen.findByRole('table', { name: 'Deliverables' });
+
+      expect(milestones.compareDocumentPosition(deliverables) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(within(deliverables).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['Deliverable name', 'Owner', 'Due date', 'Status']);
+    });
+
+    it('has one SOP document row per service, in the services order, due 31 Dec 2026, owner To be confirmed, Yet to Start', async () => {
+      await open();
+      const deliverables = await screen.findByRole('table', { name: 'Deliverables' });
+      await within(deliverables).findByText('SOP document: Design Services');
+      const rows = within(deliverables).getAllByRole('row').slice(1).map(cellsOf);
+
+      expect(rows.slice(0, 3)).toEqual([
+        ['SOP document: Digital/AI Transformation Consulting Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start'],
+        ['SOP document: Design Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start'],
+        ['SOP document: L3 Operational Support Services', 'To be confirmed', '31 Dec 2026', 'Yet to Start'],
+      ]);
+    });
+
+    it('adds a deliverable row when a service is added', async () => {
+      fetchServices.mockResolvedValue([...SERVICES, { code: 'DEPT-099', title: 'New Services', description: '' }]);
+      await open();
+
+      expect(await screen.findByText('SOP document: New Services')).toBeInTheDocument();
+    });
+
+    it('has one rollout strategy row per track, due 28 Feb 2027, after the SOP rows', async () => {
+      await open();
+      const deliverables = await screen.findByRole('table', { name: 'Deliverables' });
+      await within(deliverables).findByText('SOP document: Design Services');
+      const rows = within(deliverables).getAllByRole('row').slice(1).map(cellsOf);
+      const rollout = rows.filter((row) => row[0].startsWith('Rollout strategy document'));
+
+      expect(rollout).toEqual([
+        ['Rollout strategy document for all MENA projects (Development & Enhancement Projects)', 'To be confirmed', '28 Feb 2027', 'Yet to Start'],
+        ['Rollout strategy document for all MENA projects (SAP Implementation & Rollout Projects)', 'To be confirmed', '28 Feb 2027', 'Yet to Start'],
+        ['Rollout strategy document for all MENA projects (Managed Services Project)', 'To be confirmed', '28 Feb 2027', 'Yet to Start'],
+      ]);
+      expect(rows.slice(-3).map((row) => row[0])).toEqual(rollout.map((row) => row[0]));
+    });
+
+    it('says so, and can try again, when the services cannot be loaded, while the milestones and rollout rows still show', async () => {
+      fetchServices.mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce(SERVICES);
+      const user = await open();
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('could not be listed');
+      expect(within(screen.getByRole('table', { name: 'Deliverables' })).getAllByRole('row')).toHaveLength(1 + 3);
+
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(await screen.findByText('SOP document: Design Services')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
   });
 });

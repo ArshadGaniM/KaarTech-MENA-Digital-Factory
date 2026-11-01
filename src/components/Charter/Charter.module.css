@@ -127,3 +127,14 @@
     grid-template-columns: 1fr;
   }
 }
+
+.retry {
+  align-self: flex-start;
+  padding: 6px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
