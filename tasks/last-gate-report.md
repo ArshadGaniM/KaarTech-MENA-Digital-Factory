@@ -1,36 +1,50 @@
-# Gate Report: key check on team-members writes
+# Gate Report: deliverables tables, Control Center bar removed, resource deployment start and end dates
 
-Verdict: ⚠️ WARN (no FAIL, no Critical, security PASS on the second audit)
+**Verdict: WARN** (zero FAIL, zero Critical. Security PASS after two rounds of fixes.)
 
-Scope: `backend/src/routes/teamMembers.js`, `backend/src/auth.js`, `backend/src/index.js`, `backend/src/auth.test.js`, the new `backend/src/teamMembers.route.test.js`, `backend/README.md` and `.claude/rules/api.md`.
-Checks: backend 322 of 322 tests pass. Without the guard, 6 of the new tests fail.
+**Branch:** `claude/trusting-curie-hlx1r6` to `main`. Main had no new commits, so the branch was already up to date.
+**Scope:** `git diff origin/main..HEAD`.
+- Charter "Deliverables and Milestones": the Milestones table has a Due date and a Status taken from the plan step. A new Deliverables table lists one SOP document per live department (due 31 Dec 2026) and three rollout strategy documents (due 28 Feb 2027). All start as Yet to Start. Owners are the ones the owner gave. A department with no owner reads To be confirmed.
+- The whole "MENA DIGITAL FACTORY" bar is gone from the Control Center.
+- Resource deployments have a required start date and end date.
+  - A deployment counts from its start to its end, both days included.
+  - After the end date the Dashboard, the Control Center and the team hours show TBD, and the row stays as history.
+  - The 100 percent rule is checked on the busiest day of the new row's period, counting only rows that share a day.
+  - The same position can be held again later, not on a shared day.
+- Plan data is untouched.
 
-What changed:
-- POST, PATCH and DELETE on `/v1/team-members` now need the `x-internal-api-key` header, like every other write route. GET stays open. Before this, anyone could create, edit or permanently delete team members. Nothing in the frontend or the MCP server calls these routes, so no client breaks.
-- The key comparison is constant-time. Both values are hashed with SHA-256 and compared with `timingSafeEqual`, and a header that is not a string is rejected.
-- The backend logs a warning at startup when `INTERNAL_API_KEY` is unset. Before, every write answered 401 with nothing in the logs.
-- `api.md` and the README now say all writes need the key. The "known gap" note is gone.
+**Migration 0035** was applied to the live database with the owner's yes (1 Nov 2026) and verified: 99 rows dated 2026-08-01 to 2027-03-31, the new constraints exist, the old unique index is gone. A rolled-back test showed a shared day refused, the next day allowed, and an end before the start refused. The live backend does not send dates until this merge deploys.
 
-Deploy: the Render API needs a redeploy after this merges. `INTERNAL_API_KEY` is already set there.
+**Checks on the final code:** backend 450/450, mcp-server 58/58, frontend 564/564, `vite build` clean, oxlint has no errors.
 
-## Agent results
+## Agents (round 3)
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | PASS | Guard runs after body parsing and before validation and queries. Docs match the code. |
-| security-auditor | WARN, then PASS | First run: every write route is guarded, but the key comparison used `!==`. Fixed with `timingSafeEqual`. Re-audit: no bypass or throw path, the warning leaks nothing. |
-| debugger | PASS | Full suite passes, no leaked handles, mocks restored. |
-| test-writer | PASS | Changed lines 100% covered. Added tests for 422 and for PATCH on a missing member. |
-| refactorer | WARN | The auth tests repeat part of `registerAuthGateTests`. Kept, because the helper builds master-data servers and does not cover wrong keys. |
-| doc-writer | WARN | The old report listed the gap as open. This report replaces it. |
-| silent-failure-hunter | WARN | Unset server key was unlogged. Fixed with the startup warning. |
-| pr-test-analyzer | PASS | Tests assert status, code and that no query ran. |
+| code-reviewer | PASS | Three earlier fixes confirmed. Checked under two other time zones |
+| security-auditor | WARN | Cap bypass closed. One low item: zone offsets past 15:59 gave a logged 500 (fixed) |
+| debugger | PASS | Backend suite clean under UTC, Dubai and Los Angeles. Two low notes, no action. One earlier run showed random failures that did not repeat in 14 clean runs |
+| test-writer | PASS | Every round 2 fix has a direct test |
+| refactorer | WARN | Duplicate `.retry` CSS, similar race-error builders, repeated test literals |
+| doc-writer | WARN | README and api.md wording (fixed) |
+| silent-failure-hunter | PASS | No findings |
+| pr-test-analyzer | PASS | Mutation checks killed all but one equivalent mutant |
 
-Subagent file-existence claims: none that needed a cross-check.
+All agents ran on Sonnet. No agent made a negative file-existence claim that needed a manual cross-check (CLAUDE.md §8). The locked Initiative Plan files are unchanged (manual cross-check: empty diff).
 
-## Open WARN items
+## Fixed during the gate
 
-- [ ] A client built without `VITE_INTERNAL_API_KEY` sends an empty key and gets a plain 401 (frontend and MCP client).
-- [ ] `GET /:id` on team members has no test, and `DELETE`/`GET` with a malformed id return a logged 500.
-- [ ] The shared key is still visible in the frontend bundle. Real login is the fix (CLAUDE.md §20).
-- [ ] A whitespace-only `INTERNAL_API_KEY` counts as set.
+- Round 1, Critical: a PATCH or restore reads stored dates as Date objects. The day comparison turned them into text and skipped the 100 percent and position checks. Dates are now cut from their local parts, with tests that fail on the old code.
+- Round 2, Security: a date typed as 01/05/2027 passed validation and was compared as text, so it could skip the cap. Date fields now accept only ISO dates. The allocation check refuses anything else and a missing date.
+- Round 2: a one-day deployment was judged backwards in a zone behind UTC. Both sides are now compared as whole days.
+- Round 3: the date pattern accepted zone offsets Postgres refuses (past 15:59), which gave a logged 500. The pattern now stops at 15:59, with tests.
+- Round 3: `backend/README.md` and `.claude/rules/api.md` now state the ISO date rule.
+- Charter shows a loading line, an error line with a retry button, and an empty line.
+
+## Open, not blocking
+
+- [ ] `.retry` CSS is repeated in three components. Move to one shared rule later.
+- [ ] `positionOverlapRaceError` words its message from the group key. It fires only when two writes race.
+- [ ] `allocation.js` uses the database `current_date`. The Control Center uses the app's day. They can differ for a few hours if the zones differ.
+- [ ] Date responses are the ISO form of a local midnight. Correct while the server runs in UTC, as on Render.
+- [ ] 7 of 14 portal service cards have no Output text.

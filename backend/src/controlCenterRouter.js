@@ -9,6 +9,7 @@ const MAX_STREAMS = 100;
 // (all refetching after one change) costs one set of queries, not one each.
 const ROWS_TTL_MS = 1000;
 const currentMonth = () => new Date().toISOString().slice(0, 7);
+const currentDay = () => new Date().toISOString().slice(0, 10);
 
 // Read-only, like every GET in this API. `changeFeed` supplies the "changed"
 // events the stream relays to open pages.
@@ -16,6 +17,7 @@ export function createControlCenterRouter({
   query = (...args) => pool.query(...args),
   changeFeed,
   now = currentMonth,
+  today = currentDay,
   maxStreams = MAX_STREAMS,
   rowsTtlMs = ROWS_TTL_MS,
 } = {}) {
@@ -47,7 +49,7 @@ export function createControlCenterRouter({
   router.get("/", async (req, res, next) => {
     try {
       const month = monthOf(req);
-      res.json({ data: buildControlCenter({ ...(await loadRows()), month }) });
+      res.json({ data: buildControlCenter({ ...(await loadRows()), month, today: today() }) });
     } catch (err) {
       next(err);
     }
@@ -107,6 +109,10 @@ export function createControlCenterRouter({
           allDeployments: all.deployments,
           assignments: all.assignments.filter((a) => a.teamCode === team.code),
           month,
+          today: today(),
+          resources: all.resources,
+          actualCosts: all.actualCosts,
+          plannedCosts: all.plannedCosts,
         }),
       });
     } catch (err) {

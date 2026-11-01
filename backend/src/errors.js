@@ -11,6 +11,13 @@ export function notFound(resource, id) {
   return new ApiError(404, `${resource}_not_found`, `No ${resource} with id '${id}' exists.`);
 }
 
+// 409: the row exists but live rows of another table still depend on it
+// (a practice that competencies still belong to), so deleting it would
+// silently orphan them.
+export function inUse(resource, noun) {
+  return new ApiError(409, `${resource}_in_use`, `This ${resource} cannot be deleted while live ${noun} still belong to it. Move or delete them first.`);
+}
+
 // 409, not 404: the row exists, it just isn't in the state the action needs
 // (restore of a row that isn't deleted — e.g. two clients both hit Undo).
 export function notDeleted(resource, id) {
@@ -33,6 +40,28 @@ export function duplicateFieldError(err, fields) {
   const field = fields.find((f) => err.constraint?.includes(f.column));
   const key = field?.key ?? "value";
   return validationError({ [key]: `${key} must be unique — this value is already in use.` });
+}
+
+// Postgres exclusion_violation (23P01): the backstop for the project assignment
+// no-overlap rule and for the resource deployment rule that one resource may not
+// hold a position twice on a shared day. The app check gives the friendly message
+// first; this only fires if two writes race past it.
+export function isExclusionViolation(err) {
+  return err?.code === "23P01";
+}
+
+export function overlapRaceError(rule) {
+  return validationError({
+    [rule.startKey]: `This ${rule.groupLabel} already has an assignment on some of these dates.`,
+  });
+}
+
+// The same race for a resource's deployments: the exclusion constraint refused a
+// second row for the same position on a shared day.
+export function positionOverlapRaceError(rule) {
+  return validationError({
+    [rule.uniqueKey]: `This ${rule.groupKey} already holds this position on some of these dates.`,
+  });
 }
 
 // Postgres foreign_key_violation (23503) surfaces as a raw 500 by default.

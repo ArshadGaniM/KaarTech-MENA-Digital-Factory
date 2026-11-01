@@ -8,6 +8,8 @@ import DeleteRecordModal from '../DeleteRecordModal';
 import styles from './MasterDataTable.module.css';
 
 const DATE_COLUMN_KEYS = new Set(['createdAt', 'updatedAt']);
+// A date without a time, as the API sends it (2026-08-01T00:00:00.000Z), shown as 2026-08-01.
+const DAY_COLUMN_KEYS = new Set(['startDate', 'endDate']);
 const ENUM_COLUMN_KEYS = new Set(['locationType']);
 
 const ACTIONS_COLUMN_WIDTH = 190;
@@ -20,11 +22,14 @@ function capitalize(value) {
 
 function formatCell(column, value) {
   if (DATE_COLUMN_KEYS.has(column.key)) return new Date(value).toLocaleString();
+  if (DAY_COLUMN_KEYS.has(column.key)) return typeof value === 'string' ? value.slice(0, 10) : value;
   if (ENUM_COLUMN_KEYS.has(column.key)) return capitalize(value);
   return value;
 }
 
-function MasterDataTable({ route, columns, singularLabel }) {
+// `formLabels` overrides the Add/Edit form labels where a field's table column shows
+// something else (the competency's Practice column shows a name, its form field is the ID).
+function MasterDataTable({ route, columns, singularLabel, formLabels = {} }) {
   // FEAT-24: `searchText` is what the box shows; `searchTerm` is what has been
   // sent to the backend once typing paused. Switching table clears both.
   const [searchText, setSearchText] = useState('');
@@ -57,7 +62,7 @@ function MasterDataTable({ route, columns, singularLabel }) {
   // in-flight indicator (gate finding, code-reviewer, FEAT-15).
   const [deletingRowIds, setDeletingRowIds] = useState(() => new Set());
   const [restoringRowIds, setRestoringRowIds] = useState(() => new Set());
-  const labelByKey = Object.fromEntries(columns.map((column) => [column.key, column.label]));
+  const labelByKey = { ...Object.fromEntries(columns.map((column) => [column.key, column.label])), ...formLabels };
   const { widths, startResize } = useColumnWidths(columns);
 
   function handleCreated() {
@@ -298,6 +303,7 @@ MasterDataTable.propTypes = {
     })
   ).isRequired,
   singularLabel: PropTypes.string.isRequired,
+  formLabels: PropTypes.objectOf(PropTypes.string),
 };
 
 export default MasterDataTable;

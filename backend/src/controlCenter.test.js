@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildControlCenter, buildTeamDetail, isValidMonth, monthWindow, HOURS_PER_PERSON } from "./controlCenter.js";
+import { buildControlCenter, buildTeamDetail, deployedOn, referenceDay, isValidMonth, monthWindow, loadControlCenterRows, HOURS_PER_PERSON } from "./controlCenter.js";
 
 const month = "2026-10"; // 31 days
 
@@ -21,13 +21,14 @@ const base = {
     { code: "POS-5", name: "Consultant", teamCode: "TEAM-002", competencies: null },
   ],
   deployments: [
-    { employeeId: 1, employeeName: "Module Lead Person", positionCode: "POS-1", allocationPercentage: 100 },
-    { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 },
-    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-3", allocationPercentage: 50 },
-    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-5", allocationPercentage: 25 },
+    { employeeId: 1, employeeName: "Module Lead Person", positionCode: "POS-1", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+    { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-3", allocationPercentage: 50, start: "2000-01-01", end: "2999-12-31" },
+    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-5", allocationPercentage: 25, start: "2000-01-01", end: "2999-12-31" },
   ],
   assignments: [],
   month,
+  today: "2026-10-15",
 };
 
 const teamOf = (result, code) => result.departments.flatMap((d) => d.teams).find((t) => t.code === code);
@@ -78,8 +79,8 @@ test("a seat never contributes more than 160 hours even with two people in it", 
   const result = buildControlCenter({
     ...base,
     deployments: [
-      { employeeId: 2, employeeName: "A", positionCode: "POS-2", allocationPercentage: 100 },
-      { employeeId: 9, employeeName: "B", positionCode: "POS-2", allocationPercentage: 60 },
+      { employeeId: 2, employeeName: "A", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+      { employeeId: 9, employeeName: "B", positionCode: "POS-2", allocationPercentage: 60, start: "2000-01-01", end: "2999-12-31" },
     ],
   });
   assert.equal(teamOf(result, "TEAM-001").allocatedHours, 160);
@@ -157,8 +158,9 @@ test("team detail lists every seat, marks vacant ones, and shows what each perso
     positions: base.positions.filter((p) => p.teamCode === "TEAM-001"),
     deployments: base.deployments.filter((d) => ["POS-1", "POS-2", "POS-3"].includes(d.positionCode)),
     allDeployments: base.deployments,
-    assignments: [{ teamCode: "TEAM-001", projectId: "P1", projectName: "Rollout", start: "2026-10-01", end: "2026-10-31" }],
+    assignments: [{ id: "A-1", teamCode: "TEAM-001", projectId: "P1", projectName: "Rollout", start: "2026-10-01", end: "2026-10-31" }],
     month,
+    today: "2026-10-15",
   });
   assert.equal(detail.department.name, "Design Services");
   assert.equal(detail.status, "full");
@@ -176,13 +178,14 @@ test("a person allocated over 100% across teams has 0% available, never negative
     team: base.teams[0],
     department: base.departments[0],
     positions: base.positions.filter((p) => p.code === "POS-2"),
-    deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 }],
+    deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }],
     allDeployments: [
-      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 },
-      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-9", allocationPercentage: 40 },
+      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-9", allocationPercentage: 40, start: "2000-01-01", end: "2999-12-31" },
     ],
     assignments: [],
     month,
+    today: "2026-10-15",
   });
   assert.equal(detail.seats[0].availablePercentage, 0);
 });
@@ -198,4 +201,372 @@ test("departments are listed top floor first, by their floor number, not by code
     teams: [],
   });
   assert.deepEqual(result.departments.map((d) => [d.floorNumber, d.name]), [[13, "Penthouse"], [6, "Middle"], [1, "Ground"]]);
+});
+
+// Costs, the current assignment and the month-by-month plan.
+const PLANNED = [
+  { designation: "Senior Consultant", offshoreCost: 1800, onsiteCost: 3300 },
+  { designation: "Consultant", offshoreCost: 1500, onsiteCost: 2400 },
+  { designation: "Analyst", offshoreCost: 1000, onsiteCost: 1750 },
+];
+const PEOPLE = [
+  { employeeId: 2, designation: "Consultant", locationType: "Offshore" },
+  { employeeId: 3, designation: "Analyst", locationType: "Onsite" },
+];
+const costInputs = { resources: PEOPLE, actualCosts: [], plannedCosts: PLANNED };
+const detailOf = (overrides = {}) =>
+  buildTeamDetail({
+    team: base.teams[0],
+    department: base.departments[0],
+    positions: base.positions.filter((p) => p.teamCode === "TEAM-001"),
+    deployments: base.deployments.filter((d) => ["POS-1", "POS-2", "POS-3"].includes(d.positionCode)),
+    allDeployments: base.deployments,
+    assignments: [],
+    month,
+    today: "2026-10-15",
+    ...costInputs,
+    ...overrides,
+  });
+const seatOf = (detail, employeeId) => detail.seats.find((s) => s.employeeId === employeeId);
+
+test("a person's cost is their designation's planned cost for their location, times the allocation", () => {
+  const detail = detailOf();
+  assert.deepEqual(
+    [seatOf(detail, 2).plannedResourceCost, seatOf(detail, 2).actualResourceCost, seatOf(detail, 2).allocatedResourceCost, seatOf(detail, 2).costSource],
+    [1500, null, 1500, "Planned"]
+  );
+  // Onsite analyst at 50%: 1750 x 0.5.
+  assert.equal(seatOf(detail, 3).allocatedResourceCost, 875);
+  assert.equal(detail.allocatedTeamCost, 2375);
+});
+
+test("an Actual Resource Cost wins over the planned one, using the figure for the person's location", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 2, offshoreCost: 2000, onsiteCost: 9999 }] });
+  const lead = seatOf(detail, 2);
+  assert.deepEqual([lead.actualResourceCost, lead.plannedResourceCost, lead.allocatedResourceCost, lead.costSource], [2000, 1500, 2000, "Actual"]);
+});
+
+test("an actual cost with no figure for the person's location falls back to the planned cost", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 2, offshoreCost: null, onsiteCost: 5000 }] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Planned", 1500]);
+});
+
+test("a designation with no planned cost is costed as a Senior Consultant and tagged Default", () => {
+  const detail = detailOf({ resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Default", 3300]);
+});
+
+test("a person with no location type is costed as offshore", () => {
+  const detail = detailOf({ resources: [{ employeeId: 2, designation: "Consultant", locationType: null }, PEOPLE[1]] });
+  assert.equal(seatOf(detail, 2).allocatedResourceCost, 1500);
+});
+
+test("vacant seats and the Module Lead carry no cost and add nothing to the team cost", () => {
+  const detail = detailOf();
+  for (const code of ["POS-1", "POS-4"]) {
+    const seat = detail.seats.find((s) => s.positionCode === code);
+    assert.deepEqual([seat.plannedResourceCost, seat.actualResourceCost, seat.allocatedResourceCost, seat.costSource], [null, null, null, null]);
+  }
+});
+
+test("the location mix is Onsite, Offshore or Hybrid from the people deployed now", () => {
+  assert.equal(detailOf().locationMix, "Hybrid");
+  assert.equal(detailOf({ resources: [{ ...PEOPLE[0], locationType: "Onsite" }, PEOPLE[1]] }).locationMix, "Onsite");
+  assert.equal(detailOf({ resources: [PEOPLE[0], { ...PEOPLE[1], locationType: "Offshore" }] }).locationMix, "Offshore");
+  assert.equal(detailOf({ deployments: [] }).locationMix, null);
+});
+
+test("the card carries the assignment end date and the allocated team cost", () => {
+  const assignments = [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-09-01", end: "2026-12-05" }];
+  const team = teamOf(buildControlCenter({ ...base, assignments, today: "2026-10-15", ...costInputs }), "TEAM-001");
+  assert.equal(team.assignmentEndDate, "2026-12-05");
+  assert.equal(team.allocatedTeamCost, 2375);
+  const idle = teamOf(buildControlCenter({ ...base, assignments, today: "2027-01-01", ...costInputs }), "TEAM-001");
+  assert.equal(idle.assignmentEndDate, null);
+  const none = teamOf(buildControlCenter({ ...base, assignments: [], today: "2026-10-15", ...costInputs }), "TEAM-002");
+  assert.equal(none.assignmentEndDate, null);
+});
+
+test("the end date counts on the day itself, and an assignment starting tomorrow is not current", () => {
+  const at = (start, end, today) =>
+    teamOf(buildControlCenter({ ...base, assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start, end }], today, ...costInputs }), "TEAM-001").assignmentEndDate;
+  assert.equal(at("2026-09-01", "2026-12-05", "2026-12-05"), "2026-12-05");
+  assert.equal(at("2026-09-01", "2026-12-05", "2026-12-06"), null);
+  assert.equal(at("2026-12-06", "2027-01-31", "2026-12-05"), null);
+});
+
+test("the monthly plan runs from the assignment's start month to its end month, prorating part months", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", projectName: "Rollout", start: "2026-09-01", end: "2026-12-05" }] });
+  const plan = detail.monthlyPlan;
+  assert.deepEqual(plan.months.map((m) => m.month), ["2026-09", "2026-10", "2026-11", "2026-12"]);
+  assert.deepEqual(plan.months.map((m) => m.utilizationPercent), [100, 100, 100, 16.13]);
+  assert.deepEqual(plan.months.map((m) => m.cost), [2375, 2375, 2375, 383.06]);
+  assert.equal(plan.totalCost, 7508.06);
+  assert.equal(detail.assignmentEndDate, "2026-12-05");
+  assert.deepEqual(detail.projects.map((p) => [p.id, p.projectName]), [["A", "Rollout"]]);
+});
+
+test("a start part way through a month is prorated too, and the plan crosses a year end", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-12-16", end: "2027-01-15" }], today: "2026-12-20" });
+  assert.deepEqual(detail.monthlyPlan.months.map((m) => [m.month, m.utilizationPercent]), [["2026-12", 51.61], ["2027-01", 48.39]]);
+});
+
+test("a team with no current assignment shows no projects and an empty plan", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "2026-02-01" }] });
+  assert.deepEqual([detail.projects, detail.assignmentEndDate, detail.monthlyPlan], [[], null, { months: [], totalCost: 0, truncated: false }]);
+});
+
+test("when even the Senior Consultant planned cost is gone, a person costs zero and is tagged Missing, not Default", () => {
+  const detail = detailOf({ plannedCosts: PLANNED.filter((c) => c.designation !== "Senior Consultant" && c.designation !== "Consultant") });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost, seatOf(detail, 2).plannedResourceCost], ["Missing", 0, null]);
+});
+
+test("a person who is not in the resources list is costed offshore at the default rate", () => {
+  const detail = detailOf({ resources: [PEOPLE[1]] });
+  assert.deepEqual([seatOf(detail, 2).costSource, seatOf(detail, 2).allocatedResourceCost], ["Default", 1800]);
+});
+
+test("a partial allocation scales an actual cost too", () => {
+  const detail = detailOf({ actualCosts: [{ employeeId: 3, offshoreCost: 900, onsiteCost: 2000 }] });
+  // Onsite, 50%: 2000 x 0.5.
+  assert.equal(seatOf(detail, 3).allocatedResourceCost, 1000);
+});
+
+test("a person deployed in a Module Lead seat is not costed and not counted in the team cost", () => {
+  const detail = detailOf();
+  const moduleLead = detail.seats.find((s) => s.positionCode === "POS-1");
+  assert.equal(moduleLead.employeeId, 1);
+  assert.deepEqual([moduleLead.allocatedResourceCost, moduleLead.costSource], [null, null]);
+  assert.equal(detail.allocatedTeamCost, 2375);
+});
+
+test("the team counts how many people were costed at the default rate", () => {
+  const defaulted = detailOf({ resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]] });
+  assert.equal(defaulted.defaultedCostCount, 1);
+  assert.equal(detailOf().defaultedCostCount, 0);
+  const card = teamOf(buildControlCenter({ ...base, today: "2026-10-15", resources: [{ employeeId: 2, designation: "Office Assistant", locationType: "Onsite" }, PEOPLE[1]], actualCosts: [], plannedCosts: PLANNED }), "TEAM-001");
+  assert.equal(card.defaultedCostCount, 1);
+});
+
+test("an assignment that starts after today is shown as the next assignment, never as the current one", () => {
+  const detail = detailOf({
+    assignments: [
+      { id: "L", teamCode: "TEAM-001", projectId: "P2", projectName: "Later", start: "2027-03-01", end: "2027-04-01" },
+      { id: "N", teamCode: "TEAM-001", projectId: "P1", projectName: "Next", start: "2026-12-06", end: "2027-01-31" },
+    ],
+  });
+  assert.deepEqual(detail.projects, []);
+  assert.deepEqual(detail.nextAssignment, { id: "N", projectId: "P1", projectName: "Next", start: "2026-12-06", end: "2027-01-31" });
+});
+
+test("a very long assignment is cut at 120 months and says so", () => {
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "9999-12-31" }] });
+  assert.equal(detail.monthlyPlan.months.length, 120);
+  assert.equal(detail.monthlyPlan.truncated, true);
+  assert.equal(detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-09-01", end: "2026-12-05" }] }).monthlyPlan.truncated, false);
+});
+
+// Practice grouping and the order inside a practice.
+const COMPETENCIES = [
+  { name: "FICO", practiceCode: "PRAC-001", practiceName: "Finance" },
+  { name: "MM", practiceCode: "PRAC-002", practiceName: "Logistics Buy Side" },
+  { name: "ECP", practiceCode: "PRAC-004", practiceName: "HXM" },
+];
+const teamPlan = [
+  // [team, competency, assignment end or null]
+  ["TEAM-A", "FICO", "2026-12-05"],
+  ["TEAM-B", "FICO", "2026-11-20"],
+  ["TEAM-C", "FICO", null],
+  ["TEAM-D", "MM", "2026-12-01"],
+  ["TEAM-E", "ECP", "2027-02-28"],
+  ["TEAM-F", "ECP", null],
+  ["TEAM-G", null, "2026-11-10"],
+  ["TEAM-H", "ZZZ", null],
+];
+const practiceData = {
+  departments: [{ code: "D", name: "Dept", floorNumber: 1 }],
+  teams: teamPlan.map(([code]) => ({ code, name: code, departmentCode: "D" })),
+  positions: teamPlan.flatMap(([code, competency], i) => (competency ? [{ code: `P-${i}`, name: "Consultant", teamCode: code, competencies: competency }] : [])),
+  // Only TEAM-A (seat P-0) has someone deployed, so it is the only utilized team.
+  deployments: [{ employeeId: 1, employeeName: "Person", positionCode: "P-0", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }],
+  assignments: teamPlan.filter(([, , end]) => end).map(([code, , end]) => ({ id: code, teamCode: code, projectId: "P", start: "2026-01-01", end })),
+  month,
+  today: "2026-11-15",
+  resources: [],
+  actualCosts: [],
+  plannedCosts: [],
+  competencies: COMPETENCIES,
+};
+const floorOrder = () => buildControlCenter(practiceData).departments[0].teams.map((t) => t.code);
+
+test("a team takes the practice of its main competency, or none when it has no competency or its competency is unknown", () => {
+  const teams = buildControlCenter(practiceData).departments[0].teams;
+  const by = (code) => teams.find((t) => t.code === code);
+  assert.deepEqual([by("TEAM-A").practiceCode, by("TEAM-A").practiceName], ["PRAC-001", "Finance"]);
+  assert.deepEqual([by("TEAM-G").practiceCode, by("TEAM-G").practiceName], [null, null]);
+  assert.equal(by("TEAM-H").practiceCode, null);
+});
+
+test("teams are ordered by practice code, no practice last, and inside a practice by allocation band", () => {
+  // Finance: B (allocated, nothing utilized), A (allocated, utilized), C (no assignment).
+  // TEAM-G's assignment ended before today, so it counts as no assignment.
+  assert.deepEqual(floorOrder(), ["TEAM-B", "TEAM-A", "TEAM-C", "TEAM-D", "TEAM-E", "TEAM-F", "TEAM-G", "TEAM-H"]);
+});
+
+test("an allocated team with nothing utilized comes before an allocated team that is utilized, whatever their end dates", () => {
+  // TEAM-A ends later than TEAM-B and is utilized, so it must follow TEAM-B.
+  // Moving TEAM-A's end date earlier changes nothing: the band decides first.
+  const data = { ...practiceData, assignments: practiceData.assignments.map((a) => (a.teamCode === "TEAM-A" ? { ...a, end: "2026-11-16" } : a)) };
+  const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(finance, ["TEAM-B", "TEAM-A", "TEAM-C"]);
+});
+
+test("inside a band the earlier end date comes first, even when its team code is later", () => {
+  const financeOrder = (data) => buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  // Nobody utilized: B ends 20 Nov, A ends 5 Dec, so B leads although its code is later.
+  assert.deepEqual(financeOrder({ ...practiceData, deployments: [] }), ["TEAM-B", "TEAM-A", "TEAM-C"]);
+  // Both utilized (A in seat P-0, B in seat P-1): the same rule applies in the second band.
+  const bothUtilized = { ...practiceData, deployments: [...practiceData.deployments, { employeeId: 2, employeeName: "Other", positionCode: "P-1", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }] };
+  assert.deepEqual(financeOrder(bothUtilized), ["TEAM-B", "TEAM-A", "TEAM-C"]);
+});
+
+test("a team whose assignment has ended counts as unallocated and falls to the end of its practice", () => {
+  const teams = buildControlCenter({ ...practiceData, today: "2026-12-10" }).departments[0].teams;
+  const finance = teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  // A, B and C all have no current assignment on 10 December, so they sort by team code.
+  assert.deepEqual(finance, ["TEAM-A", "TEAM-B", "TEAM-C"]);
+});
+
+test("ties on the end date break by team code", () => {
+  const data = { ...practiceData, assignments: practiceData.assignments.map((a) => (["TEAM-A", "TEAM-B"].includes(a.teamCode) ? { ...a, end: "2026-12-05" } : a)) };
+  const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  // Same end date, but B has nothing utilized, so it still leads A. Make both unutilized to reach the tie.
+  assert.deepEqual(finance, ["TEAM-B", "TEAM-A", "TEAM-C"]);
+  const noDeployments = buildControlCenter({ ...data, deployments: [] }).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(noDeployments, ["TEAM-A", "TEAM-B", "TEAM-C"]);
+});
+
+test("teams with no live assignment sort by team code at the end of their practice", () => {
+  const data = { ...practiceData, assignments: [] };
+  const finance = buildControlCenter(data).departments[0].teams.filter((t) => t.practiceCode === "PRAC-001").map((t) => t.code);
+  assert.deepEqual(finance, ["TEAM-A", "TEAM-B", "TEAM-C"]);
+});
+
+test("a team with several competencies takes the practice of the one used by most of its positions, ties by name", () => {
+  const data = {
+    ...practiceData,
+    teams: [{ code: "TEAM-M", name: "Mixed", departmentCode: "D" }, { code: "TEAM-T", name: "Tied", departmentCode: "D" }],
+    positions: [
+      { code: "M1", name: "Consultant", teamCode: "TEAM-M", competencies: "MM, FICO" },
+      { code: "M2", name: "Consultant", teamCode: "TEAM-M", competencies: "FICO" },
+      { code: "M3", name: "Consultant", teamCode: "TEAM-M", competencies: "FICO, ECP" },
+      { code: "T1", name: "Consultant", teamCode: "TEAM-T", competencies: "MM" },
+      { code: "T2", name: "Consultant", teamCode: "TEAM-T", competencies: "FICO" },
+    ],
+    assignments: [],
+  };
+  const teams = buildControlCenter(data).departments[0].teams;
+  assert.equal(teams.find((t) => t.code === "TEAM-M").practiceCode, "PRAC-001"); // FICO is on three positions
+  assert.equal(teams.find((t) => t.code === "TEAM-T").practiceCode, "PRAC-001"); // MM and FICO tie, FICO sorts first
+});
+
+test("a team whose main competency has no live practice is reported once, not on every request", () => {
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (message) => warnings.push(message);
+  try {
+    const data = { ...practiceData, teams: [practiceData.teams[7]], positions: [{ code: "Z", name: "Consultant", teamCode: "TEAM-H", competencies: "ZZZ-UNKNOWN" }], assignments: [] };
+    buildControlCenter(data);
+    buildControlCenter(data);
+  } finally {
+    console.warn = original;
+  }
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /"ZZZ-UNKNOWN" has no live practice/);
+});
+
+// Deployment dates: a person counts only from the start date to the end date.
+const dep = (start, end, overrides = {}) => ({ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start, end, ...overrides });
+const withDeployments = (deployments, extra = {}) => ({ ...base, deployments, ...extra });
+
+test("referenceDay is today when today falls in the month, and the first day of any other month", () => {
+  const window = monthWindow("2026-10");
+  assert.equal(referenceDay(window, "2026-10-15"), "2026-10-15");
+  assert.equal(referenceDay(window, "2026-10-01"), "2026-10-01");
+  assert.equal(referenceDay(window, "2026-10-31"), "2026-10-31");
+  assert.equal(referenceDay(window, "2026-09-30"), "2026-10-01");
+  assert.equal(referenceDay(window, "2026-11-01"), "2026-10-01");
+});
+
+test("deployedOn keeps a deployment on its start day and its end day, and drops it the day before and after", () => {
+  const rows = [dep("2026-08-01", "2027-03-31")];
+  assert.equal(deployedOn(rows, "2026-08-01").length, 1);
+  assert.equal(deployedOn(rows, "2027-03-31").length, 1);
+  assert.equal(deployedOn(rows, "2026-07-31").length, 0);
+  assert.equal(deployedOn(rows, "2027-04-01").length, 0);
+});
+
+test("a deployment that has ended is TBD: nobody is deployed, so the team has no members and no allocated hours", () => {
+  const result = buildControlCenter(withDeployments([dep("2026-08-01", "2026-10-14")], { today: "2026-10-15" }));
+  const team = teamOf(result, "TEAM-001");
+  assert.equal(team.memberCount, 0);
+  assert.equal(team.allocatedHours, 0);
+  assert.equal(team.status, "unstaffed");
+});
+
+test("a deployment that has not started yet does not count either", () => {
+  const result = buildControlCenter(withDeployments([dep("2026-10-16", "2027-03-31")], { today: "2026-10-15" }));
+  assert.equal(teamOf(result, "TEAM-001").memberCount, 0);
+});
+
+test("a deployment counts on its last day, and stops counting the next day", () => {
+  const onLastDay = buildControlCenter(withDeployments([dep("2026-08-01", "2026-10-15")], { today: "2026-10-15" }));
+  const nextDay = buildControlCenter(withDeployments([dep("2026-08-01", "2026-10-15")], { today: "2026-10-16" }));
+  assert.equal(teamOf(onLastDay, "TEAM-001").memberCount, 1);
+  assert.equal(teamOf(nextDay, "TEAM-001").memberCount, 0);
+});
+
+test("another month is read on its first day: a deployment that starts mid-month is not yet counted there", () => {
+  const rows = [dep("2026-11-10", "2027-03-31")];
+  assert.equal(teamOf(buildControlCenter(withDeployments(rows, { month: "2026-11", today: "2026-10-15" })), "TEAM-001").memberCount, 0);
+  assert.equal(teamOf(buildControlCenter(withDeployments(rows, { month: "2026-11", today: "2026-11-12" })), "TEAM-001").memberCount, 1);
+});
+
+test("the same person on two sequential deployments counts once, in whichever one runs today", () => {
+  const rows = [dep("2026-08-01", "2026-12-31", { allocationPercentage: 100 }), dep("2027-01-01", "2027-03-31", { allocationPercentage: 50 })];
+  const december = buildControlCenter(withDeployments(rows, { month: "2026-12", today: "2026-12-10" }));
+  const january = buildControlCenter(withDeployments(rows, { month: "2027-01", today: "2027-01-10" }));
+  assert.equal(teamOf(december, "TEAM-001").allocatedHours, 160);
+  assert.equal(teamOf(january, "TEAM-001").allocatedHours, 80);
+});
+
+test("the team popup shows only the deployments running on the day, for the seats and for what a person has left overall", () => {
+  const input = {
+    team: base.teams[0],
+    department: base.departments[0],
+    positions: base.positions.filter((p) => p.code === "POS-2"),
+    deployments: [dep("2026-08-01", "2026-10-14")],
+    allDeployments: [dep("2026-08-01", "2026-10-14"), dep("2026-10-01", "2027-03-31", { positionCode: "POS-9", allocationPercentage: 40 })],
+    assignments: [],
+    month,
+  };
+  const ended = buildTeamDetail({ ...input, today: "2026-10-15" });
+  assert.equal(ended.seats[0].employeeId, null);
+
+  const running = buildTeamDetail({ ...input, today: "2026-10-14" });
+  assert.equal(running.seats[0].employeeId, 2);
+  // 100% here plus 40% elsewhere is over 100%, so nothing is left.
+  assert.equal(running.seats[0].availablePercentage, 0);
+});
+
+test("the loader reads each deployment's start and end date as text, so the read model compares plain days", async () => {
+  const sqls = [];
+  await loadControlCenterRows(async (sql) => {
+    sqls.push(sql);
+    return { rows: [] };
+  });
+
+  const deploymentSql = sqls.find((sql) => sql.includes("from resource_deployment rd"));
+  assert.match(deploymentSql, /rd\.start_date::text as start/);
+  assert.match(deploymentSql, /rd\.end_date::text as "end"/);
 });

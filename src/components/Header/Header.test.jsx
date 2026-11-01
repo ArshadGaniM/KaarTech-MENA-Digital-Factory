@@ -18,4 +18,10 @@ describe('Header', () => {
       '#our-delivery-centers'
     );
   });
+
+  it('links "Charter" to the portal section', () => {
+    render(<Header />);
+
+    expect(screen.getByRole('link', { name: 'Charter' })).toHaveAttribute('href', '#charter');
+  });
 });

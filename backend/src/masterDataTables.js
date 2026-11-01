@@ -27,6 +27,9 @@ export const MASTER_DATA_TABLES = [
     tableName: "practices",
     resourceName: "practice",
     hasCode: true,
+    // A practice cannot be deleted while live competencies belong to it: they
+    // would silently drop out of the Control Center's practice groups.
+    deleteGuards: [{ table: "competencies", column: "practice_code", ownColumn: "code", noun: "competencies" }],
     fields: [{ key: "name", column: "name", required: true, type: "string" }],
   },
   {
@@ -51,7 +54,23 @@ export const MASTER_DATA_TABLES = [
     route: "competencies",
     tableName: "competencies",
     resourceName: "competency",
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    // practiceName is NOT a stored column: it is a live lookup against practices
+    // at read time, like teams' departmentName.
+    lookups: [
+      {
+        table: "practices",
+        localColumn: "practice_code",
+        foreignColumn: "code",
+        projections: [{ key: "practiceName", column: "name" }],
+      },
+    ],
+    fields: [
+      { key: "name", column: "name", required: true, type: "string" },
+      // Every competency belongs to one practice: a pick-list of the live
+      // practices, enforced by validateReferences and by a foreign key. It
+      // references practices' own auto-generated `code`, not `id`.
+      { key: "practiceId", column: "practice_code", required: true, type: "string", references: { table: "practices", column: "code" } },
+    ],
   },
   {
     route: "modules",
@@ -115,6 +134,24 @@ export const MASTER_DATA_TABLES = [
       // them and stay valid with neither set.
       { key: "input", column: "input", required: false, type: "string", maxLength: 2000 },
       { key: "output", column: "output", required: false, type: "string", maxLength: 2000 },
+    ],
+  },
+  {
+    // Planned Resource Cost: one monthly cost (USD) per employee designation,
+    // split offshore and onsite. The Control Center applies it to every resource
+    // with that designation when the resource has no Actual Resource Cost.
+    // Designation is the unique key among live rows (migration 0030). Grade is
+    // not unique on purpose (Engineer and Intern are both K1).
+    route: "planned-resource-costs",
+    tableName: "planned_resource_costs",
+    resourceName: "planned_resource_cost",
+    identityField: "designation",
+    sortColumn: "designation",
+    fields: [
+      { key: "designation", column: "designation", required: true, type: "string", maxLength: 100 },
+      { key: "grade", column: "grade", required: true, type: "string", maxLength: 20 },
+      { key: "offshoreCost", column: "offshore_cost", required: true, type: "number", min: 0, max: 1000000, numeric: true },
+      { key: "onsiteCost", column: "onsite_cost", required: true, type: "number", min: 0, max: 1000000, numeric: true },
     ],
   },
   {
@@ -217,6 +254,10 @@ export const MASTER_DATA_TABLES = [
     // (surfaced per row as employeeTotalAllocation so a short resource is
     // visible — rows are entered one at a time, so a hard "exactly 100"
     // check could never let the first row in).
+    // With dates (migration 0035) the total is checked on every day of the new
+    // row's period: only rows that share a day with it count, and the same
+    // position may not be held twice on one day. The list shows the total of
+    // the rows deployed today.
     allocationRule: {
       groupKey: "employeeId",
       groupColumn: "employee_id",
@@ -224,6 +265,8 @@ export const MASTER_DATA_TABLES = [
       uniqueColumn: "position_code",
       valueKey: "allocationPercentage",
       valueColumn: "allocation_percentage",
+      startColumn: "start_date",
+      endColumn: "end_date",
       total: 100,
     },
     // employeeName/positionName are NOT stored columns — they're live
@@ -281,6 +324,18 @@ export const MASTER_DATA_TABLES = [
         numeric: true,
         min: 0.01,
         max: 100,
+      },
+      // The person counts as deployed from startDate to endDate, both days
+      // included. After endDate they are back to TBD.
+      { key: "startDate", column: "start_date", required: true, type: "date" },
+      { key: "endDate", column: "end_date", required: true, type: "date" },
+    ],
+    crossFieldValidations: [
+      {
+        type: "dateRange",
+        startKey: "startDate",
+        endKey: "endDate",
+        message: "endDate must not be earlier than startDate.",
       },
     ],
   },
@@ -450,6 +505,17 @@ export const MASTER_DATA_TABLES = [
     // masterDataSchema.js's validateCrossFields for how a PATCH that only
     // sends one of the two dates is still checked against the other's
     // real, currently-stored value.
+    // A team cannot have two live assignments that share a day (both ends are
+    // inclusive). Checked under a per-team lock, with an exclusion constraint
+    // (migration 0029) behind it.
+    overlapRule: {
+      groupKey: "teamId",
+      groupLabel: "team",
+      groupColumn: "team_code",
+      startKey: "projectAssignmentStartDate",
+      startColumn: "project_assignment_start_date",
+      endColumn: "project_assignment_end_date",
+    },
     crossFieldValidations: [
       {
         type: "dateRange",

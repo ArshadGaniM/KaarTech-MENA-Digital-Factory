@@ -37,7 +37,18 @@ export const MASTER_DATA_TABLES = [
     slug: "competency",
     route: "competencies",
     label: "Competency",
-    fields: [{ key: "name", label: "name", required: true, type: "string" }],
+    // practiceName is NOT writable here: a live lookup of the practice's name.
+    fields: [
+      { key: "name", label: "name", required: true, type: "string" },
+      {
+        key: "practiceId",
+        label:
+          "practice ID (for example PRAC-007) — must match an existing practice's own auto-generated code; " +
+          "required, and the backend rejects the request if no such practice exists",
+        required: true,
+        type: "string",
+      },
+    ],
   },
   {
     slug: "module",
@@ -109,9 +120,20 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
+    slug: "planned_resource_cost",
+    route: "planned-resource-costs",
+    label: "Planned Resource Cost",
+    fields: [
+      { key: "designation", label: "employee designation, exactly as on the Resources table (unique: one planned cost per designation, at most 100 characters)", required: true, type: "string", maxLength: 100 },
+      { key: "grade", label: "grade, for example K16 (not unique, at most 20 characters)", required: true, type: "string", maxLength: 20 },
+      { key: "offshoreCost", label: "monthly offshore cost in USD (0 to 1,000,000)", required: true, type: "number", min: 0, max: 1000000 },
+      { key: "onsiteCost", label: "monthly onsite cost in USD (0 to 1,000,000)", required: true, type: "number", min: 0, max: 1000000 },
+    ],
+  },
+  {
     slug: "resource_cost",
     route: "resource-cost",
-    label: "Resource Cost",
+    label: "Actual Resource Cost",
     // employeeName/employeeDesignation are NOT writable here — they're a
     // live lookup against the Resources table's current data, returned
     // by the backend's GET responses but never accepted on add_/update_.
@@ -181,9 +203,24 @@ export const MASTER_DATA_TABLES = [
         label:
           "share of the resource's time spent on this position, above 0 and up to 100. One resource " +
           "can have several rows (one per position); their percentages must not add up to more than " +
-          "100 and should reach 100, and the same position cannot be used twice for a resource",
+          "100 on any one day (only rows that share a day are added up) and should reach 100, and the " +
+          "same position cannot be used twice for a resource on the same day",
         required: true,
         type: "number",
+      },
+      {
+        key: "startDate",
+        label: "Start Date (ISO 8601 date, e.g. 2026-08-01) — the first day the resource counts as deployed",
+        required: true,
+        type: "date",
+      },
+      {
+        key: "endDate",
+        label:
+          "End Date (ISO 8601 date) — the last day the resource counts as deployed; after it the resource " +
+          "is TBD. Must not be earlier than startDate; the backend rejects the request with a validation error if it is",
+        required: true,
+        type: "date",
       },
     ],
   },

@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event';
 import Dashboard from './Dashboard';
 import { useTableCounts } from '../../hooks/useTableCounts';
 import { useGroupSummary } from '../../hooks/useGroupSummary';
+import { useAllocationSummary } from '../../hooks/useAllocationSummary';
 
 vi.mock('../../hooks/useTableCounts');
 vi.mock('../../hooks/useGroupSummary');
+vi.mock('../../hooks/useAllocationSummary');
 
 const counts = (overrides = {}) => {
   const base = {
@@ -29,6 +31,11 @@ const counts = (overrides = {}) => {
 beforeEach(() => {
   vi.clearAllMocks();
   useGroupSummary.mockReturnValue({ data: { groups: [], total: 0 }, isLoading: false, error: null });
+  useAllocationSummary.mockReturnValue({
+    data: { buckets: ['full', 'partial', 'none', 'over'].map((key) => ({ key, count: 0 })), positions: [] },
+    isLoading: false,
+    error: null,
+  });
 });
 
 describe('Dashboard', () => {
@@ -218,5 +225,19 @@ describe('Dashboard', () => {
     expect(screen.getByRole('region', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Resources' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
+  });
+
+  it('shows the Allocation panel under Resources and passes the refresh key to it', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+
+    render(<Dashboard onNavigate={() => {}} />);
+
+    expect(screen.getByRole('region', { name: 'Allocation' })).toBeInTheDocument();
+    expect(useAllocationSummary).toHaveBeenLastCalledWith({ bucket: null, position: null }, 0);
+
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    expect(useAllocationSummary).toHaveBeenLastCalledWith({ bucket: null, position: null }, 1);
   });
 });

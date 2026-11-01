@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import FactoryFloor from './FactoryFloor';
 
-const team = (code, competencies) => ({
+const PRACTICE_CODES = { Finance: 'PRAC-001', 'Logistics Buy Side': 'PRAC-002' };
+const team = (code, competencies, practiceName = null) => ({
   code,
   name: `Team ${code}`,
   competencies,
+  practiceName,
+  practiceCode: practiceName ? PRACTICE_CODES[practiceName] : null,
   memberCount: 1,
   seatCount: 2,
   vacantSeatCount: 1,
@@ -42,12 +45,40 @@ describe('FactoryFloor', () => {
     expect(screen.getByText('0 teams')).toBeInTheDocument();
   });
 
-  it('groups consecutive teams of one competency and puts teams without one in their own group', () => {
-    renderFloor([team('T-1', ['ABAP']), team('T-2', ['ABAP']), team('T-3', ['FICO']), team('T-4', [])]);
+  it('groups consecutive teams of one practice, in the order they arrive, and puts teams without one in their own group', () => {
+    renderFloor([
+      team('T-1', ['FICO'], 'Finance'),
+      team('T-2', ['FM'], 'Finance'),
+      team('T-3', ['MM'], 'Logistics Buy Side'),
+      team('T-4', []),
+    ]);
 
-    expect(screen.getByRole('heading', { name: 'ABAP', level: 4 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'FICO', level: 4 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'No competency', level: 4 })).toBeInTheDocument();
-    expect(screen.getByRole('list', { name: 'Development, ABAP teams' }).children).toHaveLength(2);
+    const headings = screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent);
+    expect(headings).toEqual(['Finance', 'Logistics Buy Side', 'No practice']);
+    expect(screen.getByRole('list', { name: 'Development, Finance teams' }).children).toHaveLength(2);
+  });
+
+  it('keeps the order of the teams inside a practice as sent, so the soonest-free team stays first', () => {
+    renderFloor([team('T-9', ['FICO'], 'Finance'), team('T-2', ['FICO'], 'Finance'), team('T-5', ['FICO'], 'Finance')]);
+    const cards = screen.getByRole('list', { name: 'Development, Finance teams' }).children;
+    expect([...cards].map((li) => li.textContent.match(/T-\d/)[0])).toEqual(['T-9', 'T-2', 'T-5']);
+  });
+
+  it('does not group by competency any more: two competencies of one practice share a group', () => {
+    renderFloor([team('T-1', ['FICO'], 'Finance'), team('T-2', ['FM'], 'Finance')]);
+    expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(1);
+  });
+
+  it('groups by practice code, so two practices that share a name stay separate groups', () => {
+    renderFloor([
+      { ...team('T-1', ['FICO'], 'Finance'), practiceCode: 'PRAC-001' },
+      { ...team('T-2', ['FICO'], 'Finance'), practiceCode: 'PRAC-777' },
+    ]);
+    expect(screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Finance', 'Finance']);
+  });
+
+  it('shows No practice for a team whose practice name is missing, not only when it is null', () => {
+    renderFloor([{ ...team('T-1', ['FICO']), practiceName: undefined, practiceCode: undefined }]);
+    expect(screen.getByRole('heading', { name: 'No practice', level: 4 })).toBeInTheDocument();
   });
 });

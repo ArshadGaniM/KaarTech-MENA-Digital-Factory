@@ -19,10 +19,23 @@
   --color-status-unused-ink: #9e0c24;
   --color-status-unstaffed: #ebebee;
   --color-status-unstaffed-ink: #5f6368;
+  --color-plan-completed: #2eaa57;
+  --color-plan-progress: #ffc000;
+  --color-plan-pending: #87ceeb;
+  --color-plan-completed-ink: #ffffff;
+  --color-plan-progress-ink: #3d2f00;
+  --color-plan-pending-ink: #0b3a52;
+  --color-location-onsite: var(--color-accent);
+  --color-location-offshore: #1f77c4;
+  --color-location-hybrid: #7c4dcf;
   --color-chart-1: var(--color-accent);
   --color-chart-2: var(--color-primary);
   --color-chart-3: #8a8f98;
   --color-chart-4: #d98a96;
+  --color-allocation-full: var(--color-status-full-ink);
+  --color-allocation-partial: var(--color-status-partial-ink);
+  --color-allocation-none: var(--color-status-unstaffed-ink);
+  --color-allocation-over: var(--color-accent);
 
   --font-sans: 'Poppins', system-ui, Roboto, sans-serif;
   --space-1: 8px;

@@ -8,6 +8,10 @@ function Sidebar({ items, activeId, onSelect }) {
         <span className={styles.brandKaartech}>KaarTech</span>
         <span className={styles.brandFactory}>MENA Digital Factory</span>
       </div>
+      {/* #top is not an application hash, so the portal opens. */}
+      <a href="#top" className={styles.portalLink}>
+        <span aria-hidden="true">&larr;</span> Back to the portal
+      </a>
       <ul className={styles.list}>
         {items.map((item) => (
           <li key={item.id}>

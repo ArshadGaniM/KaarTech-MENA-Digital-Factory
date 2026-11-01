@@ -69,6 +69,15 @@ describe('MasterDataTable', () => {
     expect(screen.getByRole('cell', { name: 'Digital Factory' })).toBeInTheDocument();
   });
 
+  it('shows a start date or end date as a plain day, without the time the API adds', () => {
+    mockTable({ data: [{ id: '1', startDate: '2026-08-01T00:00:00.000Z', endDate: '2027-03-31T00:00:00.000Z' }] });
+
+    render(<MasterDataTable route="resource-deployment" columns={[{ key: 'startDate', label: 'Start Date' }, { key: 'endDate', label: 'End Date' }]} singularLabel="Resource Deployment" />);
+
+    expect(screen.getByRole('cell', { name: '2026-08-01' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '2027-03-31' })).toBeInTheDocument();
+  });
+
   it('shows an empty-state message when there are zero rows', () => {
     mockTable({ data: [] });
 
@@ -83,6 +92,34 @@ describe('MasterDataTable', () => {
     render(<MasterDataTable route="practices" columns={COLUMNS} singularLabel="Practice" />);
 
     expect(screen.getByRole('button', { name: 'Add Practice' })).toBeInTheDocument();
+  });
+
+  describe('formLabels', () => {
+    const entity = { route: 'competencies', fields: [{ key: 'name', type: 'string', required: true }, { key: 'practiceId', type: 'string', required: true }] };
+    const columns = [{ key: 'name', label: 'Name' }, { key: 'practiceName', label: 'Practice' }];
+
+    it('labels the form field with the override while the table column keeps its own label', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      useEntityRelationships.mockReturnValue({ data: [entity], isLoading: false, error: null });
+      render(<MasterDataTable route="competencies" columns={columns} singularLabel="Competency" formLabels={{ practiceId: 'Practice' }} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Competency' }));
+
+      expect(screen.getByLabelText('Practice *')).toBeInTheDocument();
+      expect(screen.queryByLabelText('practiceId *')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the field key when there is no override and no column for it', async () => {
+      const user = userEvent.setup();
+      mockTable({ data: [] });
+      useEntityRelationships.mockReturnValue({ data: [entity], isLoading: false, error: null });
+      render(<MasterDataTable route="competencies" columns={columns} singularLabel="Competency" />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Competency' }));
+
+      expect(screen.getByLabelText('practiceId *')).toBeInTheDocument();
+    });
   });
 
   it('opens the Add-record modal when the button is clicked, and Cancel closes it without submitting or refetching', async () => {

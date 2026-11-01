@@ -8,6 +8,7 @@ import {
   validateCrossFields,
   lookupJoinSql,
   lookupSelectSql,
+  validateOverlap,
 } from "./masterDataSchema.js";
 import {
   isUniqueViolation,
@@ -717,22 +718,25 @@ test("toResponse turns a numeric field's pg string into a number, leaves null al
 
 test("allocationSelectSql is empty without a rule and filters soft-deleted rows with one", () => {
   assert.deepEqual(allocationSelectSql(rangedTable), []);
+  const dated = { tableName: "t", allocationRule: { groupColumn: "employee_id", valueColumn: "v", startColumn: "s", endColumn: "e" } };
+  assert.match(allocationSelectSql(dated)[0], /a\.s <= current_date and a\.e >= current_date/);
   const [sql] = allocationSelectSql({
     tableName: "resource_deployment",
-    allocationRule: { groupColumn: "employee_id", valueColumn: "allocation_percentage" },
+    allocationRule: { groupColumn: "employee_id", valueColumn: "allocation_percentage", startColumn: "start_date", endColumn: "end_date" },
   });
   assert.match(sql, /deleted_at is null/);
+  assert.doesNotMatch(sql, /undefined/);
   assert.match(sql, /as employee_total_allocation/);
 });
 
 test("validateAllocation reports a duplicate position and an overflow together, and skips tables without a rule", async () => {
   const rule = {
     groupKey: "employeeId", groupColumn: "employee_id", uniqueKey: "positionId", uniqueColumn: "position_code",
-    valueKey: "allocationPercentage", valueColumn: "allocation_percentage", total: 100,
+    valueKey: "allocationPercentage", valueColumn: "allocation_percentage", startColumn: "start_date", endColumn: "end_date", total: 100,
   };
-  const pool = { query: async () => ({ rows: [{ unique_value: "POS-1", value: "70.10" }] }) };
+  const pool = { query: async () => ({ rows: [{ unique_value: "POS-1", value: "70.10", start: "2026-08-01", end: "2027-03-31" }] }) };
   await assert.rejects(
-    validateAllocation(pool, { tableName: "t", allocationRule: rule }, { employee_id: 1, position_code: "POS-1", allocation_percentage: 40 }),
+    validateAllocation(pool, { tableName: "t", allocationRule: rule }, { employee_id: 1, position_code: "POS-1", allocation_percentage: 40, start_date: "2026-08-01", end_date: "2027-03-31" }),
     (err) => err.details.positionId && /at most 29\.9%/.test(err.details.allocationPercentage)
   );
   const never = { query: async () => { throw new Error("must not query"); } };
@@ -788,4 +792,42 @@ test("validateBody enforces integer, min and max on a whole-number field, on cre
   assert.match(errorOf({ floorNumber: 2.5 }, { partial: true }), /whole number/);
   assert.equal(errorOf({}, { partial: true }), null);
   assert.ok(errorOf({}));
+});
+
+const overlapTable = {
+  tableName: "project_assignments",
+  overlapRule: {
+    groupKey: "teamId", groupLabel: "team", groupColumn: "team_code",
+    startKey: "projectAssignmentStartDate", startColumn: "project_assignment_start_date", endColumn: "project_assignment_end_date",
+  },
+};
+const candidate = { team_code: "TEAM-001", project_assignment_start_date: "2026-12-05", project_assignment_end_date: "2027-01-31" };
+
+test("validateOverlap does nothing for a table without the rule, or before both dates are known", async () => {
+  let asked = false;
+  const db = { query: async () => ((asked = true), { rows: [] }) };
+  await validateOverlap(db, { tableName: "x" }, candidate);
+  await validateOverlap(db, overlapTable, { ...candidate, project_assignment_end_date: null });
+  assert.equal(asked, false);
+});
+
+test("validateOverlap asks about the team and dates, leaves the edited row out, and names the clash in a 422", async () => {
+  let params;
+  const db = { query: async (sql, p) => ((params = p), { rows: [{ start: "2026-09-01", end: "2026-12-05" }] }) };
+  await assert.rejects(
+    () => validateOverlap(db, overlapTable, candidate, "11111111-1111-1111-1111-111111111111"),
+    (err) => err.status === 422 && /team TEAM-001 already has an assignment from 2026-09-01 to 2026-12-05/.test(err.details.projectAssignmentStartDate)
+  );
+  assert.deepEqual(params, ["TEAM-001", "11111111-1111-1111-1111-111111111111", "2026-12-05", "2027-01-31"]);
+});
+
+test("validateOverlap passes when nothing clashes", async () => {
+  await validateOverlap({ query: async () => ({ rows: [] }) }, overlapTable, candidate);
+});
+
+test("validateBody rejects a date that is not a real calendar day, such as 30 February", () => {
+  const table = { fields: [{ key: "d", column: "d", required: true, type: "date" }] };
+  assert.throws(() => validateBody(table, { d: "2026-02-30" }), (err) => err.status === 422 && Boolean(err.details.d));
+  assert.doesNotThrow(() => validateBody(table, { d: "2028-02-29" }));
+  assert.throws(() => validateBody(table, { d: "2027-02-29" }), (err) => Boolean(err.details.d));
 });

@@ -42,10 +42,7 @@ function ControlCenter() {
       )}
 
       {data && (
-        <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-labelledby="factory-title">
-          <h1 id="factory-title" className={styles.roof}>
-            MENA Digital Factory
-          </h1>
+        <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-label="Factory floors">
           <ol className={styles.floors}>
             {data.departments.map((department, i) => (
               <FactoryFloor

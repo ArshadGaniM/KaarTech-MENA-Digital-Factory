@@ -49,7 +49,15 @@ export const MASTER_DATA_TABLES = [
     // (identity: "none", same as resource-cost/resource-deployment/
     // project-assignments) — gate finding, debugger: without this column
     // the Delete popup has nothing visible to match against for this table.
-    columns: [{ key: "id", label: "Record ID" }, { key: "name", label: "Name" }, ...AUDIT_COLUMNS],
+    columns: [
+      { key: "id", label: "Record ID" },
+      { key: "name", label: "Name" },
+      { key: "practiceName", label: "Practice" },
+      ...AUDIT_COLUMNS,
+    ],
+    // The Practice pick-list in the Add and Edit form is the practiceId field; the
+    // table shows the practice's name instead.
+    formLabels: { practiceId: "Practice" },
   },
   {
     route: "modules",
@@ -102,9 +110,22 @@ export const MASTER_DATA_TABLES = [
     ],
   },
   {
+    route: "planned-resource-costs",
+    label: "Planned Resource Cost",
+    singularLabel: "Planned Resource Cost",
+    columns: [
+      { key: "id", label: "Record ID" },
+      { key: "designation", label: "Designation" },
+      { key: "grade", label: "Grade" },
+      { key: "offshoreCost", label: "Offshore Cost (USD per month)" },
+      { key: "onsiteCost", label: "Onsite Cost (USD per month)" },
+      ...AUDIT_COLUMNS,
+    ],
+  },
+  {
     route: "resource-cost",
-    label: "Resource Cost",
-    singularLabel: "Resource Cost",
+    label: "Actual Resource Cost",
+    singularLabel: "Actual Resource Cost",
     columns: [
       // FEAT-15: this table has no business code (identity: "none") — the
       // internal row id is the only thing a "Delete by Code or ID" popup
@@ -143,6 +164,8 @@ export const MASTER_DATA_TABLES = [
       { key: "positionName", label: "Position Name" },
       { key: "allocationPercentage", label: "Allocation %" },
       { key: "employeeTotalAllocation", label: "Employee Total %" },
+      { key: "startDate", label: "Start Date" },
+      { key: "endDate", label: "End Date" },
       ...AUDIT_COLUMNS,
     ],
   },

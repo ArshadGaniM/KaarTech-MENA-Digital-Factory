@@ -5,6 +5,8 @@ export const teamShape = PropTypes.shape({
   code: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   competencies: PropTypes.arrayOf(PropTypes.string).isRequired,
+  practiceCode: PropTypes.string,
+  practiceName: PropTypes.string,
   memberCount: PropTypes.number.isRequired,
   seatCount: PropTypes.number.isRequired,
   vacantSeatCount: PropTypes.number.isRequired,
@@ -13,4 +15,7 @@ export const teamShape = PropTypes.shape({
   utilizedHours: PropTypes.number.isRequired,
   utilizationPercent: PropTypes.number.isRequired,
   status: PropTypes.oneOf(Object.keys(STATUS_LABELS)).isRequired,
+  assignmentEndDate: PropTypes.string,
+  allocatedTeamCost: PropTypes.number,
+  defaultedCostCount: PropTypes.number,
 });

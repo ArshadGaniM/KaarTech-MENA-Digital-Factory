@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import AnimatedNumber from '../AnimatedNumber';
+import AllocationInsights from '../AllocationInsights';
+import BarList from '../BarList';
 import ResourceInsights from '../ResourceInsights';
 import { useTableCounts } from '../../hooks/useTableCounts';
 import { formatCount } from '../../lib/formatCount';
@@ -108,25 +110,23 @@ function Dashboard({ onNavigate }) {
 
       <ResourceInsights refreshKey={refreshKey} onNavigate={onNavigate} />
 
+      <AllocationInsights refreshKey={refreshKey} onNavigate={onNavigate} />
+
       <div className={styles.panels}>
         <section aria-labelledby="dashboard-records" className={styles.panel}>
           <h2 id="dashboard-records" className={styles.sectionTitle}>
             Records by table
           </h2>
           <p className={styles.panelMeta}>{formatCount(totalRecords)} active records across {loaded.length} tables</p>
-          <ul className={styles.bars}>
-            {ranked.map((table) => (
-              <li key={table.route}>
-                <button type="button" className={styles.barRow} onClick={() => onNavigate(table.route)}>
-                  <span className={styles.barLabel}>{table.label}</span>
-                  <span className={styles.barTrack} aria-hidden="true">
-                    <span className={styles.barFill} style={{ width: `${(table.count / maxCount) * 100}%` }} />
-                  </span>
-                  <span className={styles.barValue}>{formatCount(table.count)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <BarList
+            max={maxCount}
+            rows={ranked.map((table) => ({
+              key: table.route,
+              label: table.label,
+              count: table.count,
+              onClick: () => onNavigate(table.route),
+            }))}
+          />
         </section>
 
         <section aria-labelledby="dashboard-needs-data" className={styles.panel}>

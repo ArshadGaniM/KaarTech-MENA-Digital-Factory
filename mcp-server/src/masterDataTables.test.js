@@ -167,9 +167,17 @@ function resourceDeploymentTable() {
   return table;
 }
 
-test("resource_deployment's writable fields are exactly employeeId/positionId/allocationPercentage", () => {
+test("resource_deployment's writable fields are exactly employeeId/positionId/allocationPercentage/startDate/endDate", () => {
   const fieldKeys = resourceDeploymentTable().fields.map((f) => f.key).sort();
-  assert.deepEqual(fieldKeys, ["allocationPercentage", "employeeId", "positionId"]);
+  assert.deepEqual(fieldKeys, ["allocationPercentage", "employeeId", "endDate", "positionId", "startDate"]);
+});
+
+test("resource_deployment's start and end dates are required date fields, and the end label says it must not be earlier than the start", () => {
+  const table = resourceDeploymentTable();
+  const startDate = table.fields.find((f) => f.key === "startDate");
+  const endDate = table.fields.find((f) => f.key === "endDate");
+  assert.deepEqual([startDate.type, startDate.required, endDate.type, endDate.required], ["date", true, "date", true]);
+  assert.match(endDate.label, /not be earlier than startDate/);
 });
 
 test("resource_deployment never exposes employeeName/positionName as a writable MCP field (live lookup only)", () => {
@@ -299,4 +307,25 @@ test("fieldSchema maps a 'date' field to a zod string that accepts an ISO date a
   assert.equal(startDate.safeParse("2026-01-01").success, true);
   assert.equal(startDate.safeParse("not-a-date").success, false);
   assert.equal(startDate.safeParse(20260101).success, false);
+});
+
+// Competencies belong to a practice (backend migration 0033).
+function competencyTable() {
+  const table = MASTER_DATA_TABLES.find((t) => t.slug === "competency");
+  assert.ok(table, "competency entry must exist in the mcp-server mirror");
+  return table;
+}
+
+test("competency's writable fields are name and a required practiceId, and never the practiceName lookup", () => {
+  const { fields } = competencyTable();
+  assert.deepEqual(fields.map((f) => f.key).sort(), ["name", "practiceId"]);
+  const practiceId = fields.find((f) => f.key === "practiceId");
+  assert.equal(practiceId.required, true);
+  assert.equal(practiceId.type, "string");
+});
+
+test("a competency tool call without a practiceId is refused before it reaches the backend", () => {
+  const practiceId = fieldSchema(competencyTable().fields.find((f) => f.key === "practiceId"));
+  assert.equal(practiceId.safeParse(undefined).success, false);
+  assert.equal(practiceId.safeParse("PRAC-001").success, true);
 });

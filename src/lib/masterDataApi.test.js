@@ -28,6 +28,19 @@ describe('MASTER_DATA_TABLES column definitions', () => {
     }
   );
 
+  it('lists Planned Resource Cost before Actual Resource Cost, with the planned columns', () => {
+    const labels = MASTER_DATA_TABLES.map((table) => table.label);
+    expect(labels.indexOf('Planned Resource Cost')).toBe(labels.indexOf('Actual Resource Cost') - 1);
+    expect(columnsFor('planned-resource-costs').slice(0, 5).map((c) => c.key)).toEqual(['id', 'designation', 'grade', 'offshoreCost', 'onsiteCost']);
+  });
+
+  it('gives competencies a Practice column showing the practice name, and labels the form field Practice', () => {
+    const table = MASTER_DATA_TABLES.find((t) => t.route === 'competencies');
+    expect(table.columns.map((c) => c.key).slice(0, 3)).toEqual(['id', 'name', 'practiceName']);
+    expect(table.columns[2].label).toBe('Practice');
+    expect(table.formLabels).toEqual({ practiceId: 'Practice' });
+  });
+
   // FEAT-20: departments gained two optional free-text fields.
   it('gives departments Floor Number, Input and Output columns between the name and the audit columns', () => {
     const keys = columnsFor('departments').map((column) => column.key);
@@ -38,6 +51,14 @@ describe('MASTER_DATA_TABLES column definitions', () => {
   it('gives resource-deployment Allocation % and Employee Total % columns after the position columns', () => {
     const keys = columnsFor('resource-deployment').map((column) => column.key);
     expect(keys.slice(3, 7)).toEqual(['positionId', 'positionName', 'allocationPercentage', 'employeeTotalAllocation']);
+  });
+
+  it('gives resource-deployment Start Date and End Date columns after the total, before the audit columns', () => {
+    const columns = columnsFor('resource-deployment');
+    const keys = columns.map((column) => column.key);
+    expect(keys.slice(7, 9)).toEqual(['startDate', 'endDate']);
+    expect(columns.slice(7, 9).map((column) => column.label)).toEqual(['Start Date', 'End Date']);
+    expect(keys.indexOf('createdBy')).toBeGreaterThan(keys.indexOf('endDate'));
   });
 
   // FEAT-22: positions record the competencies they need.

@@ -19,6 +19,7 @@
 ```
 GET    /v1/<table>                      → list (limit, offset, q, equality filters)
 GET    /v1/<table>/summary?groupBy=f    → grouped counts for charts
+GET    /v1/allocation/summary           → people per allocation bucket and position
 GET    /v1/<table>/:id                  → get one
 POST   /v1/<table>                      → create
 PATCH  /v1/<table>/:id                  → partial update
@@ -85,8 +86,10 @@ Built with `ApiError` in `backend/src/errors.js`.
 - Never expose stack traces, internal paths, SQL errors or constraint names.
 - The central handler in `index.js` returns an `ApiError` as is, logs every 500 and hides
   its cause. It does not translate Postgres errors.
-- `mapWriteError` in `masterDataRouter.js` turns 23505 (unique), 23503 (foreign key) and
-  22P02 (bad text value) into a 422 that names the field. A router outside the
+- `mapWriteError` in `masterDataRouter.js` turns 23505 (unique), 23503 (foreign key),
+  22P02 (bad text value) and, for a table with an `overlapRule` or an `allocationRule`, 23P01
+  (exclusion: two assignments of one team, or two deployments of one resource to one position,
+  sharing a day) into a 422 that names the field. A router outside the
   master-data router must call the same mapping itself, or the client gets a generic 500.
 - Other constraint errors, such as a `check` violation (23514), still surface as a logged
   500. Validate those in the API first.
@@ -98,6 +101,7 @@ Built with `ApiError` in `backend/src/errors.js`.
 - Validate at the boundary with `validateBody` from the table descriptor, before any
   query runs.
 - Use the descriptor's field constraints for lengths, ranges, patterns and enums.
+- Date fields take ISO 8601 `YYYY-MM-DD`, optionally with a time and a zone offset up to 15:59. Anything else is a 422. The 100% and overlap checks compare the first ten characters.
 - Check that referenced rows exist and are live in `validateReferences`, not in the
   route handler. Restore repeats the check.
 - Check again in the database with a `check` or unique constraint. The API check gives
@@ -110,7 +114,10 @@ GET /v1/resources?limit=20&offset=0
 ```
 Response includes `total`; master-data list routes also include `activeTotal`, which leaves out soft-deleted rows. Default `limit` is 20, max is 100 — enforced in the route handler.
 
-**Aggregate routes are not paginated.** `GET /v1/<table>/summary?groupBy=<field>` returns grouped counts, largest first, capped at 100 groups with no `limit` or `offset`. Its `total` still counts every matching row, including groups past the cap.
+**Aggregate routes are not paginated and do not use the `{ data: [...], total }` list envelope.** They return counts, never rows, and take no `limit` or `offset`.
+
+- `GET /v1/<table>/summary?groupBy=<field>` returns `{ data: [{ value, count }], total }`, largest group first, capped at 100 groups. `total` counts every matching row, including groups past the cap.
+- `GET /v1/allocation/summary` returns `{ data: { buckets, positions } }` and has no `total`. `buckets` is always the same four entries in a fixed order, and `positions` is largest first, capped at 50 names.
 
 ## Authentication
 - Reads are open. Every write (POST, PATCH, DELETE, restore), including

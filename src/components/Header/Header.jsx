@@ -4,6 +4,7 @@ import styles from './Header.module.css';
 const NAV_LINKS = [
   { label: 'Services', href: '#services' },
   { label: 'Delivery Centers', href: '#our-delivery-centers' },
+  { label: 'Charter', href: '#charter' },
   { label: 'Dashboard', href: DASHBOARD_HASH },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },

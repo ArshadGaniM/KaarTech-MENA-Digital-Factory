@@ -9,15 +9,23 @@ const tables = {
   departments: [{ code: "DEPT-002", name: "Design Services", floorNumber: 10 }],
   teams: [{ code: "TEAM-001", name: "Alpha", departmentCode: "DEPT-002" }],
   positions: [{ code: "POS-2", name: "Lead Consultant", teamCode: "TEAM-001", competencies: "FICO" }],
-  deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 }],
+  deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }],
   assignments: [],
+  resources: [],
+  actualCosts: [],
+  plannedCosts: [],
+  competencies: [],
 };
 
 function fakeQuery(sql) {
   const key = sql.includes("from departments") ? "departments"
     : sql.includes("from teams") ? "teams"
     : sql.includes("from positions") ? "positions"
+    : /from resources\b/.test(sql) ? "resources"
     : sql.includes("from resource_deployment") ? "deployments"
+    : sql.includes("from planned_resource_costs") ? "plannedCosts"
+    : sql.includes("from competencies") ? "competencies"
+    : sql.includes("from resource_cost") ? "actualCosts"
     : "assignments";
   return Promise.resolve({ rows: tables[key] });
 }
@@ -125,7 +133,7 @@ test("requests made close together share one set of table queries", async () => 
   await Promise.all([1, 2, 3].map(() => fetch(`${baseUrl}/v1/control-center`).then((r) => r.json())));
   server.closeAllConnections();
   server.close();
-  assert.equal(queries, 5); // five tables, loaded once
+  assert.equal(queries, 9); // nine tables, loaded once
 });
 
 test("a change event makes the next request read the tables again", async () => {
@@ -140,7 +148,7 @@ test("a change event makes the next request read the tables again", async () => 
   await fetch(`${baseUrl}/v1/control-center`);
   server.closeAllConnections();
   server.close();
-  assert.equal(queries, 10);
+  assert.equal(queries, 18);
 });
 
 test("a failed load is not kept: the next request tries again", async () => {
@@ -176,5 +184,65 @@ test("the stream refuses a new connection with 503 once the cap is reached, and 
     open.destroy();
     server.closeAllConnections();
     server.close();
+  }
+});
+
+test("the team detail route passes the cost rows and today through to the costs and the assignment", async () => {
+  const saved = { ...tables };
+  Object.assign(tables, {
+    resources: [{ employeeId: 2, designation: "Lead Consultant", locationType: "Onsite" }],
+    plannedCosts: [{ designation: "Lead Consultant", offshoreCost: 1800, onsiteCost: 3300 }],
+    actualCosts: [],
+    assignments: [{ id: "A-1", teamCode: "TEAM-001", projectId: "P1", projectName: "Rollout", start: "2026-09-01", end: "2026-12-05" }],
+  });
+  const { server, baseUrl } = await start({ today: () => "2026-10-15" });
+  try {
+    const { data } = await (await fetch(`${baseUrl}/v1/control-center/teams/TEAM-001`)).json();
+    assert.equal(data.allocatedTeamCost, 3300);
+    assert.equal(data.assignmentEndDate, "2026-12-05");
+    assert.equal(data.projects[0].id, "A-1");
+    assert.equal(data.seats[0].costSource, "Planned");
+    const card = (await (await fetch(`${baseUrl}/v1/control-center`)).json()).data.departments[0].teams[0];
+    assert.equal(card.assignmentEndDate, "2026-12-05");
+    assert.equal(card.allocatedTeamCost, 3300);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+    Object.assign(tables, saved);
+  }
+});
+
+test("a failing cost query fails the request instead of returning free teams", async () => {
+  const failing = (sql) => (sql.includes("from planned_resource_costs") ? Promise.reject(new Error("down")) : fakeQuery(sql));
+  const { server, baseUrl } = await start({ query: failing });
+  try {
+    assert.equal((await fetch(`${baseUrl}/v1/control-center`)).status, 500);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});
+
+test("the router passes today to the read model, so a deployment that has ended is TBD on the list and in the popup", async () => {
+  const original = tables.deployments;
+  tables.deployments = [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2026-08-01", end: "2027-03-31" }];
+  const onLastDay = await start({ now: () => "2027-03", today: () => "2027-03-31" });
+  const afterEnd = await start({ now: () => "2027-04", today: () => "2027-04-01" });
+  try {
+    const lastDayList = await (await fetch(`${onLastDay.baseUrl}/v1/control-center`)).json();
+    const lastDayDetail = await (await fetch(`${onLastDay.baseUrl}/v1/control-center/teams/TEAM-001`)).json();
+    const afterList = await (await fetch(`${afterEnd.baseUrl}/v1/control-center`)).json();
+    const afterDetail = await (await fetch(`${afterEnd.baseUrl}/v1/control-center/teams/TEAM-001`)).json();
+
+    assert.equal(lastDayList.data.departments[0].teams[0].memberCount, 1);
+    assert.equal(lastDayDetail.data.seats[0].employeeName, "Lead Person");
+    assert.equal(afterList.data.departments[0].teams[0].memberCount, 0);
+    assert.equal(afterDetail.data.seats[0].employeeName, null);
+  } finally {
+    tables.deployments = original;
+    for (const { server } of [onLastDay, afterEnd]) {
+      server.closeAllConnections();
+      server.close();
+    }
   }
 });

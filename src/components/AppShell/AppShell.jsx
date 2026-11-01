@@ -34,7 +34,7 @@ function AppShell({ initialHash = '' }) {
       </a>
       <Sidebar items={NAV_ITEMS} activeId={activeViewId} onSelect={setActiveViewId} />
       <div className={styles.workspace}>
-        <TopBar title={activeItem.kind === 'control-center' ? undefined : activeItem.label} />
+        <TopBar title={activeItem.label} />
         <main id="shell-main-content" className={styles.content} tabIndex={-1}>
           {activeItem.kind === 'table' ? (
             <MasterDataTable
@@ -42,6 +42,7 @@ function AppShell({ initialHash = '' }) {
               route={activeItem.route}
               columns={activeItem.columns}
               singularLabel={activeItem.singularLabel}
+              formLabels={activeItem.formLabels}
             />
           ) : activeItem.kind === 'entity-relationship' ? (
             <EntityRelationship key={activeItem.id} />
