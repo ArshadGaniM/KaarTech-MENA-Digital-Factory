@@ -5,7 +5,6 @@
 export const ROLE = {
   sponsor: 'Initiative Sponsor',
   owner: 'Initiative Owner',
-  coOwner: 'Initiative Co-owner',
   trackOwner: 'Initiative Track Owner',
   trackCoOwner: 'Initiative Track Co-owner',
   member: 'Initiative Member',
@@ -19,13 +18,13 @@ export const TRACKS = [
 
 const VERTICALS = ['Platinum', 'Services', 'EOG', 'A&D'];
 
-const person = (name, designation, role, track = null) => ({ name, designation, role, track });
+const person = (name, designation, role, track = null, vertical = null) => ({ name, designation, role, track, vertical });
 
 const NAMED = [
   person('Irfan Ahmed', 'COO MENA', ROLE.sponsor),
   person('Arshad Gani M', 'Delivery Manager - Onsite, Platinum, MENA', ROLE.owner),
   person('Dinesh V', 'Delivery Manager - Onsite, Platinum, MENA', ROLE.member),
-  person('Mohammed Ibrahim S', 'Delivery Manager - Offshore, Platinum, MENA', ROLE.coOwner),
+  person('Mohammed Ibrahim S', 'Delivery Manager - Offshore, Platinum, MENA', ROLE.owner),
   person('Sudhir S', 'Delivery Manager - Onsite, Services, MENA', ROLE.member),
   person('Siddarth S', 'Delivery Manager - Offshore, Services, MENA', ROLE.member),
   person('Dhineshraj', 'Delivery Manager - Onsite, EOG, MENA', ROLE.member),
@@ -33,7 +32,7 @@ const NAMED = [
   person('Purushothaman E', 'Delivery Manager - Onsite, A&D, MENA', ROLE.member),
   person('Varun Krishna', 'Delivery Manager - Offshore, A&D, MENA', ROLE.member),
   person('Vishnu Balakrishnan', 'Practice Head, MENA', ROLE.member),
-  person('Srinivasan R', 'Practice Lead, Platinum, MENA', ROLE.coOwner),
+  person('Srinivasan R', 'Practice Lead, Platinum, MENA', ROLE.owner),
   person('Subangi', 'Practice Lead, Services, MENA', ROLE.member),
   person('Arul Arokia Raj', 'Practice Lead, EOG, MENA', ROLE.member),
   person('Shravan Balaji', 'Practice Lead, A&D, MENA', ROLE.member),
@@ -42,10 +41,13 @@ const NAMED = [
   person('Faizan R', 'Group Project Manager, Managed Services Projects, Platinum, MENA', ROLE.trackOwner, TRACKS[2]),
 ];
 
-// Four open seats under each track owner, one per vertical.
-const OPEN_SEATS = TRACKS.flatMap((track) => VERTICALS.map((vertical) => person('', vertical, ROLE.trackCoOwner, track)));
+// Four open seats under each track owner, one per vertical. Name and designation stay empty.
+const OPEN_SEATS = TRACKS.flatMap((track) => VERTICALS.map((vertical) => person('', '', ROLE.trackCoOwner, track, vertical)));
 
 export const STAKEHOLDERS = Object.freeze([...NAMED, ...OPEN_SEATS].map((entry) => Object.freeze(entry)));
 
-export const roleLabel = (entry) => (entry.track ? `${entry.role} (${entry.track})` : entry.role);
+export const roleLabel = (entry) => {
+  if (entry.vertical) return `${entry.role} (${entry.track} in ${entry.vertical} Vertical)`;
+  return entry.track ? `${entry.role} (${entry.track})` : entry.role;
+};
 export const withRole = (role) => STAKEHOLDERS.filter((entry) => entry.role === role);

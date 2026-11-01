@@ -12,6 +12,7 @@ import { effectivePoc, isBehindPlan, shortDate, weekOf, weekRangeLabel, weekStar
 import { fetchPlanActuals } from '../../lib/initiativePlanApi';
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import ActualDialog from './ActualDialog';
+import PlanFullScreen from './PlanFullScreen';
 import styles from './InitiativePlan.module.css';
 
 // View of the locked initiative plan (src/data/initiativePlan.js): the owner's
@@ -86,6 +87,7 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [filter, setFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
+  const [fullScreen, setFullScreen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const { data: actuals, error } = useAsyncResource(fetchPlanActuals, [reloadToken]);
   const byKey = actuals ?? {};
@@ -110,7 +112,7 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
 
   const matches = (row) => filter === ALL || row.status === filter;
 
-  function renderRow(row, key, { isGroup = false } = {}) {
+  function renderRow(row, key, { isGroup = false, fit = false } = {}) {
     const actual = byKey[key];
     const behind = isBehindPlan(row, actual, currentWeek);
     const poc = effectivePoc(row, actual);
@@ -133,7 +135,7 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
         <td className={styles.colActual}>
           <span className={styles.actualText}>{actual ? `${actual.actualPoc}%` : 'No actual'}</span>
           {behind && <span className={styles.behindBadge}>Behind plan</span>}
-          {!readOnly && (
+          {!readOnly && !fit && (
             <button type="button" className={styles.actualButton} onClick={() => setEditing({ row, key })}>
               {actual ? 'Edit actual' : 'Record actual'}
             </button>
@@ -146,8 +148,10 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
     );
   }
 
-  return (
-    <div className={styles.wrapper}>
+  // The toolbar, legend and table. The full-screen view draws it again, with the same filter and collapsed groups.
+  function renderBody(fit) {
+    return (
+      <>
       <div className={styles.toolbar}>
         <div className={styles.filters} role="group" aria-label="Filter by status">
           {FILTERS.map((name) => (
@@ -165,6 +169,11 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
           {' '}
           {behindCount === 0 ? 'Nothing is behind plan.' : `${behindCount} ${behindCount === 1 ? 'row is' : 'rows are'} behind plan.`}
         </p>
+        {!fit && (
+          <button type="button" className={styles.fullScreenButton} onClick={() => setFullScreen(true)}>
+            View full screen
+          </button>
+        )}
       </div>
 
       <ul className={styles.legend} aria-label="Colour key">
@@ -187,7 +196,7 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
         </p>
       )}
 
-      <div className={styles.scroll}>
+      <div className={`${styles.scroll} ${fit ? styles.scrollFit : ''}`}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -224,13 +233,26 @@ function InitiativePlan({ today = new Date(), readOnly = false }) {
               const shownItems = group.items.filter(matches);
               if (filter !== ALL && !matches(group) && shownItems.length === 0) return null;
               return [
-                renderRow(group, group.slNo, { isGroup: true }),
-                ...(collapsed.has(group.slNo) ? [] : shownItems.map((item) => renderRow(item, activityKey(group, item)))),
+                renderRow(group, group.slNo, { isGroup: true, fit }),
+                ...(collapsed.has(group.slNo) ? [] : shownItems.map((item) => renderRow(item, activityKey(group, item), { fit }))),
               ];
             })}
           </tbody>
         </table>
       </div>
+      </>
+    );
+  }
+
+  return (
+    <div className={styles.wrapper}>
+      {renderBody(false)}
+
+      {fullScreen && (
+        <PlanFullScreen title="Initiative Plan" onClose={() => setFullScreen(false)}>
+          <div className={styles.wrapper}>{renderBody(true)}</div>
+        </PlanFullScreen>
+      )}
 
       {editing && (
         <ActualDialog

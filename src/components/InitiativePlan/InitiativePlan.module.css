@@ -350,3 +350,31 @@ td.yetToStart,
   font-size: 11px;
   cursor: pointer;
 }
+
+.fullScreenButton {
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent-dark);
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent-dark);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fullScreenButton:hover {
+  color: var(--color-on-primary);
+  background: var(--color-accent-dark);
+}
+
+/* In the full-screen view the frame does the scrolling or the shrinking, so the table does not scroll on its own. */
+.scrollFit {
+  overflow: visible;
+  max-height: none;
+}
+
+/* A shrunken plan does not scroll, so its sticky headers and columns would sit in the wrong place. They stay where the table puts them. */
+[data-shrunk='true'] .wrapper .table :is(th, td):not(.weekCell) {
+  position: static;
+}
