@@ -19,7 +19,7 @@
 //    allocated resource cost is that cost times the allocation percentage, and
 //    the allocated team cost is the sum over the people in counted seats.
 export const HOURS_PER_PERSON = 160;
-const COUNTED_POSITIONS = new Set(["Consultant", "Lead Consultant"]);
+export const COUNTED_POSITIONS = new Set(["Consultant", "Lead Consultant"]);
 // A vacant seat, or a position not counted in the team, carries no cost.
 const NO_COST = { plannedResourceCost: null, actualResourceCost: null, allocatedResourceCost: null, costSource: null };
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -59,7 +59,7 @@ export function deployedOn(deployments, day) {
 }
 
 // Days of the month covered by at least one assignment (overlaps counted once).
-function coveredDays(assignments, window) {
+export function coveredDays(assignments, window) {
   const covered = new Set();
   for (const a of assignments) {
     const from = Math.max(toUtcDay(a.start), window.start);
@@ -171,7 +171,7 @@ function splitCompetencies(text) {
     .filter(Boolean);
 }
 
-function competenciesOf(positions) {
+export function competenciesOf(positions) {
   const counts = new Map();
   for (const position of positions) {
     for (const name of splitCompetencies(position.competencies)) counts.set(name, (counts.get(name) ?? 0) + 1);

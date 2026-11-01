@@ -32,6 +32,10 @@
   --color-chart-2: var(--color-primary);
   --color-chart-3: #8a8f98;
   --color-chart-4: #d98a96;
+  --color-chart-5: #1f77c4;
+  --color-chart-6: #7c4dcf;
+  --color-chart-7: #2eaa57;
+  --color-chart-8: #e0a100;
   --color-allocation-full: var(--color-status-full-ink);
   --color-allocation-partial: var(--color-status-partial-ink);
   --color-allocation-none: var(--color-status-unstaffed-ink);

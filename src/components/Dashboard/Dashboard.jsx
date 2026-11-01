@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import AnimatedNumber from '../AnimatedNumber';
 import AllocationInsights from '../AllocationInsights';
@@ -6,15 +6,26 @@ import BarList from '../BarList';
 import ResourceInsights from '../ResourceInsights';
 import { useTableCounts } from '../../hooks/useTableCounts';
 import { formatCount } from '../../lib/formatCount';
+import analyticsStyles from '../Analytics/Analytics.module.css';
 import styles from './Dashboard.module.css';
 
 // The four tables that describe the factory's people, work and footprint.
 const FEATURED_ROUTES = ['resources', 'projects', 'teams', 'delivery-centers'];
 
+// The charts library is large, so it loads only when a chart tab is opened.
+const Analytics = lazy(() => import('../Analytics'));
+
+const TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'workforce', label: 'Workforce' },
+  { key: 'allocation', label: 'Allocation' },
+];
+
 const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 
 function Dashboard({ onNavigate }) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [tab, setTab] = useState('overview');
   const { data, isLoading, error } = useTableCounts(refreshKey);
   // A new timestamp each time fresh counts arrive, not on every render.
   const updatedAt = useMemo(() => (data ? timeFormat.format(new Date()) : null), [data]);
@@ -108,11 +119,31 @@ function Dashboard({ onNavigate }) {
         </ul>
       </section>
 
-      <ResourceInsights refreshKey={refreshKey} onNavigate={onNavigate} />
+      <div role="tablist" aria-label="Dashboard sections" className={analyticsStyles.tabs}>
+        {TABS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="tab"
+            id={`dashboard-tab-${item.key}`}
+            aria-selected={tab === item.key}
+            aria-controls={`dashboard-panel-${item.key}`}
+            className={analyticsStyles.tab}
+            onClick={() => setTab(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-      <AllocationInsights refreshKey={refreshKey} onNavigate={onNavigate} />
+      <div role="tabpanel" id={`dashboard-panel-${tab}`} aria-labelledby={`dashboard-tab-${tab}`} className={styles.dashboard}>
+        {tab === 'overview' ? (
+          <>
+            <ResourceInsights refreshKey={refreshKey} onNavigate={onNavigate} />
 
-      <div className={styles.panels}>
+            <AllocationInsights refreshKey={refreshKey} onNavigate={onNavigate} />
+
+            <div className={styles.panels}>
         <section aria-labelledby="dashboard-records" className={styles.panel}>
           <h2 id="dashboard-records" className={styles.sectionTitle}>
             Records by table
@@ -154,6 +185,19 @@ function Dashboard({ onNavigate }) {
             </>
           )}
         </section>
+            </div>
+          </>
+        ) : (
+          <Suspense
+            fallback={
+              <p className={styles.status} role="status" aria-live="polite">
+                Loading…
+              </p>
+            }
+          >
+            <Analytics tab={tab} refreshKey={refreshKey} />
+          </Suspense>
+        )}
       </div>
     </div>
   );

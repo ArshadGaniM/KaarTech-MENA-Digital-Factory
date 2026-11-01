@@ -1,5 +1,6 @@
 import { ApiError } from "./errors.js";
 import express from "express";
+import compression from "compression";
 import cors from "cors";
 import { teamMembersRouter } from "./routes/teamMembers.js";
 import { createMasterDataRouter } from "./masterDataRouter.js";
@@ -8,6 +9,7 @@ import { buildEntityRelationships } from "./entityRelationships.js";
 import { parseAllowedOrigins } from "./corsOrigins.js";
 import { createControlCenterRouter } from "./controlCenterRouter.js";
 import { createAllocationRouter } from "./allocationRouter.js";
+import { createAnalyticsRouter } from "./analyticsRouter.js";
 import { createInitiativePlanRouter } from "./initiativePlanRouter.js";
 import { createChangeFeed } from "./changeFeed.js";
 
@@ -40,6 +42,9 @@ for (const signal of ["SIGTERM", "SIGINT"]) {
 }
 app.use("/v1/control-center", createControlCenterRouter({ changeFeed }));
 app.use("/v1/allocation", createAllocationRouter());
+// Compressed on this route only: the people list is large, and compressing the
+// control-center event stream would hold its messages back.
+app.use("/v1/analytics", compression(), createAnalyticsRouter());
 app.use("/v1/initiative-plan", createInitiativePlanRouter());
 
 for (const table of MASTER_DATA_TABLES) {

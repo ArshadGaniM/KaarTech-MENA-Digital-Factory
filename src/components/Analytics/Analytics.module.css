@@ -1,0 +1,45 @@
+.page { display: flex; flex-direction: column; gap: var(--space-3); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: var(--space-2); }
+.card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; padding: var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.wide { grid-column: 1 / -1; }
+.cardHeader { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-1); flex-wrap: wrap; }
+.cardTitle { font-size: 1rem; font-weight: 600; margin: 0; }
+.cardActions { display: flex; gap: var(--space-1); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.summary { margin: 0; color: var(--color-text-muted); font-size: 0.875rem; }
+.empty { margin: 0; color: var(--color-text-muted); }
+.chartBody { min-width: 0; }
+.linkButton { background: none; border: none; padding: 0; color: var(--color-accent); font: inherit; font-size: 0.8125rem; cursor: pointer; text-decoration: underline; }
+.linkButton:disabled { color: var(--color-text-muted); cursor: default; text-decoration: none; }
+.control { display: flex; flex-direction: column; gap: 2px; font-size: 0.75rem; color: var(--color-text-muted); }
+.controlLabel { font-weight: 500; }
+.select { font: inherit; font-size: 0.875rem; color: var(--color-text); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 4px; padding: 4px 8px; max-width: 220px; }
+.slicerBar { background: var(--color-bg-alt); border: 1px solid var(--color-border); border-radius: 8px; padding: var(--space-1) var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); }
+.slicerRow { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-end; }
+.slicerFoot { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; font-size: 0.8125rem; }
+.matching { color: var(--color-text-muted); margin-right: var(--space-1); }
+.chip { background: var(--color-row-hover); border: 1px solid var(--color-accent); color: var(--color-accent-dark); border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 0.8125rem; cursor: pointer; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
+.tile { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 8px; padding: var(--space-2); display: flex; flex-direction: column; gap: 4px; }
+.tileLabel { font-size: 0.8125rem; color: var(--color-text-muted); }
+.tileValue { font-size: 1.75rem; font-weight: 600; }
+.tableWrap { overflow: auto; max-height: 340px; }
+.table, .heatmap { border-collapse: collapse; width: 100%; font-size: 0.8125rem; }
+.table th, .table td, .heatmap th, .heatmap td { border-bottom: 1px solid var(--color-border); padding: 4px 8px; text-align: left; }
+.heatmap td { text-align: center; }
+.cellButton { background: none; border: none; font: inherit; cursor: pointer; width: 100%; }
+.donutWrap { position: relative; }
+.donutCenter { position: absolute; inset: 0 0 32px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.donutCenter strong { font-size: 1.5rem; }
+.donutCenter span { font-size: 0.75rem; color: var(--color-text-muted); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.status { color: var(--color-text-muted); }
+.error { color: var(--color-accent-dark); }
+.tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--color-border); }
+.tab { background: none; border: none; border-bottom: 3px solid transparent; padding: var(--space-1) var(--space-2); font: inherit; font-weight: 500; color: var(--color-text-muted); cursor: pointer; }
+.tab[aria-selected='true'] { color: var(--color-text); border-bottom-color: var(--color-accent); }
+@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+button.tile { color: var(--color-text); text-align: left; cursor: pointer; }
+button.tile .tileLabel { color: var(--color-text); }
+button.tile[aria-pressed='true'] { outline: 2px solid var(--color-accent); }
+.center { display: flex; justify-content: center; overflow-x: auto; }

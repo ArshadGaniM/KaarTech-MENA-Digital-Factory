@@ -20,6 +20,8 @@
 GET    /v1/<table>                      → list (limit, offset, q, equality filters)
 GET    /v1/<table>/summary?groupBy=f    → grouped counts for charts
 GET    /v1/allocation/summary           → people per allocation bucket and position
+GET    /v1/analytics/people             → one row per live resource, for the Dashboard
+GET    /v1/analytics/seats?from=&to=    → one row per counted seat per month
 GET    /v1/<table>/:id                  → get one
 POST   /v1/<table>                      → create
 PATCH  /v1/<table>/:id                  → partial update
@@ -117,6 +119,7 @@ Response includes `total`; master-data list routes also include `activeTotal`, w
 **Aggregate routes are not paginated and do not use the `{ data: [...], total }` list envelope.** They return counts, never rows, and take no `limit` or `offset`.
 
 - `GET /v1/<table>/summary?groupBy=<field>` returns `{ data: [{ value, count }], total }`, largest group first, capped at 100 groups. `total` counts every matching row, including groups past the cap.
+- `GET /v1/analytics/people` and `/v1/analytics/seats` return `{ data: [...], total }` with no `limit` or `offset`: they are whole datasets that the Dashboard slices in the browser. Seats are capped at 24 months per request.
 - `GET /v1/allocation/summary` returns `{ data: { buckets, positions } }` and has no `total`. `buckets` is always the same four entries in a fixed order, and `positions` is largest first, capped at 50 names.
 
 ## Authentication
