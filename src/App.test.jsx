@@ -107,4 +107,19 @@ describe('App', () => {
       expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
     });
   });
+
+  it('goes back to the public portal from the application, and the application opens again without a new password', async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.setItem('application-unlocked', 'yes');
+    window.location.hash = NAV_ITEMS[0].hash;
+    render(<App />);
+
+    await user.click(screen.getByRole('link', { name: /Back to the portal/ }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Charter' })).toBeInTheDocument());
+    expect(screen.queryByRole('navigation', { name: 'Workspace sections' })).not.toBeInTheDocument();
+
+    window.location.hash = NAV_ITEMS[0].hash;
+    await waitFor(() => expect(screen.getByRole('navigation', { name: 'Workspace sections' })).toBeInTheDocument());
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+  });
 });

@@ -51,7 +51,23 @@ export const MASTER_DATA_TABLES = [
     route: "competencies",
     tableName: "competencies",
     resourceName: "competency",
-    fields: [{ key: "name", column: "name", required: true, type: "string" }],
+    // practiceName is NOT a stored column: it is a live lookup against practices
+    // at read time, like teams' departmentName.
+    lookups: [
+      {
+        table: "practices",
+        localColumn: "practice_code",
+        foreignColumn: "code",
+        projections: [{ key: "practiceName", column: "name" }],
+      },
+    ],
+    fields: [
+      { key: "name", column: "name", required: true, type: "string" },
+      // Every competency belongs to one practice: a pick-list of the live
+      // practices, enforced by validateReferences and by a foreign key. It
+      // references practices' own auto-generated `code`, not `id`.
+      { key: "practiceId", column: "practice_code", required: true, type: "string", references: { table: "practices", column: "code" } },
+    ],
   },
   {
     route: "modules",

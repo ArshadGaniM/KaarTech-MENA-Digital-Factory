@@ -217,20 +217,28 @@ function teamHours({ teamPositions, deploymentsByPosition, teamAssignments, wind
   };
 }
 
-// Teams with no competency go last (localeCompare would sort a placeholder
-// symbol before the letters).
-function byCompetencyThenCode(a, b) {
-  if (a.primaryCompetency !== b.primaryCompetency) {
-    if (a.primaryCompetency === null) return 1;
-    if (b.primaryCompetency === null) return -1;
-    return a.primaryCompetency.localeCompare(b.primaryCompetency);
+// Teams are laid out by practice, in practice code order, with teams that have
+// no practice last. Inside a practice the team that becomes free soonest comes
+// first: a team with no current assignment is free now, so it leads, then the
+// rest by assignment end date, ties by team code.
+function byPracticeThenEndDate(a, b) {
+  if (a.practiceCode !== b.practiceCode) {
+    if (a.practiceCode === null) return 1;
+    if (b.practiceCode === null) return -1;
+    return a.practiceCode.localeCompare(b.practiceCode);
+  }
+  if (a.assignmentEndDate !== b.assignmentEndDate) {
+    if (a.assignmentEndDate === null) return -1;
+    if (b.assignmentEndDate === null) return 1;
+    return a.assignmentEndDate.localeCompare(b.assignmentEndDate);
   }
   return a.code.localeCompare(b.code);
 }
 
-export function buildControlCenter({ departments, teams, positions, deployments, assignments, month, today, resources, actualCosts, plannedCosts }) {
+export function buildControlCenter({ departments, teams, positions, deployments, assignments, month, today, resources, actualCosts, plannedCosts, competencies = [] }) {
   const window = monthWindow(month);
   const costs = buildCostContext({ resources, actualCosts, plannedCosts });
+  const practiceByCompetency = new Map(competencies.map((c) => [c.name, c]));
   const positionsByTeam = indexBy(positions, "teamCode");
   const deploymentsByPosition = indexBy(deployments, "positionCode");
   const assignmentsByTeam = indexBy(assignments, "teamCode");
@@ -238,13 +246,17 @@ export function buildControlCenter({ departments, teams, positions, deployments,
 
   const buildTeam = (team) => {
     const teamPositions = positionsByTeam.get(team.code) ?? [];
-    const competencies = competenciesOf(teamPositions);
+    const teamCompetencies = competenciesOf(teamPositions);
     const teamAssignments = assignmentsByTeam.get(team.code) ?? [];
+    // The team's practice is its main competency's practice.
+    const practice = practiceByCompetency.get(teamCompetencies.primary);
     return {
       code: team.code,
       name: team.name,
-      primaryCompetency: competencies.primary,
-      competencies: competencies.all,
+      primaryCompetency: teamCompetencies.primary,
+      competencies: teamCompetencies.all,
+      practiceCode: practice?.practiceCode ?? null,
+      practiceName: practice?.practiceName ?? null,
       ...teamHours({
         teamPositions,
         deploymentsByPosition,
@@ -269,8 +281,8 @@ export function buildControlCenter({ departments, teams, positions, deployments,
         floorNumber: department.floorNumber,
         teams: (teamsByDepartment.get(department.code) ?? [])
           .map(buildTeam)
-          // Grouped by competency so teams of one skill sit together.
-          .sort(byCompetencyThenCode),
+          // Grouped by practice, the team that becomes free soonest first.
+          .sort(byPracticeThenEndDate),
       })),
   };
 }
@@ -330,7 +342,7 @@ export function buildTeamDetail({ team, department, positions, deployments, allD
 }
 
 export async function loadControlCenterRows(query) {
-  const [departments, teams, positions, deployments, assignments, resources, actualCosts, plannedCosts] = await Promise.all([
+  const [departments, teams, positions, deployments, assignments, resources, actualCosts, plannedCosts, competencies] = await Promise.all([
     query('select code, name, floor_number as "floorNumber" from departments where deleted_at is null order by code'),
     query('select code, name, department_code as "departmentCode" from teams where deleted_at is null order by code'),
     query('select code, name, team_code as "teamCode", competencies from positions where deleted_at is null order by code'),
@@ -362,6 +374,12 @@ export async function loadControlCenterRows(query) {
       `select designation, offshore_cost::float as "offshoreCost", onsite_cost::float as "onsiteCost"
          from planned_resource_costs where deleted_at is null`
     ),
+    query(
+      `select c.name, c.practice_code as "practiceCode", p.name as "practiceName"
+         from competencies c
+         join practices p on p.code = c.practice_code and p.deleted_at is null
+        where c.deleted_at is null`
+    ),
   ]);
   return {
     departments: departments.rows,
@@ -372,5 +390,6 @@ export async function loadControlCenterRows(query) {
     resources: resources.rows,
     actualCosts: actualCosts.rows,
     plannedCosts: plannedCosts.rows,
+    competencies: competencies.rows,
   };
 }
