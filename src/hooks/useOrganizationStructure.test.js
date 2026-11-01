@@ -46,7 +46,7 @@ describe('useOrganizationStructure', () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.data.totalSeats).toBe(0);
-    expect(result.current.data.projectManagers).toHaveLength(5);
+    expect(result.current.data.projectManagers).toEqual([]);
   });
 
   it('works when the browser has no EventSource', async () => {

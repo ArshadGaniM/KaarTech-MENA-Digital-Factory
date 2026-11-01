@@ -77,7 +77,6 @@ function OrganizationStructure() {
                 meta={`${department.code} · Floor ${department.floorNumber ?? '–'} · ${department.teamCount} teams`}
                 seats={department.seats}
               >
-                {department.practices.length === 0 && <p className={styles.empty}>No teams yet.</p>}
                 {department.practices.map((practice) => (
                   <TreeNode
                     key={practice.key}

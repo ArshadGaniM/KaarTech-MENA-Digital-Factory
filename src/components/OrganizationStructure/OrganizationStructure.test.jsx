@@ -9,13 +9,17 @@ const ROWS = {
     { code: 'DEPT-009', name: 'Configuration Services', floorNumber: 9, ...live },
     { code: 'DEPT-006', name: 'Assessment Services', floorNumber: 13, ...live },
   ],
-  teams: [{ code: 'TEAM-001', name: 'TEAM-001', departmentCode: 'DEPT-009', ...live }],
+  teams: [
+    { code: 'TEAM-001', name: 'TEAM-001', departmentCode: 'DEPT-009', ...live },
+    { code: 'TEAM-002', name: 'TEAM-002', departmentCode: 'DEPT-009', ...live },
+  ],
   positions: [
     { code: 'POS-1', teamCode: 'TEAM-001', name: 'Module Lead', competencies: 'FICO', ...live },
     { code: 'POS-2', teamCode: 'TEAM-001', name: 'Lead Consultant', competencies: 'FICO', ...live },
     { code: 'POS-3', teamCode: 'TEAM-001', name: 'Consultant', competencies: 'FICO', ...live },
     { code: 'POS-4', teamCode: 'TEAM-001', name: 'Consultant', competencies: 'FICO', ...live },
     { code: 'POS-5', teamCode: 'TEAM-001', name: 'Enterprise Architect', competencies: 'FICO', ...live },
+    { code: 'POS-6', teamCode: 'TEAM-002', name: 'Module Lead', competencies: null, ...live },
   ],
   competencies: [{ name: 'FICO', practiceId: 'PRAC-001', ...live }],
   practices: [{ code: 'PRAC-001', name: 'Finance', ...live }],
@@ -42,14 +46,13 @@ beforeEach(() => stubFetch());
 afterEach(() => vi.unstubAllGlobals());
 
 describe('OrganizationStructure', () => {
-  it('shows the Delivery Manager as TBD, the total seats and the five Project Managers', async () => {
+  it('shows the Delivery Manager and only the Project Managers that have a team', async () => {
     render(<OrganizationStructure />);
 
     expect(await screen.findByText('ODC Delivery Manager')).toBeInTheDocument();
-    expect(screen.getByText('Total seats').parentElement).toHaveTextContent('Total seats 5');
-    for (const number of [1, 2, 3, 4, 5]) {
-      expect(screen.getByText(`ODC Project Manager ${number}`)).toBeInTheDocument();
-    }
+    expect(screen.getByText('Total seats').parentElement).toHaveTextContent('Total seats 6');
+    expect(screen.getByText('ODC Project Manager 3')).toBeInTheDocument();
+    expect(screen.queryByText('ODC Project Manager 1')).not.toBeInTheDocument();
   });
 
   it('expands down to the shared Module Lead and the team with its role counts', async () => {
@@ -67,15 +70,16 @@ describe('OrganizationStructure', () => {
     expect(within(team).getByText('Other').nextSibling).toHaveTextContent('1');
   });
 
-  it('says so when a department has no teams', async () => {
+  it('leaves out a department with no teams and fills a missing Module Lead with TBD', async () => {
     const user = userEvent.setup();
     render(<OrganizationStructure />);
     await screen.findByText('ODC Delivery Manager');
 
     await user.click(screen.getByRole('button', { name: 'Expand all' }));
 
-    expect(screen.getByText('Assessment Services')).toBeVisible();
-    expect(screen.getByText('No teams yet.')).toBeVisible();
+    expect(screen.queryByText('Assessment Services')).not.toBeInTheDocument();
+    expect(screen.getByText('No practice')).toBeVisible();
+    expect(screen.getByText('Module Lead seat empty')).toBeVisible();
   });
 
   it('collapses everything again', async () => {

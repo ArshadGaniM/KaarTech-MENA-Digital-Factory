@@ -3,6 +3,9 @@ import { ODC_DELIVERY_MANAGER, ODC_PROJECT_MANAGERS } from './odcLeadership';
 const isLive = (row) => row.markedDeleted !== 'Yes';
 
 const NO_PRACTICE = { code: 'NO-PRACTICE', name: 'No practice' };
+// Fills a missing Module Lead above a real team, so every practice with a
+// team has at least one lead. A branch with no team is left out instead.
+const TBD = 'TBD';
 
 // Position names are the only role signal: there is no role column.
 export function roleOf(positionName) {
@@ -49,7 +52,7 @@ function moduleLeadsOf(positions, deploymentsByPosition) {
       isUnallocated: false,
     }));
   const unique = [...new Map(people.map((person) => [person.personKey, person])).values()];
-  return unique.length > 0 ? unique : [{ personKey: 'unallocated', name: 'Unallocated', isUnallocated: true }];
+  return unique.length > 0 ? unique : [{ personKey: 'unallocated', name: TBD, isUnallocated: true }];
 }
 
 // Every node carries a `key` that is unique in the whole tree, so the page
@@ -129,15 +132,18 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
     })
   );
 
+  // A department with no team has nothing to show, and neither does a manager
+  // whose departments are all empty.
+  const populated = new Map([...departmentsByCode].filter(([, department]) => department.teamCount > 0));
   const sumSeats = (list) => list.reduce((sum, department) => sum + department.seats, 0);
   const assigned = new Set(ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes));
 
   const projectManagers = ODC_PROJECT_MANAGERS.map((manager) => {
-    const managed = manager.departmentCodes.map((code) => departmentsByCode.get(code)).filter(Boolean);
+    const managed = manager.departmentCodes.map((code) => populated.get(code)).filter(Boolean);
     return { id: manager.id, title: manager.title, name: manager.name, seats: sumSeats(managed), departments: managed };
-  });
+  }).filter((manager) => manager.departments.length > 0);
 
-  const unassigned = [...departmentsByCode.values()].filter((department) => !assigned.has(department.code));
+  const unassigned = [...populated.values()].filter((department) => !assigned.has(department.code));
   if (unassigned.length > 0) {
     projectManagers.push({ id: 'unassigned', title: 'Unassigned', name: null, seats: sumSeats(unassigned), departments: unassigned });
   }

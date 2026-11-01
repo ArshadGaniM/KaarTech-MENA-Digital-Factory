@@ -14,6 +14,7 @@ const teams = [
   { code: 'TEAM-003', name: 'TEAM-003', departmentCode: 'DEPT-009', ...live },
   { code: 'TEAM-004', name: 'TEAM-004', departmentCode: 'DEPT-002', ...live },
   { code: 'TEAM-005', name: 'TEAM-005', departmentCode: 'DEPT-009', markedDeleted: 'Yes' },
+  { code: 'TEAM-006', name: 'TEAM-006', departmentCode: 'DEPT-099', ...live },
 ];
 const position = (code, teamCode, name, competencies) => ({ code, teamCode, name, competencies, ...live });
 const positions = [
@@ -125,6 +126,7 @@ describe('buildOrgStructure', () => {
     const broken = [{ positionId: 'POS-1', employeeId: null, employeeName: 'Ghost', ...live }];
     const finance = managerOf(build({ deployments: broken }), 'pm-3').departments[0].practices[0];
     expect(finance.moduleLeads.map((lead) => lead.isUnallocated)).toEqual([true]);
+    expect(finance.moduleLeads[0].name).toBe('TBD');
   });
 
   it('puts a team under "No practice" when its practice is deleted, keeping seats consistent', () => {
@@ -149,9 +151,14 @@ describe('buildOrgStructure', () => {
     warn.mockRestore();
   });
 
-  it('keeps a department with no teams at zero seats and no practice groups', () => {
+  it('leaves out a department with no teams, and a manager whose departments are all empty', () => {
+    const result = build({ teams: teams.filter((team) => team.departmentCode !== 'DEPT-002') });
+    expect(result.projectManagers.map((manager) => manager.id)).toEqual(['pm-3', 'unassigned']);
+  });
+
+  it('shows nothing under the Delivery Manager when there are no teams at all', () => {
     const result = build({ teams: [], positions: [] });
-    expect(managerOf(result, 'pm-3').departments[0]).toMatchObject({ seats: 0, practices: [] });
+    expect(result.projectManagers).toEqual([]);
     expect(result.totalSeats).toBe(0);
   });
 });

@@ -88,11 +88,6 @@
   font-weight: 600;
 }
 
-.empty {
-  color: var(--color-text-muted);
-  padding: 0 var(--space-3) var(--space-2);
-}
-
 .teams {
   list-style: none;
   margin: 0;
