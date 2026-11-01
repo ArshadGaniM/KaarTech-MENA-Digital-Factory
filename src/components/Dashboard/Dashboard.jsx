@@ -15,12 +15,17 @@ const FEATURED_ROUTES = ['resources', 'projects', 'teams', 'delivery-centers'];
 
 // The charts library is large, so it loads only when a chart tab is opened.
 // A tab left open across a deploy asks for a file that no longer exists.
-const Analytics = lazy(() => import('../Analytics').catch(() => ({ default: AnalyticsUnavailable })));
+const failed = () => ({ default: AnalyticsUnavailable });
+const Analytics = lazy(() => import('../Analytics').catch(failed));
+const StructureTab = lazy(() => import('../Analytics/StructureTab').catch(failed));
+const ProjectsTab = lazy(() => import('../Analytics/ProjectsTab').catch(failed));
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'workforce', label: 'Workforce' },
   { key: 'allocation', label: 'Allocation' },
+  { key: 'structure', label: 'Structure' },
+  { key: 'projects', label: 'Projects' },
 ];
 
 const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -197,7 +202,13 @@ function Dashboard({ onNavigate }) {
               </p>
             }
           >
-            <Analytics tab={tab} refreshKey={refreshKey} />
+            {tab === 'structure' ? (
+              <StructureTab refreshKey={refreshKey} />
+            ) : tab === 'projects' ? (
+              <ProjectsTab refreshKey={refreshKey} />
+            ) : (
+              <Analytics tab={tab} refreshKey={refreshKey} />
+            )}
           </Suspense>
         )}
       </div>

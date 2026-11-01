@@ -16,7 +16,7 @@ import {
 import { formatCount } from '../../lib/formatCount';
 import ChartCard from './ChartCard';
 import ControlSelect from './Controls';
-import { BarsChart, DonutPie, Heatmap, ScatterPlot, TreemapChart } from './charts';
+import { BarsChart, DonutPie, Heatmap, ScatterPlot, TileMap } from './charts';
 import styles from './Analytics.module.css';
 
 const DIMENSIONS = [
@@ -142,7 +142,7 @@ function WorkforceTab({ people, filters, onToggle, onSet }) {
         rows={subs.map((entry) => [entry.name, entry.value])}
         controls={<ControlSelect label="Show top" value={subTop} options={['10', '20', '46']} onChange={setSubTop} />}
       >
-        <TreemapChart data={subs} activeName={filters.subDivision ?? null} onPick={(name) => onToggle('subDivision', name)} />
+        <TileMap data={subs} activeName={filters.subDivision ?? null} onPick={(name) => onToggle('subDivision', name)} />
       </ChartCard>
 
       <ChartCard

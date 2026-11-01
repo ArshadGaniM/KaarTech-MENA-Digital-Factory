@@ -8,7 +8,7 @@ import ChartCard from './ChartCard';
 import ControlSelect from './Controls';
 import LoadGate from './LoadGate';
 import SlicerBar from './SlicerBar';
-import { BarsChart, Heatmap, TreemapChart } from './charts';
+import { BarsChart, Heatmap, TileMap } from './charts';
 import styles from './Analytics.module.css';
 
 const COUNTED = new Set(['Consultant', 'Lead Consultant']);
@@ -154,7 +154,7 @@ function Charts({ positions, catalog, filters, onToggle, onSet }) {
         rows={deptData.map((entry) => [entry.name, entry.value])}
         controls={<ControlSelect label="Size by" value={deptMeasure} options={[{ value: 'teams', label: 'Teams' }, { value: 'positions', label: 'Positions' }, { value: 'seats', label: 'Seats' }]} onChange={setDeptMeasure} />}
       >
-        <TreemapChart data={deptData} activeName={filters.departmentName} onPick={(name) => onToggle('departmentName', name)} />
+        <TileMap data={deptData} activeName={filters.departmentName} onPick={(name) => onToggle('departmentName', name)} />
       </ChartCard>
 
       <ChartCard

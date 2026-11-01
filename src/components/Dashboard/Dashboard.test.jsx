@@ -10,6 +10,8 @@ vi.mock('../../hooks/useTableCounts');
 vi.mock('../../hooks/useGroupSummary');
 vi.mock('../../hooks/useAllocationSummary');
 vi.mock('../Analytics', () => ({ default: ({ tab }) => <p>Analytics tab {tab}</p> }));
+vi.mock('../Analytics/StructureTab', () => ({ default: () => <p>Structure charts</p> }));
+vi.mock('../Analytics/ProjectsTab', () => ({ default: () => <p>Project charts</p> }));
 
 const counts = (overrides = {}) => {
   const base = {
@@ -260,4 +262,18 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('tab', { name: 'Allocation' }));
     expect(await screen.findByText('Analytics tab allocation')).toBeInTheDocument();
   });
+
+  it('opens the Structure and Projects tabs', async () => {
+    const user = userEvent.setup();
+    useTableCounts.mockReturnValue({ data: counts(), isLoading: false, error: null });
+    render(<Dashboard onNavigate={() => {}} />);
+
+    await user.click(screen.getByRole('tab', { name: 'Structure' }));
+    expect(await screen.findByText('Structure charts')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Projects' }));
+    expect(await screen.findByText('Project charts')).toBeInTheDocument();
+    expect(screen.queryByText('Structure charts')).not.toBeInTheDocument();
+  });
 });
+

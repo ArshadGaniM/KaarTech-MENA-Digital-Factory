@@ -175,6 +175,9 @@ Flat, read-only datasets for the Dashboard's Workforce and Allocation tabs. The 
 |---|---|
 | `GET /v1/analytics/people` | `{ data: [person], total }`. One row per live resource: `employeeId`, `name`, `subDivision`, `region`, `position`, `designation`, `skills` (first five, each cut to 40 characters), `locationType`, `employmentType`, `geBatch`, `totalExperience`, `sapExperience`, `kaarExperience` and `allocation` (the sum of the allocation percentages of deployments running today, 0 for none). |
 | `GET /v1/analytics/seats?from=2026-09&to=2027-05` | `{ data: [seat], total }`. One row per counted seat (Consultant or Lead Consultant) per month, both ends included: `month`, `departmentName`, `teamCode`, `teamName`, `practiceName`, `positionName`, `filled`, `availableHours` (160), `allocatedHours` and `utilizedHours`. Hours follow the Control Center rules. Without `from` and `to` it returns the current month. A bad month, a reversed range, a range over 24 months or a repeated key answers 422. |
+| `GET /v1/analytics/structure` | `{ data: [position], total }`. One row per live position: `departmentName`, `floorNumber`, `teamCode`, `teamName`, `positionName`, `competencies` (a list of names), `filled` (someone is deployed to it today) and `practiceName` (the practice of the team's main competency, null when none). |
+| `GET /v1/analytics/catalog` | `{ data: [row], total }`. Reference rows told apart by `kind`: `competency` and `module` (with `practiceName`), `department` (with `floorNumber`, `input`, `output`) and `practice`. |
+| `GET /v1/analytics/assignments` | `{ data: [assignment], total }`. One row per live project assignment: `teamCode`, `teamName`, `departmentName`, `projectId`, `projectName`, `profitCenter`, `start` and `end` (ISO dates). |
 
 ### `/v1/control-center`
 
