@@ -9,7 +9,7 @@ const tables = {
   departments: [{ code: "DEPT-002", name: "Design Services", floorNumber: 10 }],
   teams: [{ code: "TEAM-001", name: "Alpha", departmentCode: "DEPT-002" }],
   positions: [{ code: "POS-2", name: "Lead Consultant", teamCode: "TEAM-001", competencies: "FICO" }],
-  deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 }],
+  deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }],
   assignments: [],
   resources: [],
   actualCosts: [],

@@ -167,9 +167,17 @@ function resourceDeploymentTable() {
   return table;
 }
 
-test("resource_deployment's writable fields are exactly employeeId/positionId/allocationPercentage", () => {
+test("resource_deployment's writable fields are exactly employeeId/positionId/allocationPercentage/startDate/endDate", () => {
   const fieldKeys = resourceDeploymentTable().fields.map((f) => f.key).sort();
-  assert.deepEqual(fieldKeys, ["allocationPercentage", "employeeId", "positionId"]);
+  assert.deepEqual(fieldKeys, ["allocationPercentage", "employeeId", "endDate", "positionId", "startDate"]);
+});
+
+test("resource_deployment's start and end dates are required date fields, and the end label says it must not be earlier than the start", () => {
+  const table = resourceDeploymentTable();
+  const startDate = table.fields.find((f) => f.key === "startDate");
+  const endDate = table.fields.find((f) => f.key === "endDate");
+  assert.deepEqual([startDate.type, startDate.required, endDate.type, endDate.required], ["date", true, "date", true]);
+  assert.match(endDate.label, /not be earlier than startDate/);
 });
 
 test("resource_deployment never exposes employeeName/positionName as a writable MCP field (live lookup only)", () => {

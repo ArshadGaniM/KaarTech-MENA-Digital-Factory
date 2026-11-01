@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildControlCenter, buildTeamDetail, isValidMonth, monthWindow, HOURS_PER_PERSON } from "./controlCenter.js";
+import { buildControlCenter, buildTeamDetail, deployedOn, referenceDay, isValidMonth, monthWindow, HOURS_PER_PERSON } from "./controlCenter.js";
 
 const month = "2026-10"; // 31 days
 
@@ -21,13 +21,14 @@ const base = {
     { code: "POS-5", name: "Consultant", teamCode: "TEAM-002", competencies: null },
   ],
   deployments: [
-    { employeeId: 1, employeeName: "Module Lead Person", positionCode: "POS-1", allocationPercentage: 100 },
-    { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 },
-    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-3", allocationPercentage: 50 },
-    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-5", allocationPercentage: 25 },
+    { employeeId: 1, employeeName: "Module Lead Person", positionCode: "POS-1", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+    { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-3", allocationPercentage: 50, start: "2000-01-01", end: "2999-12-31" },
+    { employeeId: 3, employeeName: "Split Person", positionCode: "POS-5", allocationPercentage: 25, start: "2000-01-01", end: "2999-12-31" },
   ],
   assignments: [],
   month,
+  today: "2026-10-15",
 };
 
 const teamOf = (result, code) => result.departments.flatMap((d) => d.teams).find((t) => t.code === code);
@@ -78,8 +79,8 @@ test("a seat never contributes more than 160 hours even with two people in it", 
   const result = buildControlCenter({
     ...base,
     deployments: [
-      { employeeId: 2, employeeName: "A", positionCode: "POS-2", allocationPercentage: 100 },
-      { employeeId: 9, employeeName: "B", positionCode: "POS-2", allocationPercentage: 60 },
+      { employeeId: 2, employeeName: "A", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+      { employeeId: 9, employeeName: "B", positionCode: "POS-2", allocationPercentage: 60, start: "2000-01-01", end: "2999-12-31" },
     ],
   });
   assert.equal(teamOf(result, "TEAM-001").allocatedHours, 160);
@@ -177,13 +178,14 @@ test("a person allocated over 100% across teams has 0% available, never negative
     team: base.teams[0],
     department: base.departments[0],
     positions: base.positions.filter((p) => p.code === "POS-2"),
-    deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 }],
+    deployments: [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }],
     allDeployments: [
-      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100 },
-      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-9", allocationPercentage: 40 },
+      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" },
+      { employeeId: 2, employeeName: "Lead Person", positionCode: "POS-9", allocationPercentage: 40, start: "2000-01-01", end: "2999-12-31" },
     ],
     assignments: [],
     month,
+    today: "2026-10-15",
   });
   assert.equal(detail.seats[0].availablePercentage, 0);
 });
@@ -386,7 +388,7 @@ const practiceData = {
   teams: teamPlan.map(([code]) => ({ code, name: code, departmentCode: "D" })),
   positions: teamPlan.flatMap(([code, competency], i) => (competency ? [{ code: `P-${i}`, name: "Consultant", teamCode: code, competencies: competency }] : [])),
   // Only TEAM-A (seat P-0) has someone deployed, so it is the only utilized team.
-  deployments: [{ employeeId: 1, employeeName: "Person", positionCode: "P-0", allocationPercentage: 100 }],
+  deployments: [{ employeeId: 1, employeeName: "Person", positionCode: "P-0", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }],
   assignments: teamPlan.filter(([, , end]) => end).map(([code, , end]) => ({ id: code, teamCode: code, projectId: "P", start: "2026-01-01", end })),
   month,
   today: "2026-11-15",
@@ -424,7 +426,7 @@ test("inside a band the earlier end date comes first, even when its team code is
   // Nobody utilized: B ends 20 Nov, A ends 5 Dec, so B leads although its code is later.
   assert.deepEqual(financeOrder({ ...practiceData, deployments: [] }), ["TEAM-B", "TEAM-A", "TEAM-C"]);
   // Both utilized (A in seat P-0, B in seat P-1): the same rule applies in the second band.
-  const bothUtilized = { ...practiceData, deployments: [...practiceData.deployments, { employeeId: 2, employeeName: "Other", positionCode: "P-1", allocationPercentage: 100 }] };
+  const bothUtilized = { ...practiceData, deployments: [...practiceData.deployments, { employeeId: 2, employeeName: "Other", positionCode: "P-1", allocationPercentage: 100, start: "2000-01-01", end: "2999-12-31" }] };
   assert.deepEqual(financeOrder(bothUtilized), ["TEAM-B", "TEAM-A", "TEAM-C"]);
 });
 
@@ -481,4 +483,78 @@ test("a team whose main competency has no live practice is reported once, not on
   }
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /"ZZZ-UNKNOWN" has no live practice/);
+});
+
+// Deployment dates: a person counts only from the start date to the end date.
+const dep = (start, end, overrides = {}) => ({ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start, end, ...overrides });
+const withDeployments = (deployments, extra = {}) => ({ ...base, deployments, ...extra });
+
+test("referenceDay is today when today falls in the month, and the first day of any other month", () => {
+  const window = monthWindow("2026-10");
+  assert.equal(referenceDay(window, "2026-10-15"), "2026-10-15");
+  assert.equal(referenceDay(window, "2026-10-01"), "2026-10-01");
+  assert.equal(referenceDay(window, "2026-10-31"), "2026-10-31");
+  assert.equal(referenceDay(window, "2026-09-30"), "2026-10-01");
+  assert.equal(referenceDay(window, "2026-11-01"), "2026-10-01");
+});
+
+test("deployedOn keeps a deployment on its start day and its end day, and drops it the day before and after", () => {
+  const rows = [dep("2026-08-01", "2027-03-31")];
+  assert.equal(deployedOn(rows, "2026-08-01").length, 1);
+  assert.equal(deployedOn(rows, "2027-03-31").length, 1);
+  assert.equal(deployedOn(rows, "2026-07-31").length, 0);
+  assert.equal(deployedOn(rows, "2027-04-01").length, 0);
+});
+
+test("a deployment that has ended is TBD: nobody is deployed, so the team has no members and no allocated hours", () => {
+  const result = buildControlCenter(withDeployments([dep("2026-08-01", "2026-10-14")], { today: "2026-10-15" }));
+  const team = teamOf(result, "TEAM-001");
+  assert.equal(team.memberCount, 0);
+  assert.equal(team.allocatedHours, 0);
+  assert.equal(team.status, "unstaffed");
+});
+
+test("a deployment that has not started yet does not count either", () => {
+  const result = buildControlCenter(withDeployments([dep("2026-10-16", "2027-03-31")], { today: "2026-10-15" }));
+  assert.equal(teamOf(result, "TEAM-001").memberCount, 0);
+});
+
+test("a deployment counts on its last day, and stops counting the next day", () => {
+  const onLastDay = buildControlCenter(withDeployments([dep("2026-08-01", "2026-10-15")], { today: "2026-10-15" }));
+  const nextDay = buildControlCenter(withDeployments([dep("2026-08-01", "2026-10-15")], { today: "2026-10-16" }));
+  assert.equal(teamOf(onLastDay, "TEAM-001").memberCount, 1);
+  assert.equal(teamOf(nextDay, "TEAM-001").memberCount, 0);
+});
+
+test("another month is read on its first day: a deployment that starts mid-month is not yet counted there", () => {
+  const rows = [dep("2026-11-10", "2027-03-31")];
+  assert.equal(teamOf(buildControlCenter(withDeployments(rows, { month: "2026-11", today: "2026-10-15" })), "TEAM-001").memberCount, 0);
+  assert.equal(teamOf(buildControlCenter(withDeployments(rows, { month: "2026-11", today: "2026-11-12" })), "TEAM-001").memberCount, 1);
+});
+
+test("the same person on two sequential deployments counts once, in whichever one runs today", () => {
+  const rows = [dep("2026-08-01", "2026-12-31", { allocationPercentage: 100 }), dep("2027-01-01", "2027-03-31", { allocationPercentage: 50 })];
+  const december = buildControlCenter(withDeployments(rows, { month: "2026-12", today: "2026-12-10" }));
+  const january = buildControlCenter(withDeployments(rows, { month: "2027-01", today: "2027-01-10" }));
+  assert.equal(teamOf(december, "TEAM-001").allocatedHours, 160);
+  assert.equal(teamOf(january, "TEAM-001").allocatedHours, 80);
+});
+
+test("the team popup shows only the deployments running on the day, for the seats and for what a person has left overall", () => {
+  const input = {
+    team: base.teams[0],
+    department: base.departments[0],
+    positions: base.positions.filter((p) => p.code === "POS-2"),
+    deployments: [dep("2026-08-01", "2026-10-14")],
+    allDeployments: [dep("2026-08-01", "2026-10-14"), dep("2026-10-01", "2027-03-31", { positionCode: "POS-9", allocationPercentage: 40 })],
+    assignments: [],
+    month,
+  };
+  const ended = buildTeamDetail({ ...input, today: "2026-10-15" });
+  assert.equal(ended.seats[0].employeeId, null);
+
+  const running = buildTeamDetail({ ...input, today: "2026-10-14" });
+  assert.equal(running.seats[0].employeeId, 2);
+  // 100% here plus 40% elsewhere is over 100%, so nothing is left.
+  assert.equal(running.seats[0].availablePercentage, 0);
 });

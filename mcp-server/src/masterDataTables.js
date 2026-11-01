@@ -203,9 +203,24 @@ export const MASTER_DATA_TABLES = [
         label:
           "share of the resource's time spent on this position, above 0 and up to 100. One resource " +
           "can have several rows (one per position); their percentages must not add up to more than " +
-          "100 and should reach 100, and the same position cannot be used twice for a resource",
+          "100 on any one day (only rows that share a day are added up) and should reach 100, and the " +
+          "same position cannot be used twice for a resource on the same day",
         required: true,
         type: "number",
+      },
+      {
+        key: "startDate",
+        label: "Start Date (ISO 8601 date, e.g. 2026-08-01) — the first day the resource counts as deployed",
+        required: true,
+        type: "date",
+      },
+      {
+        key: "endDate",
+        label:
+          "End Date (ISO 8601 date) — the last day the resource counts as deployed; after it the resource " +
+          "is TBD. Must not be earlier than startDate; the backend rejects the request with a validation error if it is",
+        required: true,
+        type: "date",
       },
     ],
   },

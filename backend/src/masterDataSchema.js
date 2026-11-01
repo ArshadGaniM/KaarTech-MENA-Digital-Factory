@@ -304,40 +304,54 @@ export async function validateGroupRules(db, table, candidate, excludeId = null)
   await validateOverlap(db, table, candidate, excludeId);
 }
 
-// A resource's allocation total across all of its live rows, selected next to
-// each row so the table can show when a resource is short of the target.
+// A resource's allocation total across its live rows that are deployed today
+// (start date on or before today, end date on or after), selected next to each
+// row so the table shows when a resource is short of the target. A row that has
+// ended or not started yet does not count: that person is TBD.
 export function allocationSelectSql(table) {
   const rule = table.allocationRule;
   if (!rule) return [];
   return [
-    `(select coalesce(sum(a.${rule.valueColumn}), 0) from ${table.tableName} a where a.${rule.groupColumn} = ${table.tableName}.${rule.groupColumn} and a.deleted_at is null) as employee_total_allocation`,
+    `(select coalesce(sum(a.${rule.valueColumn}), 0) from ${table.tableName} a where a.${rule.groupColumn} = ${table.tableName}.${rule.groupColumn} and a.deleted_at is null and a.${rule.startColumn} <= current_date and a.${rule.endColumn} >= current_date) as employee_total_allocation`,
   ];
 }
 
-// Rejects a row that would push its group (resource) past the rule's total,
-// or repeat a unique value (position) within the group. `candidate` is keyed
-// by column name; `excludeId` is the row being edited so it isn't counted
-// against itself. Soft-deleted rows never count.
+const dayOf = (value) => String(value).slice(0, 10);
+
+// Rejects a row that would push its group (resource) past the rule's total on
+// any day, or hold a unique value (position) twice on one day. Only rows that
+// share a day with the candidate count, so 100% until 31 Dec and another 100%
+// from 1 Jan is allowed. The most that is allocated on one day is found at the
+// candidate's first day or at the day another overlapping row starts.
+// `candidate` is keyed by column name; `excludeId` is the row being edited so it
+// isn't counted against itself. Soft-deleted rows never count.
 export async function validateAllocation(pool, table, candidate, excludeId = null) {
   const rule = table.allocationRule;
   if (!rule) return;
   const { rows } = await pool.query(
-    `select ${rule.uniqueColumn} as unique_value, ${rule.valueColumn} as value
+    `select ${rule.uniqueColumn} as unique_value, ${rule.valueColumn} as value, ${rule.startColumn}::text as start, ${rule.endColumn}::text as "end"
      from ${table.tableName}
      where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)`,
     [candidate[rule.groupColumn], excludeId]
   );
+  const from = dayOf(candidate[rule.startColumn]);
+  const to = dayOf(candidate[rule.endColumn]);
+  const sharing = rows.filter((row) => dayOf(row.start) <= to && dayOf(row.end) >= from);
   const details = {};
-  if (rows.some((row) => row.unique_value === candidate[rule.uniqueColumn])) {
-    details[rule.uniqueKey] = `${rule.groupKey} ${candidate[rule.groupColumn]} is already allocated to ${candidate[rule.uniqueColumn]}; edit that row instead of adding another.`;
+  if (sharing.some((row) => row.unique_value === candidate[rule.uniqueColumn])) {
+    details[rule.uniqueKey] = `${rule.groupKey} ${candidate[rule.groupColumn]} is already allocated to ${candidate[rule.uniqueColumn]} on some of these days; edit that row or change the dates.`;
   }
   // Postgres stores the value at 2 decimals, so compare what will be stored.
   const cents = (n) => Math.round(Number(n) * 100);
-  const others = rows.reduce((sum, row) => sum + cents(row.value), 0) / 100;
-  const resulting = (cents(others) + cents(candidate[rule.valueColumn])) / 100;
-  if (resulting > rule.total) {
-    const remaining = Math.max(0, (cents(rule.total) - cents(others)) / 100);
-    details[rule.valueKey] = `Allocations for ${rule.groupKey} ${candidate[rule.groupColumn]} cannot exceed ${rule.total}%: ${others}% is already allocated, so at most ${remaining}% remains.`;
+  const checkDays = [from, ...sharing.map((row) => dayOf(row.start)).filter((day) => day > from && day <= to)];
+  let peak = { day: from, others: 0 };
+  for (const day of checkDays) {
+    const others = sharing.filter((row) => dayOf(row.start) <= day && dayOf(row.end) >= day).reduce((sum, row) => sum + cents(row.value), 0);
+    if (others > peak.others) peak = { day, others };
+  }
+  if (peak.others + cents(candidate[rule.valueColumn]) > cents(rule.total)) {
+    const remaining = Math.max(0, cents(rule.total) - peak.others) / 100;
+    details[rule.valueKey] = `Allocations for ${rule.groupKey} ${candidate[rule.groupColumn]} cannot exceed ${rule.total}% on any day: on ${peak.day} ${peak.others / 100}% is already allocated, so at most ${remaining}% remains.`;
   }
   if (Object.keys(details).length > 0) throw validationError(details);
 }

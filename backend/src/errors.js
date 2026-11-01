@@ -55,6 +55,14 @@ export function overlapRaceError(rule) {
   });
 }
 
+// The same race for a resource's deployments: the exclusion constraint refused a
+// second row for the same position on a shared day.
+export function positionOverlapRaceError(rule) {
+  return validationError({
+    [rule.uniqueKey]: `This ${rule.groupKey} already holds this position on some of these dates.`,
+  });
+}
+
 // Postgres foreign_key_violation (23503) surfaces as a raw 500 by default.
 // validateReferences() already checks FK existence before every write, so
 // this only fires on the narrow race where the referenced row is deleted

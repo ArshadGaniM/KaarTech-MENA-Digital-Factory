@@ -9,6 +9,9 @@
 //    deployment's allocation percentage (a seat never exceeds 160).
 //  - Utilized hours: the allocated hours scaled by the share of the month
 //    covered by the team's project assignments (shown as planned utilization).
+//  - A deployment counts only on the day the page looks at: today for the
+//    current month, the first day of any other month. Before its start date and
+//    after its end date (both days included) the person is TBD, not deployed.
 //  - Costs are monthly, in USD. A person's cost is their Actual Resource Cost
 //    when they have one, else the Planned Resource Cost of their designation,
 //    else the Senior Consultant planned cost. The onsite or offshore figure
@@ -40,6 +43,19 @@ export function monthWindow(month) {
   const start = Date.UTC(year, monthNumber - 1, 1);
   const end = Date.UTC(year, monthNumber, 0);
   return { start, end, days: (end - start) / DAY_MS + 1 };
+}
+
+// The day the month is looked at: today when it falls in the month, else the
+// month's first day.
+export function referenceDay(window, today) {
+  const todayMs = toUtcDay(today);
+  const day = todayMs >= window.start && todayMs <= window.end ? todayMs : window.start;
+  return new Date(day).toISOString().slice(0, 10);
+}
+
+// The deployments running on `day` (ISO date), dates included.
+export function deployedOn(deployments, day) {
+  return deployments.filter((d) => d.start <= day && d.end >= day);
 }
 
 // Days of the month covered by at least one assignment (overlaps counted once).
@@ -242,8 +258,9 @@ function byPracticeThenAllocation(a, b) {
   return a.code.localeCompare(b.code);
 }
 
-export function buildControlCenter({ departments, teams, positions, deployments, assignments, month, today, resources, actualCosts, plannedCosts, competencies = [] }) {
+export function buildControlCenter({ departments, teams, positions, deployments: allDated, assignments, month, today, resources, actualCosts, plannedCosts, competencies = [] }) {
   const window = monthWindow(month);
+  const deployments = deployedOn(allDated, referenceDay(window, today));
   const costs = buildCostContext({ resources, actualCosts, plannedCosts });
   const practiceByCompetency = new Map(competencies.map((c) => [c.name, c]));
   const positionsByTeam = indexBy(positions, "teamCode");
@@ -300,8 +317,11 @@ export function buildControlCenter({ departments, teams, positions, deployments,
 
 // Everything the popup shows for one team: its seats with who sits in them,
 // each person's share in this seat and what they have left overall.
-export function buildTeamDetail({ team, department, positions, deployments, allDeployments, assignments, month, today, resources, actualCosts, plannedCosts }) {
+export function buildTeamDetail({ team, department, positions, deployments: teamDated, allDeployments: allDated, assignments, month, today, resources, actualCosts, plannedCosts }) {
   const window = monthWindow(month);
+  const day = referenceDay(window, today);
+  const deployments = deployedOn(teamDated, day);
+  const allDeployments = deployedOn(allDated, day);
   const costs = buildCostContext({ resources, actualCosts, plannedCosts });
   const totalByEmployee = new Map();
   for (const d of allDeployments) {
@@ -359,7 +379,8 @@ export async function loadControlCenterRows(query) {
     query('select code, name, team_code as "teamCode", competencies from positions where deleted_at is null order by code'),
     query(
       `select rd.employee_id as "employeeId", r.name as "employeeName", rd.position_code as "positionCode",
-              rd.allocation_percentage::float as "allocationPercentage"
+              rd.allocation_percentage::float as "allocationPercentage",
+              rd.start_date::text as start, rd.end_date::text as "end"
          from resource_deployment rd
          join resources r on r.employee_id = rd.employee_id and r.deleted_at is null
         where rd.deleted_at is null`

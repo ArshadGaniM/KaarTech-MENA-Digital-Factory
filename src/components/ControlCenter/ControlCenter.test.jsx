@@ -72,7 +72,15 @@ describe('ControlCenter', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('showing the last data');
     expect(screen.getByText(/Not live, last updated 14:03:22/)).toBeInTheDocument();
     expect(screen.queryByText(/^Live,/)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'MENA Digital Factory', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Factory floors' })).toBeInTheDocument();
+  });
+
+  it('has no MENA Digital Factory bar above the floors', () => {
+    useControlCenter.mockReturnValue(loaded());
+    render(<ControlCenter />);
+    expect(screen.queryByText('MENA Digital Factory')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2, name: /MENA Digital Factory/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Factory floors' })).toBeInTheDocument();
   });
 
   it('raises an alert when the backend returns no departments at all', () => {

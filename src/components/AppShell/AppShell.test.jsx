@@ -51,7 +51,9 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: controlCenter.label })).toHaveAttribute('aria-current', 'page');
     // The top bar names the page here too, like every other section.
     expect(screen.getByRole('heading', { name: controlCenter.label, level: 1 })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'MENA Digital Factory', level: 2 })).toBeInTheDocument();
+    // The Control Center section itself is on screen, and has no MENA Digital Factory bar.
+    expect(await screen.findByRole('region', { name: 'Factory floors' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'MENA Digital Factory' })).not.toBeInTheDocument();
   });
 
   // FEAT-18: the heading previously stayed hardcoded to "Dashboard" no
