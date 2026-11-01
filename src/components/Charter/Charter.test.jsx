@@ -308,6 +308,21 @@ describe('Charter', () => {
       ]);
     });
 
+    it('says so when there are no services, instead of leaving the SOP rows out without a word', async () => {
+      fetchServices.mockResolvedValue([]);
+      await open();
+
+      expect(await screen.findByText(/No services are listed yet/)).toBeInTheDocument();
+      expect(within(screen.getByRole('table', { name: 'Deliverables' })).getAllByRole('row')).toHaveLength(1 + 3);
+    });
+
+    it('says it is loading the SOP rows while the services are on their way', async () => {
+      fetchServices.mockReturnValue(new Promise(() => {}));
+      await open();
+
+      expect(screen.getByRole('status')).toHaveTextContent('Loading the SOP documents');
+    });
+
     it('adds a deliverable row when a service is added, with the owner To be confirmed until one is given', async () => {
       fetchServices.mockResolvedValue([...SERVICES, { code: 'DEPT-099', title: 'New Services', description: '' }]);
       await open();

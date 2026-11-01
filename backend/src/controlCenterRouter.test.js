@@ -226,17 +226,13 @@ test("a failing cost query fails the request instead of returning free teams", a
 test("the router passes today to the read model, so a deployment that has ended is TBD on the list and in the popup", async () => {
   const original = tables.deployments;
   tables.deployments = [{ employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2026-08-01", end: "2027-03-31" }];
+  const onLastDay = await start({ now: () => "2027-03", today: () => "2027-03-31" });
+  const afterEnd = await start({ now: () => "2027-04", today: () => "2027-04-01" });
   try {
-    const onLastDay = await start({ now: () => "2027-03", today: () => "2027-03-31" });
-    const afterEnd = await start({ now: () => "2027-04", today: () => "2027-04-01" });
     const lastDayList = await (await fetch(`${onLastDay.baseUrl}/v1/control-center`)).json();
     const lastDayDetail = await (await fetch(`${onLastDay.baseUrl}/v1/control-center/teams/TEAM-001`)).json();
     const afterList = await (await fetch(`${afterEnd.baseUrl}/v1/control-center`)).json();
     const afterDetail = await (await fetch(`${afterEnd.baseUrl}/v1/control-center/teams/TEAM-001`)).json();
-    for (const { server } of [onLastDay, afterEnd]) {
-      server.closeAllConnections();
-      server.close();
-    }
 
     assert.equal(lastDayList.data.departments[0].teams[0].memberCount, 1);
     assert.equal(lastDayDetail.data.seats[0].employeeName, "Lead Person");
@@ -244,5 +240,9 @@ test("the router passes today to the read model, so a deployment that has ended 
     assert.equal(afterDetail.data.seats[0].employeeName, null);
   } finally {
     tables.deployments = original;
+    for (const { server } of [onLastDay, afterEnd]) {
+      server.closeAllConnections();
+      server.close();
+    }
   }
 });

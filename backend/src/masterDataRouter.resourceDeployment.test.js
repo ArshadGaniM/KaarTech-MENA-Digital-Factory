@@ -724,3 +724,90 @@ test("validateAllocation refuses to run without both dates, rather than passing 
 
   await assert.rejects(() => validateAllocation(db, resourceDeploymentTable, { employee_id: 42, position_code: "POS-001", allocation_percentage: 50, start_date: null, end_date: null }), /needs start_date and end_date/);
 });
+
+// Only ISO dates are accepted: Date.parse also takes "01/05/2027", which Postgres reads as a real day
+// but the allocation check, which compares days as text, would misjudge and skip the 100% cap.
+test("POST /v1/resource-deployment refuses a date that is not ISO, and never inserts", async (t) => {
+  let wrote = false;
+  allocationMock(t, [["POS-001", "100.00", "2026-08-01", "2027-03-31"]], { onWrite: () => (wrote = true) });
+
+  for (const bad of ["01/05/2027", "Jan 1 2027", "1 Jan 2027", "2027/01/05", "2027-1-5", " 2027-01-05", "2027-01-05 ", "20270105"]) {
+    const start = await postDeployment(dated({ allocationPercentage: 100, startDate: bad, endDate: "2027-02-05" }));
+    assert.equal(start.status, 422, `startDate ${JSON.stringify(bad)}`);
+    assert.ok((await start.json()).error.details.startDate, bad);
+    const end = await postDeployment(dated({ allocationPercentage: 100, startDate: "2027-01-05", endDate: bad }));
+    assert.equal(end.status, 422, `endDate ${JSON.stringify(bad)}`);
+    assert.ok((await end.json()).error.details.endDate, bad);
+  }
+  assert.equal(wrote, false);
+});
+
+test("POST /v1/resource-deployment still takes an ISO datetime, and counts it by its day", async (t) => {
+  allocationMock(t, [["POS-001", "100.00", "2026-08-01", "2027-03-31"]]);
+
+  const clash = await postDeployment(dated({ allocationPercentage: 100, startDate: "2027-01-05T00:00:00.000Z", endDate: "2027-02-05T00:00:00Z" }));
+  assert.equal(clash.status, 422);
+  assert.match((await clash.json()).error.details.allocationPercentage, /on 2027-01-05 100% is already allocated/);
+
+  allocationMock(t, [["POS-001", "100.00", "2026-08-01", "2027-03-31"]]);
+  const clear = await postDeployment(dated({ allocationPercentage: 100, startDate: "2027-04-01T00:00:00Z", endDate: "2027-05-01T00:00:00+03:00" }));
+  assert.equal(clear.status, 201);
+});
+
+test("PATCH /v1/resource-deployment refuses a date that is not ISO", async (t) => {
+  allocationMock(t, [["POS-003", "100.00", "2026-08-01", "2027-03-31"]]);
+
+  const res = await patchDeployment({ startDate: "01/05/2027" });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.startDate);
+});
+
+test("a stored date is read by its local day in any time zone, not shifted by UTC", async () => {
+  const { validateAllocation } = await import("./masterDataSchema.js");
+  const rule = resourceDeploymentTable.allocationRule;
+  // The other row ends the day before the stored start (2026-08-01). In a zone ahead of UTC a
+  // toISOString-style day would read that start as 2026-07-31 and wrongly count the two as sharing a day.
+  const db = { query: async () => ({ rows: [{ unique_value: "POS-009", value: "100.00", start: "2026-01-01", end: "2026-07-31" }] }) };
+  const candidate = { employee_id: 42, position_code: "POS-001", allocation_percentage: 100, start_date: new Date(2026, 7, 1), end_date: new Date(2027, 2, 31) };
+  const previous = process.env.TZ;
+  try {
+    for (const zone of ["Asia/Dubai", "Asia/Kolkata", "America/Los_Angeles", "UTC"]) {
+      process.env.TZ = zone;
+      const day = new Date(2026, 7, 1);
+      assert.equal(day.getDate(), 1, zone);
+      await validateAllocation(db, { tableName: "resource_deployment", allocationRule: rule }, { ...candidate, start_date: new Date(2026, 7, 1), end_date: new Date(2027, 2, 31) });
+    }
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
+
+test("validateAllocation refuses a date that is not ISO instead of comparing it as text", async () => {
+  const { validateAllocation } = await import("./masterDataSchema.js");
+  const db = { query: async () => ({ rows: [] }) };
+  const candidate = { employee_id: 42, position_code: "POS-001", allocation_percentage: 50, start_date: "01/05/2027", end_date: "2027-02-05" };
+
+  await assert.rejects(() => validateAllocation(db, resourceDeploymentTable, candidate), /needs ISO dates/);
+});
+
+test("a one-day deployment is never refused as backwards, in any server time zone", async (t) => {
+  const previous = process.env.TZ;
+  try {
+    for (const zone of ["UTC", "America/New_York", "Pacific/Auckland", "Asia/Dubai"]) {
+      process.env.TZ = zone;
+      // The stored row runs 1 Aug to 31 Mar (as local-midnight Dates). Ending it on its first day is allowed.
+      allocationMock(t, []);
+      const res = await patchDeployment({ endDate: "2026-08-01" });
+      assert.equal(res.status, 200, zone);
+      // Ending it the day before its start is not.
+      allocationMock(t, []);
+      const before = await patchDeployment({ endDate: "2026-07-31" });
+      assert.equal(before.status, 422, zone);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});

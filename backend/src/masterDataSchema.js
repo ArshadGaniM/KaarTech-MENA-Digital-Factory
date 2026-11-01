@@ -2,6 +2,8 @@ import { pool } from "./db.js";
 import { validationError } from "./errors.js";
 
 const MAX_TEXT_LENGTH = 255;
+// YYYY-MM-DD, optionally followed by a time and a zone (Z or +03:00).
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 
 // Builds the LEFT JOIN plan for a table's live-lookup fields (e.g.
 // resource_cost.employeeName/employeeDesignation from resources.name/
@@ -128,14 +130,15 @@ export function validateBody(table, body, { partial = false } = {}) {
     }
 
     if (field.type === "date") {
-      // A plain ISO 8601 date/datetime string, stored in a `date` column —
-      // Date.parse rejects garbage strings but accepts both "2026-01-01"
-      // and a full timestamp, matching what a `date` column itself accepts.
-      // A day such as 2026-02-30 parses in JavaScript but Postgres rejects it,
-      // so a plain YYYY-MM-DD must also be a real calendar day.
-      const plainDay = typeof value === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
-      const realDay = plainDay && new Date(Date.UTC(+plainDay[1], +plainDay[2] - 1, +plainDay[3])).toISOString().slice(0, 10) === value;
-      if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || (plainDay && !realDay)) {
+      // An ISO 8601 date (YYYY-MM-DD), optionally with a time and zone, stored in a
+      // `date` column. Only that form is accepted: Date.parse also takes "01/05/2027"
+      // or "Jan 1 2027", which Postgres reads as a real day but which the dates
+      // rules (the allocation check compares days as text) would misjudge. A day such
+      // as 2026-02-30 parses in JavaScript but Postgres rejects it, so the day itself
+      // must also be a real calendar day.
+      const iso = typeof value === "string" ? ISO_DATE.exec(value) : null;
+      const realDay = iso && new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3])).toISOString().slice(0, 10) === value.slice(0, 10);
+      if (!iso || !realDay || Number.isNaN(Date.parse(value))) {
         details[field.key] = `${field.key} must be a valid date (ISO 8601 string).`;
       }
       continue;
@@ -253,7 +256,9 @@ export function validateCrossFields(table, body, { current = null } = {}) {
     // changing on this PATCH.
     if (startValue == null || endValue == null) continue;
 
-    if (new Date(endValue) < new Date(startValue)) {
+    // Whole days, as text: a stored date is a Date at local midnight and a body date is ISO text, and
+    // comparing them as instants would call a one-day range backwards in a zone behind UTC.
+    if (dayOf(endValue) < dayOf(startValue)) {
       details[rule.endKey] = rule.message;
     }
   }
@@ -324,7 +329,10 @@ function dayOf(value) {
     const pad = (n) => String(n).padStart(2, "0");
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
   }
-  return String(value).slice(0, 10);
+  const text = String(value);
+  // validateBody only lets ISO dates through. Anything else here is a bug in the caller, so stop.
+  if (!ISO_DATE.test(text)) throw new Error(`validateAllocation needs ISO dates, got "${text}".`);
+  return text.slice(0, 10);
 }
 
 // Rejects a row that would push its group (resource) past the rule's total on
@@ -337,29 +345,29 @@ function dayOf(value) {
 export async function validateAllocation(pool, table, candidate, excludeId = null) {
   const rule = table.allocationRule;
   if (!rule) return;
-  const { rows } = await pool.query(
-    `select ${rule.uniqueColumn} as unique_value, ${rule.valueColumn} as value, ${rule.startColumn}::text as start, ${rule.endColumn}::text as "end"
-     from ${table.tableName}
-     where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)`,
-    [candidate[rule.groupColumn], excludeId]
-  );
   // validateBody has already required both dates; a caller that skipped it must not pass by default.
   if (candidate[rule.startColumn] == null || candidate[rule.endColumn] == null) {
     throw new Error(`validateAllocation needs ${rule.startColumn} and ${rule.endColumn}.`);
   }
   const from = dayOf(candidate[rule.startColumn]);
   const to = dayOf(candidate[rule.endColumn]);
-  const sharing = rows.filter((row) => dayOf(row.start) <= to && dayOf(row.end) >= from);
+  const { rows } = await pool.query(
+    `select ${rule.uniqueColumn} as unique_value, ${rule.valueColumn} as value, ${rule.startColumn}::text as start, ${rule.endColumn}::text as "end"
+     from ${table.tableName}
+     where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)`,
+    [candidate[rule.groupColumn], excludeId]
+  );
+  const sharing = rows.filter((row) => row.start <= to && row.end >= from);
   const details = {};
   if (sharing.some((row) => row.unique_value === candidate[rule.uniqueColumn])) {
     details[rule.uniqueKey] = `${rule.groupKey} ${candidate[rule.groupColumn]} is already allocated to ${candidate[rule.uniqueColumn]} on some of these days; edit that row or change the dates.`;
   }
   // Postgres stores the value at 2 decimals, so compare what will be stored.
   const cents = (n) => Math.round(Number(n) * 100);
-  const checkDays = [from, ...sharing.map((row) => dayOf(row.start)).filter((day) => day > from && day <= to)];
+  const checkDays = [from, ...sharing.map((row) => row.start).filter((day) => day > from && day <= to)];
   let peak = { day: from, others: 0 };
   for (const day of checkDays) {
-    const others = sharing.filter((row) => dayOf(row.start) <= day && dayOf(row.end) >= day).reduce((sum, row) => sum + cents(row.value), 0);
+    const others = sharing.filter((row) => row.start <= day && row.end >= day).reduce((sum, row) => sum + cents(row.value), 0);
     if (others > peak.others) peak = { day, others };
   }
   if (peak.others + cents(candidate[rule.valueColumn]) > cents(rule.total)) {

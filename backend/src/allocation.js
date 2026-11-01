@@ -2,7 +2,7 @@
 // is the sum of its live deployment percentages, and it falls in one bucket:
 //   full     exactly 100
 //   partial  above 0 and below 100
-//   none     no live deployment at all
+//   none     no deployment running today
 //   over     above 100, which the allocation rule should make impossible and
 //            which is reported only so a broken rule cannot hide
 // Only deployments running today count (start date on or before today, end date

@@ -241,6 +241,7 @@ function Deliverables() {
       </p>
       <Table caption="Milestones" head={['Stream', 'Milestone', 'Due date', 'Status']} rows={milestones} />
       {isLoading && <p role="status">Loading the SOP documents, one for each service.</p>}
+      {services?.length === 0 && !error && <p role="status">No services are listed yet, so there are no SOP document rows.</p>}
       {error && !isLoading && (
         <div role="alert">
           <p>The SOP documents could not be listed, because the services could not be loaded.</p>
