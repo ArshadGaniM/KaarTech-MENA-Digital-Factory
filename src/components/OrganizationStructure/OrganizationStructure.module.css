@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-3) var(--space-4);
 }
 
 .status {
@@ -30,7 +34,34 @@
 
 .toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+}
+
+.viewSwitch button {
+  border: 0;
+  background: transparent;
+  padding: 6px 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.viewSwitch button[aria-pressed='true'] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .live {
@@ -716,5 +747,279 @@
   .dept,
   .barSegment {
     transition: none;
+  }
+}
+
+/* Tree view */
+.tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.treeRoot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 14px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  min-width: min(360px, 100%);
+}
+
+.treeRoot .role {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.treeStem {
+  width: 2px;
+  height: 22px;
+  background: var(--color-border);
+}
+
+.treeManagers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.treeManager {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.treeManager[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent) inset;
+}
+
+.treeManagerTitle {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.treePanel {
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg);
+}
+
+.treeHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.treeHead h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.treeTools {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.linkButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.treeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.treeList .treeList {
+  margin-left: 15px;
+  padding-left: 18px;
+  border-left: 2px solid var(--color-border);
+}
+
+.treeList li {
+  position: relative;
+  padding-top: 8px;
+}
+
+.treeList .treeList > li::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: 26px;
+  width: 14px;
+  height: 2px;
+  background: var(--color-border);
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.treeRowButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-alt);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.treeRowButton:hover {
+  border-color: var(--color-text-muted);
+}
+
+.treeCaret {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 6px solid var(--color-text-muted);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s;
+}
+
+.treeRowButton[aria-expanded='true'] .treeCaret {
+  transform: rotate(90deg);
+}
+
+.treeTag {
+  flex: none;
+  width: 72px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.treeName {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.treeCount {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.treeDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.treeLead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding: 8px 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+}
+
+.treeWho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.treeTeams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.treeTeams > li,
+.treeList .treeTeams > li {
+  padding: 3px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-bg-alt);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.treeTeams > li::before {
+  display: none;
+}
+
+.treeTeams i {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.treeTeams > li.treeTeamFilled,
+.treeList .treeTeams > li.treeTeamFilled {
+  border-color: var(--color-allocation-full);
+}
+
+.treeTeamFilled i {
+  color: var(--color-allocation-full);
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding-inline: var(--space-2);
+  }
+
+  .treePanel {
+    padding-inline: var(--space-2);
+  }
+
+  .treeRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .treeCount {
+    display: none;
   }
 }

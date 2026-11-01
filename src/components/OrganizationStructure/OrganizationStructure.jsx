@@ -3,6 +3,7 @@ import DepartmentDrawer from './DepartmentDrawer';
 import DepartmentTile from './DepartmentTile';
 import LeaderBand from './LeaderBand';
 import ManagerCard from './ManagerCard';
+import OrgTree from './OrgTree';
 import SeatShareBar from './SeatShareBar';
 import { useOrganizationStructure } from '../../hooks/useOrganizationStructure';
 import styles from './OrganizationStructure.module.css';
@@ -12,6 +13,7 @@ function OrganizationStructure() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
   const [openCode, setOpenCode] = useState(null);
+  const [view, setView] = useState('cards');
   const closeDrawer = useCallback(() => setOpenCode(null), []);
 
   if (isLoading) {
@@ -49,11 +51,19 @@ function OrganizationStructure() {
         </p>
       )}
       <div className={styles.toolbar}>
+        <div className={styles.viewSwitch} role="group" aria-label="View">
+          {['cards', 'tree'].map((name) => (
+            <button key={name} type="button" aria-pressed={view === name} onClick={() => setView(name)}>
+              {name === 'cards' ? 'Cards' : 'Tree'}
+            </button>
+          ))}
+        </div>
         <span className={styles.live}>
           <i aria-hidden="true" />
           Live: updates as teams change
         </span>
       </div>
+      {view === 'cards' && (
       <LeaderBand
         leader={data.deliveryManager}
         totalSeats={data.totalSeats}
@@ -61,8 +71,17 @@ function OrganizationStructure() {
         totalDepartments={data.totalDepartments}
         totalTeams={data.totalTeams}
       />
+      )}
       {managers.length === 0 ? (
         <p className={styles.empty}>No teams yet.</p>
+      ) : view === 'tree' ? (
+        <OrgTree
+          leader={data.deliveryManager}
+          managers={managers}
+          selected={selected}
+          onSelect={setSelectedId}
+          onOpenDepartment={setOpenCode}
+        />
       ) : (
         <>
           <SeatShareBar managers={managers} totalSeats={data.totalSeats} selectedId={selected.id} onSelect={setSelectedId} />
