@@ -8,11 +8,10 @@
 //    month, using the Control Center's hour rules.
 //  - structure, catalog and assignments: the teams, departments, practices and
 //    project assignments behind the Structure and Projects tabs.
-import { COUNTED_POSITIONS, HOURS_PER_PERSON, buildCostContext, competenciesOf, costOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, seatHours } from "./controlCenter.js";
+import { COUNTED_POSITIONS, HOURS_PER_PERSON, buildCostContext, competenciesOf, costOf, coveredDays, deployedOn, indexBy, isValidMonth, monthWindow, referenceDay, round1, round2, seatHours } from "./controlCenter.js";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
 
 export const MAX_MONTHS = 24;
-const round2 = (n) => Math.round(n * 100) / 100;
 const MAX_SKILLS = 5;
 const MAX_SKILL_LENGTH = 40;
 
@@ -217,6 +216,7 @@ export const ASSIGNMENTS_SQL = `
 
 // Resource columns checked for blanks. Fixed names, never from a request.
 const BLANK_CHECKED = ["org_chart", "employment_status", "employment_type", "region", "sub_division", "position", "onsite_location", "offshore_location", "location_type", "designation", "skill", "ge_batch"];
+// About a quarter: enough to see a bulk load and what followed it.
 export const HEALTH_WEEKS = 12;
 
 // Per master-data table: how many rows are live and deleted, how many were

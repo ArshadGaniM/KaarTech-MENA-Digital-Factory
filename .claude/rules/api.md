@@ -21,9 +21,9 @@ GET    /v1/<table>                      → list (limit, offset, q, equality fil
 GET    /v1/<table>/summary?groupBy=f    → grouped counts for charts
 GET    /v1/allocation/summary           → people per allocation bucket and position
 GET    /v1/analytics/people             → one row per live resource, for the Dashboard
-GET    /v1/analytics/seats?from=&to=    → one row per counted seat per month
+GET    /v1/analytics/seats?from=&to=    → one row per counted seat per month, with hours and monthly cost
 GET    /v1/analytics/structure          → one row per live position, with team, department and practice
-GET    /v1/analytics/catalog            → competencies, modules, departments and practices
+GET    /v1/analytics/catalog            → competencies, modules, departments, practices, teams and planned and actual costs
 GET    /v1/analytics/assignments        → one row per live project assignment
 GET    /v1/analytics/health             → row counts, weekly additions and blank fields per table
 GET    /v1/<table>/:id                  → get one

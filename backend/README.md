@@ -169,7 +169,7 @@ toward its resource's bucket, but that position's name is never listed.
 
 ### `/v1/analytics`
 
-Flat, read-only datasets for the Dashboard's Workforce, Allocation, Structure and Projects tabs. The page slices them in the browser. The responses are compressed.
+Flat, read-only datasets for the Dashboard's Workforce, Allocation, Structure, Projects, Cost, Plan and Data health tabs. The page slices them in the browser. The responses are compressed.
 
 | Route | Response |
 |---|---|
@@ -178,7 +178,7 @@ Flat, read-only datasets for the Dashboard's Workforce, Allocation, Structure an
 | `GET /v1/analytics/structure` | `{ data: [position], total }`. One row per live position: `departmentName`, `floorNumber`, `teamCode`, `teamName`, `positionName`, `competencies` (a list of names), `filled` (someone is deployed to it today) and `practiceName` (the practice of the team's main competency, null when none). |
 | `GET /v1/analytics/catalog` | `{ data: [row], total }`. Reference rows told apart by `kind`. Every row has `name`: `competency` and `module` (with `practiceName`), `department` (with `floorNumber`, `input`, `output`), `practice`, `team` (with `teamCode` and `departmentName`), `plannedCost` (`name` is the designation, with `grade`, `offshoreCost`, `onsiteCost`) and `actualCost` (`name` is the person's designation, with `offshoreCost` and `onsiteCost`). Fields that do not apply to a kind are null. |
 | `GET /v1/analytics/assignments` | `{ data: [assignment], total }`. One row per live project assignment: `teamCode`, `teamName`, `departmentName`, `projectId`, `projectName`, `profitCenter`, `start` and `end` (ISO dates). |
-| `GET /v1/analytics/health` | `{ data: [row], total }`. Rows told apart by `kind`. `count`: per master-data `table` (its route name), `live` and `deleted` rows. `week`: rows created per `week` (a Monday) as `added`, for the last 12 weeks. `blank`: for resources, the `field` and how many of its `live` rows leave it `blank`. |
+| `GET /v1/analytics/health` | `{ data: [row], total }`. Rows told apart by `kind`. `count`: per master-data `table` (its route name), `live` and `deleted` rows. `week`: rows created per `week` (a Monday) as `added`, for the last 12 weeks. `blank`: for resources, the `field` and how many of its `live` rows leave it `blank`. The fields checked are `org_chart`, `employment_status`, `employment_type`, `region`, `sub_division`, `position`, `onsite_location`, `offshore_location`, `location_type`, `designation`, `skill` and `ge_batch`. |
 
 ### `/v1/control-center`
 
