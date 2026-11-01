@@ -864,9 +864,21 @@ and trigger it if missing. The Render account also holds an unrelated service
 
 ### Standard Check (run after every merge to `main`)
 ```
-1. Apply any new migration to the live database before the backend deploys that reads it,
-   but only with the owner's yes. If the owner has not said yes, the check is not complete.
-   Do not call it healthy
+1. Apply any new migration to the live database before the backend deploys that reads it.
+   A safe migration needs no new yes: the owner gave a standing yes on 1 Nov 2026, with no
+   end date, until the owner withdraws it. Safe means all of these:
+   - It only adds: a new table, column, index or constraint. Filling the new column itself
+     in the same file is part of adding it. That fill may write only the new column. Any
+     UPDATE or DELETE that touches other columns makes the migration unsafe.
+   - Existing rows already satisfy any new constraint, checked against the live data first,
+     and the new constraint must not reject writes the running backend makes.
+   - It runs in one transaction, or has a documented reverse statement.
+   A migration that mixes an add with a drop or replace (a column, table, index or
+   constraint), renames, deletes rows, or changes values already stored in existing columns
+   is unsafe as a whole and needs the owner's yes for that migration. Say in the reply which
+   migration was applied, and add its number, date and "safe" to the "Migrations applied" list in
+   `tasks/handoff.md`. If an unsafe migration has no yes, the check is not complete. Do not
+   call it healthy
 2. Frontend: list Vercel deployments for the project and confirm the deployment for the merge commit is READY
 3. Backend: list Render deploys for the service. Confirm the deploy for the merge commit
    is `live`, not failed or canceled. If none started for the merge, trigger one
