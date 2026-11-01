@@ -441,7 +441,10 @@
   position: fixed;
   inset: 0;
   z-index: 20;
+  border: 0;
+  padding: 0;
   background: var(--color-scrim);
+  cursor: default;
 }
 
 .drawer {

@@ -15,14 +15,30 @@ const initialsOf = (name) =>
 
 // Mounted only while open, so mounting is "open" and unmounting is "close":
 // focus moves in on mount and goes back to the tile that opened it.
+const FOCUSABLE = 'button, summary, [href], input, [tabindex]:not([tabindex="-1"])';
+
 function DepartmentDrawer({ department, onClose }) {
   const closeRef = useRef(null);
+  const drawerRef = useRef(null);
 
   useEffect(() => {
     const opener = document.activeElement;
     closeRef.current?.focus();
+    // aria-modal alone does not stop Tab from leaving the dialog, so Tab wraps
+    // between the first and last control inside it.
     const onKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
+      if (event.key !== 'Tab') return;
+      const controls = [...drawerRef.current.querySelectorAll(FOCUSABLE)];
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
@@ -33,8 +49,8 @@ function DepartmentDrawer({ department, onClose }) {
 
   return (
     <>
-      <div className={styles.scrim} onClick={onClose} aria-hidden="true" />
-      <aside className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="org-drawer-title">
+      <button type="button" className={styles.scrim} tabIndex={-1} aria-label="Close department detail" onClick={onClose} />
+      <aside ref={drawerRef} className={styles.drawer} role="dialog" aria-modal="true" aria-labelledby="org-drawer-title">
         <div className={styles.drawerHead}>
           <div>
             <h2 id="org-drawer-title">{department.name}</h2>
@@ -66,7 +82,7 @@ function DepartmentDrawer({ department, onClose }) {
                       <div>
                         <b>{lead.name}</b>
                         <small>
-                          Module Lead, {lead.teams.length === 1 ? '1 team' : `shared across ${lead.teams.length} teams`}
+                          Module Lead, {lead.teams.length === 1 ? '1 team' : `shared across ${pluralize(lead.teams.length, 'team')}`}
                         </small>
                       </div>
                       {lead.isUnallocated && <span className={styles.emptySeat}>Seat empty</span>}
@@ -94,7 +110,23 @@ DepartmentDrawer.propTypes = {
     floorNumber: PropTypes.number,
     seats: PropTypes.number.isRequired,
     teamCount: PropTypes.number.isRequired,
-    practices: PropTypes.arrayOf(PropTypes.object).isRequired,
+    practices: PropTypes.arrayOf(
+      PropTypes.shape({
+        key: PropTypes.string.isRequired,
+        code: PropTypes.string.isRequired,
+        name: PropTypes.string.isRequired,
+        teamCount: PropTypes.number.isRequired,
+        seats: PropTypes.number.isRequired,
+        moduleLeads: PropTypes.arrayOf(
+          PropTypes.shape({
+            key: PropTypes.string.isRequired,
+            name: PropTypes.string.isRequired,
+            isUnallocated: PropTypes.bool.isRequired,
+            teams: PropTypes.arrayOf(PropTypes.object).isRequired,
+          })
+        ).isRequired,
+      })
+    ).isRequired,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
 };

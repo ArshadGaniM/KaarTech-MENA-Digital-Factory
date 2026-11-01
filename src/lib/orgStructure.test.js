@@ -122,6 +122,13 @@ describe('buildOrgStructure', () => {
     expect(leads.map((lead) => lead.name)).toEqual(['Employee 8', 'Zed']);
   });
 
+  it('does not count a deployment without an employee as a filled seat', () => {
+    const broken = [{ positionId: 'POS-1', employeeId: null, employeeName: 'Ghost', ...live }];
+    const team = managerOf(build({ deployments: broken }), 'pm-3').departments[0].practices[0].moduleLeads[0].teams[0];
+    expect(team.seatStates[0]).toEqual({ role: 'moduleLead', filled: false });
+    expect(team.filled).toBe(0);
+  });
+
   it('ignores a deployment without an employee id', () => {
     const broken = [{ positionId: 'POS-1', employeeId: null, employeeName: 'Ghost', ...live }];
     const finance = managerOf(build({ deployments: broken }), 'pm-3').departments[0].practices[0];
@@ -135,7 +142,6 @@ describe('buildOrgStructure', () => {
     expect(configuration.practices.map((p) => p.name)).toEqual(['Logistics Buy Side', 'No practice']);
     expect(configuration.practices.reduce((sum, p) => sum + p.seats, 0)).toBe(configuration.seats);
   });
-
 
   it('counts a deployment only from its start date to its end date, both days included', () => {
     const dated = (startDate, endDate) => [{ positionId: 'POS-1', employeeId: 7, employeeName: 'Asha', startDate, endDate, ...live }];

@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { pluralNoun } from './pluralize';
 import styles from './OrganizationStructure.module.css';
 
 const shortName = (name) => name.replace(' Operational Support', ' Support').replace(' Services', '');
@@ -23,7 +24,7 @@ function ManagerCard({ manager, maxSeats, isSelected, onSelect }) {
       </span>{' '}
       <span className={styles.seats}>
         {manager.seats}
-        <small> {manager.seats === 1 ? 'seat' : 'seats'}</small>
+        <small> {pluralNoun(manager.seats, 'seat')}</small>
       </span>
       <span className={styles.meter} aria-hidden="true">
         <i style={{ width: `${Math.max(3, (manager.seats / maxSeats) * 100)}%` }} />

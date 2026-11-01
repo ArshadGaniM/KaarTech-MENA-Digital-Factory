@@ -152,8 +152,59 @@ describe('OrganizationStructure', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     await user.click(tile);
-    await user.click(document.querySelector('[aria-hidden="true"][class*="scrim"]'));
+    await user.click(screen.getByRole('button', { name: 'Close department detail' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(tile).toHaveFocus();
+  });
+
+  it('returns focus to the tile after Escape', async () => {
+    const user = await renderLoaded();
+    const tile = screen.getByRole('button', { name: /Design Services/ });
+
+    await user.click(tile);
+    await user.keyboard('{Escape}');
+
+    expect(tile).toHaveFocus();
+  });
+
+  it('keeps Tab inside the open drawer', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Design Services/ }));
+    const drawer = screen.getByRole('dialog');
+    const controls = within(drawer).getAllByRole('button').concat(Array.from(drawer.querySelectorAll('summary')));
+    expect(controls.length).toBeGreaterThan(1);
+
+    for (let step = 0; step < controls.length + 2; step += 1) {
+      await user.tab();
+      expect(drawer).toContainElement(document.activeElement);
+    }
+    await user.tab({ shift: true });
+    expect(drawer).toContainElement(document.activeElement);
+  });
+
+  it('finds a department whatever the case and ignores whitespace-only input', async () => {
+    const user = await renderLoaded();
+    const box = screen.getByRole('searchbox', { name: 'Find a department' });
+
+    await user.type(box, '  DESIGN ');
+    expect(screen.getByRole('heading', { name: 'Departments matching "DESIGN"' })).toBeInTheDocument();
+
+    await user.clear(box);
+    await user.type(box, '   ');
+    expect(screen.getByRole('heading', { name: 'ODC Project Manager 2: departments' })).toBeInTheDocument();
+  });
+
+  it('uses singular words for a single seat, team or practice', async () => {
+    await renderLoaded();
+
+    const tile = screen.getByRole('button', { name: /Design Services/ });
+    expect(tile).toHaveTextContent('1seat1team1practice');
+  });
+
+  it('shows a loading message until the data arrives', () => {
+    render(<OrganizationStructure />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading');
   });
 
   it('leaves out a department with no teams', async () => {

@@ -45,7 +45,6 @@ function moduleLeadsOf(positions, deploymentsByPosition) {
   const people = positions
     .filter((position) => roleOf(position.name) === 'moduleLead')
     .flatMap((position) => deploymentsByPosition.get(position.code) ?? [])
-    .filter((deployment) => deployment.employeeId != null)
     .map((deployment) => ({
       personKey: String(deployment.employeeId),
       name: deployment.employeeName ?? `Employee ${deployment.employeeId}`,
@@ -55,10 +54,10 @@ function moduleLeadsOf(positions, deploymentsByPosition) {
   return unique.length > 0 ? unique : [{ personKey: 'unallocated', name: TBD, isUnallocated: true }];
 }
 
+// Module Lead first: its seat is the one the owner is waiting to fill.
 const ROLE_ORDER = ['moduleLead', 'leadConsultant', 'consultant', 'other'];
 
-// One entry per seat, Module Lead first, so the page can draw a filled or
-// empty square for each.
+// One entry per seat, in ROLE_ORDER.
 function seatStatesOf(positions, deploymentsByPosition) {
   return positions
     .map((position) => ({ role: roleOf(position.name), filled: deploymentsByPosition.has(position.code) }))
@@ -109,13 +108,22 @@ function buildPracticeGroups(departmentCode, departmentTeams, practices) {
 const isCurrent = (deployment, today) =>
   (!deployment.startDate || deployment.startDate <= today) && (!deployment.endDate || deployment.endDate >= today);
 
+// Takes the camelCase rows the API returns for each table. Returns
+// { deliveryManager, totalSeats, filledSeats, totalTeams, totalDepartments,
+//   projectManagers: [{ id, title, name, seats, filled, teamCount,
+//     departments: [{ code, name, floorNumber, seats, filled, teamCount,
+//       practices: [{ key, code, name, seats, filled, teamCount,
+//         moduleLeads: [{ key, name, isUnallocated, teams: [team] }] }] }] }] }
+// where a team is { code, name, seats, filled, seatStates, competencies,
+// leadConsultants, consultants, others }.
 export function buildOrgStructure({ departments, teams, positions, competencies, practices, deployments, today = new Date().toISOString().slice(0, 10) }) {
   const livePractices = practices.filter(isLive).sort((a, b) => a.code.localeCompare(b.code));
   const livePracticeCodes = new Set(livePractices.map((practice) => practice.code));
   // practiceId holds the practice's code (competencies.practice_code).
   const practiceByCompetency = new Map(competencies.filter(isLive).map((c) => [c.name, c.practiceId]));
   const deploymentsByPosition = Map.groupBy(
-    deployments.filter((deployment) => isLive(deployment) && isCurrent(deployment, today)),
+    // A deployment with no employee is not a person in the seat.
+    deployments.filter((deployment) => isLive(deployment) && deployment.employeeId != null && isCurrent(deployment, today)),
     (deployment) => deployment.positionId
   );
   const positionsByTeam = Map.groupBy(positions.filter(isLive), (position) => position.teamCode);

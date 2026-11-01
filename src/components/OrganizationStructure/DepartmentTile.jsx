@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { pluralNoun } from './pluralize';
 import { practiceColor } from './practiceColor';
 import styles from './OrganizationStructure.module.css';
 
@@ -13,15 +14,15 @@ function DepartmentTile({ department, onOpen }) {
       <span className={styles.deptNums}>
         <span>
           <b>{department.seats}</b>
-          <small>{department.seats === 1 ? 'seat' : 'seats'}</small>
+          <small>{pluralNoun(department.seats, 'seat')}</small>
         </span>
         <span>
           <b>{department.teamCount}</b>
-          <small>{department.teamCount === 1 ? 'team' : 'teams'}</small>
+          <small>{pluralNoun(department.teamCount, 'team')}</small>
         </span>
         <span>
           <b>{department.practices.length}</b>
-          <small>{department.practices.length === 1 ? 'practice' : 'practices'}</small>
+          <small>{pluralNoun(department.practices.length, 'practice')}</small>
         </span>
       </span>
       <span className={styles.mix} aria-hidden="true">
