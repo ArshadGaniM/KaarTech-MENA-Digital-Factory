@@ -26,3 +26,9 @@ export const fetchAssignments = () => getRows('/v1/analytics/assignments');
 
 // Row counts, weekly additions and blank fields per master-data table.
 export const fetchHealth = () => getRows('/v1/analytics/health');
+
+// Every live deployment with its team and dates.
+export const fetchDeployments = () => getRows('/v1/analytics/deployments');
+
+// The monthly snapshots the backend has saved.
+export const fetchSnapshots = () => getRows('/v1/analytics/snapshots');

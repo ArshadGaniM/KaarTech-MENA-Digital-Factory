@@ -1,4 +1,4 @@
-import { fetchAssignments, fetchCatalog, fetchHealth, fetchPeople, fetchSeats, fetchStructure } from '../lib/analyticsApi';
+import { fetchAssignments, fetchCatalog, fetchDeployments, fetchHealth, fetchPeople, fetchSeats, fetchSnapshots, fetchStructure } from '../lib/analyticsApi';
 import { fetchPlanActuals } from '../lib/initiativePlanApi';
 import { useKeyedResource } from './useKeyedResource';
 
@@ -21,3 +21,7 @@ export const useAnalyticsHealth = (refreshKey = 0) => useKeyedResource(async () 
 
 // The recorded actual progress of the initiative plan, by activity key.
 export const usePlanActuals = (refreshKey = 0) => useKeyedResource(async () => ({ actuals: await fetchPlanActuals() }), 'plan-actuals', refreshKey);
+
+export const useAnalyticsDeployments = (refreshKey = 0) => useKeyedResource(async () => ({ rows: await fetchDeployments() }), 'deployments', refreshKey);
+
+export const useAnalyticsSnapshots = (refreshKey = 0) => useKeyedResource(async () => ({ rows: await fetchSnapshots() }), 'snapshots', refreshKey);

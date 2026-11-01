@@ -23,6 +23,7 @@ const Analytics = lazy(() => import('../Analytics').catch(failed));
 const StructureTab = lazy(() => import('../Analytics/StructureTab').catch(failed));
 const ProjectsTab = lazy(() => import('../Analytics/ProjectsTab').catch(failed));
 const CostTab = lazy(() => import('../Analytics/CostTab').catch(failed));
+const ForecastTab = lazy(() => import('../Analytics/ForecastTab').catch(failed));
 const PlanTab = lazy(() => import('../Analytics/PlanTab').catch(failed));
 const HealthTab = lazy(() => import('../Analytics/HealthTab').catch(failed));
 
@@ -33,6 +34,7 @@ const TABS = [
   { key: 'structure', label: 'Structure' },
   { key: 'projects', label: 'Projects' },
   { key: 'cost', label: 'Cost' },
+  { key: 'forecast', label: 'Forecast' },
   { key: 'plan', label: 'Plan' },
   { key: 'health', label: 'Data health' },
 ];
@@ -217,6 +219,8 @@ function Dashboard({ onNavigate }) {
               <ProjectsTab refreshKey={refreshKey} />
             ) : tab === 'cost' ? (
               <CostTab refreshKey={refreshKey} />
+            ) : tab === 'forecast' ? (
+              <ForecastTab refreshKey={refreshKey} />
             ) : tab === 'plan' ? (
               <PlanTab refreshKey={refreshKey} />
             ) : tab === 'health' ? (

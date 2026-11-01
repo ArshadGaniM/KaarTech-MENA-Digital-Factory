@@ -17,6 +17,8 @@ const fakeQuery = async (sql) => {
     return { rows: [{ employeeId: 1, skill: "FI, MM", allocation: 100, locationType: "Offshore" }] };
   }
   if (sql.includes("select 'count' as kind")) return { rows: [{ kind: "count", table: "practices", live: 10, deleted: 3 }, { kind: "week", table: "practices", week: "2026-10-19", added: 4 }] };
+  if (sql.includes("from analytics_snapshots")) return { rows: [{ month: "2026-10", teamCode: "TEAM-1", positionName: "Consultant", seats: 3, filledSeats: 2 }] };
+  if (sql.includes("rd.employee_id as \"employeeId\"")) return { rows: [{ employeeId: 1, name: "Ann", positionCode: "POS-1", teamCode: "TEAM-1", allocationPercentage: 100, start: "2026-01-01", end: "2026-12-31" }] };
   if (sql.includes("from project_assignments")) return { rows: [{ teamCode: "TEAM-1", projectName: "Roll out", start: "2026-01-01", end: "2026-12-31" }] };
   if (sql.includes("'competency' as kind")) return { rows: [{ kind: "competency", name: "FICO", practiceName: "Finance" }, { kind: "department", name: "Design", floorNumber: 3 }, { kind: "team", name: "Alpha", teamCode: "TEAM-1", departmentName: "Design" }] };
   if (sql.includes("c.name, p.name as \"practiceName\"")) return { rows: [{ name: "FICO", practiceName: "Finance" }] };
@@ -142,6 +144,48 @@ test("GET /v1/analytics/health returns the rows and answers 500 without the caus
   const s = http.createServer(failing);
   await new Promise((resolve) => s.listen(0, resolve));
   const res = await fetch(`http://127.0.0.1:${s.address().port}/v1/analytics/health`);
+  const text = await res.text();
+  await new Promise((resolve) => s.close(resolve));
+  assert.equal(res.status, 500);
+  assert.equal(text.includes("secret detail"), false);
+});
+
+test("GET /v1/analytics/deployments and /snapshots return their rows", async () => {
+  const deployments = await (await fetch(`${baseUrl}/v1/analytics/deployments`)).json();
+  assert.equal(deployments.total, 1);
+  assert.equal(deployments.data[0].end, "2026-12-31");
+  const snapshots = await (await fetch(`${baseUrl}/v1/analytics/snapshots`)).json();
+  assert.equal(snapshots.data[0].filledSeats, 2);
+});
+
+test("POST /v1/analytics/snapshots needs the internal key and answers 401 without it", async () => {
+  const res = await fetch(`${baseUrl}/v1/analytics/snapshots`, { method: "POST" });
+  assert.equal(res.status, 401);
+});
+
+test("POST /v1/analytics/snapshots answers 401 for a wrong key", async () => {
+  process.env.INTERNAL_API_KEY = "test-key";
+  const res = await fetch(`${baseUrl}/v1/analytics/snapshots`, { method: "POST", headers: { "x-internal-api-key": "other" } });
+  delete process.env.INTERNAL_API_KEY;
+  assert.equal(res.status, 401);
+});
+
+test("POST /v1/analytics/snapshots with the key saves this month and answers 201", async () => {
+  process.env.INTERNAL_API_KEY = "test-key";
+  const res = await fetch(`${baseUrl}/v1/analytics/snapshots`, { method: "POST", headers: { "x-internal-api-key": "test-key" } });
+  const body = await res.json();
+  delete process.env.INTERNAL_API_KEY;
+  assert.equal(res.status, 201);
+  assert.equal(body.data.month, "2026-10");
+});
+
+test("GET /v1/analytics/deployments answers 500 without the cause when the database fails", async () => {
+  const failing = express();
+  failing.use("/v1/analytics", createAnalyticsRouter({ query: async () => { throw new Error("secret detail"); } }));
+  failing.use((err, req, res, _next) => res.status(500).json({ error: { message: "An unexpected error occurred." } }));
+  const s = http.createServer(failing);
+  await new Promise((resolve) => s.listen(0, resolve));
+  const res = await fetch(`http://127.0.0.1:${s.address().port}/v1/analytics/deployments`);
   const text = await res.text();
   await new Promise((resolve) => s.close(resolve));
   assert.equal(res.status, 500);
