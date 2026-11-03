@@ -17,9 +17,9 @@ export const ALLOCATION_ACTOR = "Module Lead auto-allocation";
 export const isModuleLeadName = (name) => typeof name === "string" && name.startsWith(MODULE_LEAD_PREFIX);
 
 // Splits 100% over the teams of one group by filled seats. Each share is rounded down
-// to 2 decimals; the leftover goes to the team with the fewest filled seats (the lower
-// team code on a tie), so the group totals exactly 100. With no filled seat at all every
-// team gets 0. `teams` is [{ teamCode, filled }], one entry per team. Returns a Map of
+// to 2 decimals; the leftover goes to the team with the fewest filled seats among the
+// teams that have one (the lower team code on a tie), so the group totals exactly 100 and
+// a team with no filled seat stays at 0. With no filled seat at all every team gets 0. `teams` is [{ teamCode, filled }], one entry per team. Returns a Map of
 // team code -> hundredths of a percent (integers, so nothing drifts).
 export function splitShares(teams) {
   const total = teams.reduce((sum, team) => sum + team.filled, 0);
@@ -27,7 +27,7 @@ export function splitShares(teams) {
   if (total === 0) return shares;
   const leftover = CENTS - [...shares.values()].reduce((sum, cents) => sum + cents, 0);
   if (leftover > 0) {
-    const [receiver] = [...teams].sort((a, b) => a.filled - b.filled || (a.teamCode < b.teamCode ? -1 : a.teamCode > b.teamCode ? 1 : 0));
+    const [receiver] = teams.filter((team) => team.filled > 0).sort((a, b) => a.filled - b.filled || (a.teamCode < b.teamCode ? -1 : a.teamCode > b.teamCode ? 1 : 0));
     shares.set(receiver.teamCode, shares.get(receiver.teamCode) + leftover);
   }
   return shares;

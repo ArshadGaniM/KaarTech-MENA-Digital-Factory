@@ -38,10 +38,9 @@ test("with no filled seat in the whole group every team gets 0, not an equal spl
   assert.deepEqual(shares([team("TEAM-01", 0), team("TEAM-02", 0)]), { "TEAM-01": 0, "TEAM-02": 0 });
 });
 
-test("a team with no filled seat gets 0 unless it is the one that takes the leftover", () => {
+test("a team with no filled seat stays at 0, the leftover goes to the fewest filled seats among the others", () => {
   assert.deepEqual(shares([team("TEAM-01", 3), team("TEAM-02", 0)]), { "TEAM-01": 10000, "TEAM-02": 0 });
-  // The rule gives the leftover to the team with the fewest filled seats, an empty one included.
-  assert.deepEqual(shares([team("TEAM-01", 2), team("TEAM-02", 1), team("TEAM-03", 0)]), { "TEAM-01": 6666, "TEAM-02": 3333, "TEAM-03": 1 });
+  assert.deepEqual(shares([team("TEAM-01", 2), team("TEAM-02", 1), team("TEAM-03", 0)]), { "TEAM-01": 6666, "TEAM-02": 3334, "TEAM-03": 0 });
 });
 
 const lead = (id, employeeId, teamCode, positionCode, start = "2026-08-01", end = "2027-03-31") => ({ id, employeeId, teamCode, positionCode, start, end });
