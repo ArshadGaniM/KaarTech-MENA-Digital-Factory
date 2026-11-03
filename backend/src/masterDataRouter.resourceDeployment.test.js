@@ -7,7 +7,6 @@ import {
   startTestServer,
   stopTestServer,
   registerAuthGateTests,
-  registerDeleteTests,
 } from "./masterDataRouter.testHelpers.js";
 
 // Integration tests for FEAT-7 (Resource Deployment real schema): the first
@@ -33,6 +32,9 @@ let baseUrl;
 let lastWrittenRow = null;
 let connectCalls = 0;
 let clientStatements = [];
+let moduleLeadQueries = [];
+const noModuleLead = () => ({ rows: [] });
+let moduleLeadHandler = noModuleLead;
 
 before(async () => {
   ({ server, baseUrl } = await startTestServer(resourceDeploymentTable));
@@ -40,6 +42,13 @@ before(async () => {
     connectCalls += 1;
     return {
       query: async (sql, params) => {
+        // FEAT-43 Module Lead queries are tagged; by default every position is an ordinary
+        // seat and no Module Lead exists, so the older tests see no change in behaviour.
+        const tag = /^\/\* module-lead:([a-z-]+) \*\//.exec(sql)?.[1];
+        if (tag) {
+          moduleLeadQueries.push({ tag, params });
+          return moduleLeadHandler(tag, params);
+        }
         clientStatements.push(sql.split(" ")[0]);
         if (/^(begin|commit|rollback)$/i.test(sql) || sql.startsWith("select pg_advisory_xact_lock")) {
           return { rows: [] };
@@ -68,6 +77,7 @@ function baseRow(overrides = {}) {
     // The pg driver gives a `date` column as a Date at local midnight, so the stored row does too.
     start_date: new Date(2026, 7, 1),
     end_date: new Date(2027, 2, 31),
+    allocation_percentage: "100.00",
     created_by: "Arshad Gani",
     created_at: "2026-01-01T00:00:00Z",
     updated_by: "Arshad Gani",
@@ -303,12 +313,45 @@ registerAuthGateTests({
   patchBody: { positionId: "POS-002" },
 });
 
-registerDeleteTests({
-  getBaseUrl: () => baseUrl,
-  route: "resource-deployment",
-  getId: () => RESOURCE_DEPLOYMENT_ID,
-  tableName: "resource_deployment",
-  resourceName: "resource_deployment",
+// DELETE runs in a transaction under the employee's lock (FEAT-43), so it first reads the
+// row's employee, which the shared registerDeleteTests harness does not mock.
+test("DELETE /v1/resource-deployment/:id soft-deletes the row in a transaction and returns 204", async (t) => {
+  clientStatements = [];
+  let updateSql;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select employee_id from resource_deployment where id = $1 and deleted_at is null")) {
+      return { rows: [{ employee_id: 42 }] };
+    }
+    if (sql.startsWith("update resource_deployment set deleted_at = now()")) {
+      updateSql = sql;
+      return { rows: [baseRow()] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "DELETE",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 204);
+  assert.match(updateSql, /where id = \$1 and deleted_at is null/);
+  assert.deepEqual(clientStatements.slice(0, 2), ["begin", "select"]);
+  assert.equal(clientStatements.at(-1), "commit");
+});
+
+test("DELETE /v1/resource-deployment/:id on an already-deleted (or nonexistent) row returns 404 and starts no transaction", async (t) => {
+  const before = connectCalls;
+  t.mock.method(pool, "query", async () => ({ rows: [] }));
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "DELETE",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 404);
+  assert.equal((await res.json()).error.code, "resource_deployment_not_found");
+  assert.equal(connectCalls, before);
 });
 
 // FEAT-21: one resource can be deployed to several positions, each with its
@@ -810,4 +853,234 @@ test("a one-day deployment is never refused as backwards, in any server time zon
     if (previous === undefined) delete process.env.TZ;
     else process.env.TZ = previous;
   }
+});
+
+// FEAT-43: automatic Module Lead allocation. The Module Lead queries are tagged and answered by
+// `moduleLeadHandler`; the pure maths is tested in moduleLeadAllocation.test.js.
+const TODAY = "2026-10-01";
+const ML_SEAT = { code: "POS-ML1", name: "Module Lead - FI", team_code: "TEAM-01" };
+const PLAIN_SEAT = { code: "POS-001", name: "Consultant", team_code: "TEAM-01" };
+const leadRow = (id, teamCode, positionCode, pct = "0.00") => ({
+  id, employee_id: 7, position_code: positionCode, team_code: teamCode, allocation_percentage: pct, start: "2026-08-01", end: "2027-03-31", today: TODAY,
+});
+const filledSeat = (teamCode) => ({ team_code: teamCode, start: "2026-08-01", end: "2027-03-31" });
+const ROW_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+const ROW_B = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+
+function moduleLeadMock(t, { seats = [], conflict = null, leadRows = [], seatRows = [], teamLeads = [] } = {}) {
+  const updates = [];
+  moduleLeadQueries = [];
+  moduleLeadHandler = (tag, params) => {
+    if (tag === "seat") return { rows: seats.filter((seat) => seat.code === params[0]) };
+    if (tag === "exclusive") return { rows: conflict ? [conflict] : [] };
+    if (tag === "rows") return { rows: leadRows };
+    if (tag === "seats") return { rows: seatRows };
+    if (tag === "team-leads") return { rows: teamLeads.map((id) => ({ employee_id: id })) };
+    if (tag === "update") updates.push(params);
+    return { rows: [] };
+  };
+  t.after(() => {
+    moduleLeadHandler = noModuleLead;
+  });
+  return updates;
+}
+
+const queriesTagged = (tag) => moduleLeadQueries.filter((query) => query.tag === tag);
+const leadBody = (overrides = {}) => ({ employeeId: 7, positionId: "POS-ML1", startDate: "2026-08-01", endDate: "2027-03-31", ...overrides });
+
+test("a Module Lead row ignores the percentage sent: it is stored as 0 and then set by the server", async (t) => {
+  const updates = moduleLeadMock(t, { seats: [ML_SEAT], leadRows: [leadRow(ROW_A, "TEAM-01", "POS-ML1")], seatRows: [filledSeat("TEAM-01"), filledSeat("TEAM-01")] });
+  const inserted = [];
+  allocationMock(t, [], { onWrite: (sql, params) => sql.startsWith("insert") && inserted.push(params) });
+
+  const res = await postDeployment(leadBody({ allocationPercentage: 77 }));
+
+  assert.equal(res.status, 201);
+  assert.equal(inserted[0][2], 0);
+  assert.deepEqual(updates, [[[ROW_A], [100], "Arshad Gani"]]);
+});
+
+test("a Module Lead row needs no percentage, and 0 is accepted for it", async (t) => {
+  moduleLeadMock(t, { seats: [ML_SEAT] });
+  allocationMock(t, []);
+
+  assert.equal((await postDeployment(leadBody())).status, 201);
+  assert.equal((await postDeployment(leadBody({ allocationPercentage: 0 }))).status, 201);
+});
+
+test("every other position still needs a percentage of at least 0.01", async (t) => {
+  moduleLeadMock(t, { seats: [PLAIN_SEAT] });
+  let wrote = false;
+  allocationMock(t, [], { onWrite: () => (wrote = true) });
+
+  for (const allocationPercentage of [undefined, 0, 0.005]) {
+    const res = await postDeployment(leadBody({ positionId: "POS-001", allocationPercentage }));
+    assert.equal(res.status, 422, String(allocationPercentage));
+    assert.ok((await res.json()).error.details.allocationPercentage);
+  }
+  assert.equal((await postDeployment(leadBody({ positionId: "POS-001", allocationPercentage: 0.01 }))).status, 201);
+  assert.equal(wrote, true);
+});
+
+test("a write on an ordinary seat recalculates the Module Lead rows of its team and of every team those leads cover", async (t) => {
+  const updates = moduleLeadMock(t, {
+    seats: [PLAIN_SEAT],
+    teamLeads: [7],
+    leadRows: [leadRow(ROW_A, "TEAM-01", "POS-ML1", "50.00"), leadRow(ROW_B, "TEAM-02", "POS-ML2", "50.00")],
+    seatRows: [filledSeat("TEAM-01"), filledSeat("TEAM-02"), filledSeat("TEAM-02")],
+  });
+  allocationMock(t, []);
+
+  const res = await postDeployment({ employeeId: 99, positionId: "POS-001", allocationPercentage: 100, startDate: "2026-08-01", endDate: "2027-03-31" });
+
+  assert.equal(res.status, 201);
+  assert.deepEqual(queriesTagged("team-leads")[0].params, [["TEAM-01"]]);
+  assert.deepEqual(queriesTagged("rows")[0].params, [[7]]);
+  // 1 of 3 seats and 2 of 3: 33.33 + 66.66 leaves 0.01, which goes to the team with fewer seats.
+  assert.deepEqual(updates, [[[ROW_A, ROW_B], [33.34, 66.66], "Arshad Gani"]]);
+});
+
+test("a Module Lead cannot take a seat on a day the person already holds another one", async (t) => {
+  moduleLeadMock(t, { seats: [ML_SEAT], conflict: { position_code: "POS-001", name: "Consultant", start: "2026-08-01", end: "2027-03-31" } });
+  let wrote = false;
+  allocationMock(t, [], { onWrite: () => (wrote = true) });
+
+  const res = await postDeployment(leadBody());
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.employeeId, /A Module Lead cannot hold other seats/);
+  assert.equal(queriesTagged("exclusive")[0].params[4], true);
+  assert.equal(wrote, false);
+});
+
+test("a person who is a Module Lead cannot take an ordinary seat on a shared day", async (t) => {
+  moduleLeadMock(t, { seats: [PLAIN_SEAT], conflict: { position_code: "POS-ML1", name: "Module Lead - FI", start: "2026-08-01", end: "2027-03-31" } });
+  let wrote = false;
+  allocationMock(t, [], { onWrite: () => (wrote = true) });
+
+  const res = await postDeployment(leadBody({ positionId: "POS-001", allocationPercentage: 50 }));
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.employeeId, /is a Module Lead/);
+  assert.equal(queriesTagged("exclusive")[0].params[4], false);
+  assert.equal(wrote, false);
+});
+
+test("PATCH of a Module Lead row ignores the percentage sent and keeps the stored one until the recalculation", async (t) => {
+  const updates = moduleLeadMock(t, { seats: [ML_SEAT], leadRows: [leadRow(ROW_A, "TEAM-01", "POS-ML1", "40.00")], seatRows: [filledSeat("TEAM-01")] });
+  const written = [];
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.startsWith("select * from resource_deployment where id")) return { rows: [baseRow({ position_code: "POS-ML1", allocation_percentage: "40.00" })] };
+    if (sql.startsWith("update resource_deployment set")) {
+      written.push(params);
+      return { rows: [baseRow({ position_code: "POS-ML1" })] };
+    }
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ allocationPercentage: 12 }),
+  });
+
+  assert.equal(res.status, 200);
+  assert.equal(written[0][2], 40);
+  assert.deepEqual(updates, [[[ROW_A], [100], "Arshad Gani"]]);
+});
+
+test("PATCH moving a Module Lead row to another person recalculates both people", async (t) => {
+  moduleLeadMock(t, { seats: [ML_SEAT] });
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select 1 from resources where employee_id")) return { rows: [{}] };
+    if (sql.startsWith("select * from resource_deployment where id")) return { rows: [baseRow({ position_code: "POS-ML1", allocation_percentage: "40.00" })] };
+    if (sql.startsWith("update resource_deployment set")) return { rows: [baseRow({ employee_id: 8, position_code: "POS-ML1" })] };
+    if (sql.startsWith("select position_code as unique_value")) return { rows: [] };
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-internal-api-key": "test-secret" },
+    body: JSON.stringify({ employeeId: 8 }),
+  });
+
+  assert.equal(res.status, 200);
+  assert.deepEqual(queriesTagged("rows")[0].params, [[8, 42]]);
+});
+
+test("DELETE of an ordinary seat recalculates its team's Module Lead rows in the same transaction", async (t) => {
+  clientStatements = [];
+  const updates = moduleLeadMock(t, {
+    seats: [PLAIN_SEAT],
+    teamLeads: [7],
+    leadRows: [leadRow(ROW_A, "TEAM-01", "POS-ML1", "100.00")],
+    seatRows: [],
+  });
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select employee_id from resource_deployment where id")) return { rows: [{ employee_id: 42 }] };
+    if (sql.startsWith("update resource_deployment set deleted_at = now()")) return { rows: [baseRow({ position_code: "POS-001" })] };
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}`, {
+    method: "DELETE",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 204);
+  // The team has no filled seat left, so its lead drops to 0 (not an equal split).
+  assert.deepEqual(updates, [[[ROW_A], [0], "Module Lead auto-allocation"]]);
+  assert.equal(clientStatements.at(-1), "commit");
+});
+
+test("restore of a Module Lead row is refused while the person holds another seat on a shared day", async (t) => {
+  moduleLeadMock(t, { seats: [ML_SEAT], conflict: { position_code: "POS-001", name: "Consultant", start: "2026-08-01", end: "2027-03-31" } });
+  let wrote = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from resource_deployment where id")) {
+      return { rows: [baseRow({ position_code: "POS-ML1", deleted_at: new Date() })] };
+    }
+    if (sql.startsWith("select 1 from")) return { rows: [{}] };
+    if (sql.startsWith("update")) {
+      wrote = true;
+      return { rows: [] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/resource-deployment/${RESOURCE_DEPLOYMENT_ID}/restore`, {
+    method: "POST",
+    headers: { "x-internal-api-key": "test-secret" },
+  });
+
+  assert.equal(res.status, 422);
+  assert.ok((await res.json()).error.details.employeeId);
+  assert.equal(wrote, false);
+});
+
+test("recalculateAllModuleLeads recomputes every lead, one transaction each, and reports the count", async () => {
+  const { recalculateAllModuleLeads } = await import("./moduleLeadAllocation.js");
+  const statements = [];
+  const client = {
+    query: async (sql) => {
+      const tag = /^\/\* module-lead:([a-z-]+) \*\//.exec(sql)?.[1];
+      statements.push(tag ?? sql.split(" ")[0]);
+      if (tag === "rows") return { rows: [leadRow(ROW_A, "TEAM-01", "POS-ML1", "0.00")] };
+      if (tag === "seats") return { rows: [filledSeat("TEAM-01")] };
+      return { rows: [] };
+    },
+    release: () => {},
+  };
+  const db = {
+    query: async () => ({ rows: [{ employee_id: 7 }, { employee_id: 8 }] }),
+    connect: async () => client,
+  };
+
+  const out = await recalculateAllModuleLeads(db);
+
+  assert.deepEqual(out, { employees: 2, updated: 2 });
+  assert.equal(statements.filter((s) => s === "begin").length, 2);
+  assert.equal(statements.filter((s) => s === "commit").length, 2);
 });
