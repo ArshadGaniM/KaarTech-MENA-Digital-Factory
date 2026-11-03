@@ -586,6 +586,15 @@ describe('TeamDialog', () => {
       expect(within(form).getByLabelText('End date')).toHaveValue('');
     });
 
+    it('leaves the end date empty when the latest end among the others is already past', async () => {
+      const user = userEvent.setup();
+      const past = detail.seats.map((s) => (s.employeeId === null ? s : { ...s, endDate: '2026-10-10' }));
+      useTeamDetail.mockReturnValue({ data: withSeats(past), isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      const form = await openAssign(user);
+      expect(within(form).getByLabelText('End date')).toHaveValue('');
+    });
+
     it('searches Resources by name or employee id, hides deleted ones, and saves a POST of the existing deployment route', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);

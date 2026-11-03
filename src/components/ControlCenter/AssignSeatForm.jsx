@@ -16,7 +16,11 @@ function AssignSeatForm({ seat, seats, onSaved, onCancel }) {
   const [searchError, setSearchError] = useState(null);
   const [person, setPerson] = useState(null);
   const [startDate, setStartDate] = useState(todayIso);
-  const [endDate, setEndDate] = useState(() => latestSeatedEnd(seats));
+  // A team whose people have all ended would pre-fill an end before today's start.
+  const [endDate, setEndDate] = useState(() => {
+    const latest = latestSeatedEnd(seats);
+    return latest >= todayIso() ? latest : '';
+  });
   const [allocation, setAllocation] = useState('100');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
