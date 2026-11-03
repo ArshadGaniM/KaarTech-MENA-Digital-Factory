@@ -431,6 +431,18 @@ describe('TeamDialog', () => {
       expect(screen.getByRole('form', { name: 'Delete Project Assignment' })).toBeInTheDocument();
     });
 
+    it('shows the field messages of a 422 on the delete form too', async () => {
+      const user = userEvent.setup();
+      const failure = Object.assign(new Error('Request failed validation.'), {
+        details: { projectAssignmentEndDate: 'Ends before the next assignment starts.' },
+      });
+      updateRecord.mockRejectedValue(failure);
+      render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Ends before the next assignment starts.');
+    });
+
     const ended = { id: 'A-0', projectId: 'P0', projectName: 'Old', start: '2026-05-01', end: '2026-10-10' };
     const withProjects = (projects) => ({ data: { ...detail, projects }, isLoading: false, error: null });
 
@@ -693,6 +705,7 @@ describe('TeamDialog', () => {
       });
       render(<TeamDialog {...props} />);
       expect(within(screen.getByRole('row', { name: /Sam Split/ })).queryByRole('button', { name: 'Unassign' })).not.toBeInTheDocument();
+      expect(within(screen.getByRole('row', { name: /Sam Split/ })).getByText('Ended 10 Oct 2026')).toBeInTheDocument();
       expect(within(screen.getByRole('row', { name: /Mona Lead/ })).getByRole('button', { name: 'Unassign' })).toBeInTheDocument();
     });
 

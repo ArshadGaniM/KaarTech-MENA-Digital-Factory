@@ -62,6 +62,11 @@ function DeleteAssignmentForm({ project, onSaved, onCancel }) {
       {error && (
         <p className={styles.fieldError} role="alert">
           {error.message}
+          {Object.values(error.details ?? {}).map((message) => (
+            <span key={message} className={styles.rowMeta}>
+              {message}
+            </span>
+          ))}
         </p>
       )}
       <div className={styles.inlineActions}>

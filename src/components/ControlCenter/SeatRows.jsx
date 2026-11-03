@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { formatUsd } from '../../lib/money';
+import { formatDay, formatUsd } from '../../lib/money';
 import { isSeatRunning, todayIso } from '../../lib/teamActions';
 import AssignSeatForm from './AssignSeatForm';
 import styles from './ControlCenter.module.css';
@@ -50,6 +50,7 @@ function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUn
               Assign
             </button>
           )}
+          {!vacant && !canUnassign && seat.endDate && <span className={styles.rowMeta}>Ended {formatDay(seat.endDate)}</span>}
           {canUnassign && (
             <button
               type="button"
