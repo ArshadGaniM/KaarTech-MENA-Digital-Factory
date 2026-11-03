@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { avatarText, nameTag } from './leaderName';
 import { pluralNoun } from './pluralize';
 import styles from './OrganizationStructure.module.css';
 
@@ -15,11 +16,11 @@ function ManagerCard({ manager, maxSeats, isSelected, onSelect }) {
       <span className={styles.role}>ODC Project Manager</span>{' '}
       <span className={styles.managerTop}>
         <span className={styles.avatar} aria-hidden="true">
-          TBD
+          {avatarText(manager.name)}
         </span>
         <span>
           <span className={styles.managerTitle}>{manager.title}</span>{' '}
-          {manager.name && <span className={styles.chipTbd}>Name {manager.name}</span>}
+          {manager.name && <span className={styles.chipTbd}>{nameTag(manager.name)}</span>}
         </span>
       </span>{' '}
       <span className={styles.seats}>

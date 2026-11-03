@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { avatarText, nameTag } from './leaderName';
 import styles from './OrganizationStructure.module.css';
 
 function LeaderBand({ leader, totalSeats, filledSeats, totalDepartments, totalTeams }) {
@@ -6,12 +7,12 @@ function LeaderBand({ leader, totalSeats, filledSeats, totalDepartments, totalTe
     <section className={styles.leader} aria-label={leader.title}>
       <div className={styles.leaderId}>
         <div className={styles.avatarLarge} aria-hidden="true">
-          TBD
+          {avatarText(leader.name)}
         </div>
         <div>
           <div className={styles.role}>{leader.title}</div>
           <div className={styles.leaderName}>MENA Digital Factory</div>
-          <span className={styles.chipTbd}>Name {leader.name}</span>
+          <span className={styles.chipTbd}>{nameTag(leader.name)}</span>
         </div>
       </div>
       <dl className={styles.stats}>

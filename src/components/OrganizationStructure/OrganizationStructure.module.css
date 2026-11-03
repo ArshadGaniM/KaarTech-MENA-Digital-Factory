@@ -401,6 +401,14 @@
     border-color 0.18s;
 }
 
+.deptOn {
+  composes: dept;
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 2px var(--color-accent),
+    var(--shadow-card);
+}
+
 .dept:hover {
   transform: translateY(-2px);
   border-color: var(--color-primary);
@@ -467,78 +475,39 @@
   border-radius: 3px;
 }
 
-/* Drawer */
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  border: 0;
-  padding: 0;
-  background: var(--color-scrim);
-  cursor: default;
-}
-
-.drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 21;
-  display: flex;
-  flex-direction: column;
-  width: min(560px, 100%);
+/* Department detail, shown in place under the department cards */
+.detail {
+  margin-top: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
   background: var(--color-bg);
-  border-left: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
-  animation: slide-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  scroll-margin-top: var(--space-2);
 }
 
-@keyframes slide-in {
-  from {
-    transform: translateX(105%);
-  }
-}
-
-.drawerHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 22px var(--space-3) var(--space-2);
+.detailHead {
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
 
-.drawerHead h2 {
+.detailHead h3 {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
   text-wrap: balance;
 }
 
-.drawerHead p {
+.detailHead p {
   margin: 2px 0 0;
   color: var(--color-text-muted);
   font-size: 12px;
 }
 
-.close {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-bg);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.drawerBody {
+.detailBody {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 18px var(--space-3) var(--space-4);
-  overflow-y: auto;
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
 .practice {
@@ -737,7 +706,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .drawer,
   .live i {
     animation: none;
   }

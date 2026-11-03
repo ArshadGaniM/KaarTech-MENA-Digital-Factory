@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { initialsOf } from './initialsOf';
+import { nameTag } from './leaderName';
 import { pluralize, pluralNoun } from './pluralize';
 import { practiceColor } from './practiceColor';
 import TreeToggle from './TreeToggle';
@@ -19,7 +20,7 @@ const allKeys = (manager) => new Set(manager.departments.flatMap((department) =>
 // then for the picked manager its departments, practices, Module Leads and
 // teams. A team under No practice or a seat with no Module Lead shows as the
 // builder grouped it.
-function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
+function OrgTree({ leader, managers, selected, onSelect }) {
   // Open state belongs to the picked manager. Picking any manager starts from the default.
   const [expansion, setExpansion] = useState({ managerId: null, keys: new Set() });
   const keys = expansion.managerId === selected.id ? expansion.keys : defaultOpen(selected);
@@ -41,7 +42,7 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
       <div className={styles.treeRoot}>
         <span className={styles.role}>Layer 1 · {leader.title}</span>
         <strong>MENA Digital Factory</strong>
-        {leader.name && <span className={styles.chipTbd}>Name {leader.name}</span>}
+        {leader.name && <span className={styles.chipTbd}>{nameTag(leader.name)}</span>}
       </div>
       <div className={styles.treeStem} aria-hidden="true" />
       <div className={styles.treeManagers} role="group" aria-label="ODC Project Managers">
@@ -55,7 +56,7 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
           >
             <span className={styles.role}>Layer 2</span>{' '}
             <span className={styles.treeManagerTitle}>{manager.title}</span>{' '}
-            {manager.name && <span className={styles.chipTbd}>Name {manager.name}</span>}{' '}
+            {manager.name && <span className={styles.chipTbd}>{nameTag(manager.name)}</span>}{' '}
             <span className={styles.seats}>
               {manager.seats}
               <small> {pluralNoun(manager.seats, 'seat')}</small>
@@ -91,14 +92,6 @@ function OrgTree({ leader, managers, selected, onSelect, onOpenDepartment }) {
                       Floor {department.floorNumber} · {department.filled}/{department.seats} seats · {pluralize(department.teamCount, 'team')}
                     </span>
                   </TreeToggle>
-                  <button
-                    type="button"
-                    className={styles.linkButton}
-                    aria-label={`Open ${department.name}`}
-                    onClick={() => onOpenDepartment(department.code)}
-                  >
-                    Open
-                  </button>
                 </div>
                 {departmentOpen && (
                   <ul className={styles.treeList} id={`tree-${department.code}`}>
@@ -169,7 +162,6 @@ OrgTree.propTypes = {
     departments: PropTypes.arrayOf(PropTypes.object).isRequired,
   }).isRequired,
   onSelect: PropTypes.func.isRequired,
-  onOpenDepartment: PropTypes.func.isRequired,
 };
 
 export default OrgTree;

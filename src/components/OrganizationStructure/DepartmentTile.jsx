@@ -3,9 +3,11 @@ import { pluralNoun } from './pluralize';
 import { practiceColor } from './practiceColor';
 import styles from './OrganizationStructure.module.css';
 
-function DepartmentTile({ department, onOpen }) {
+function DepartmentTile({ department, isOpen, onToggle }) {
   return (
-    <button type="button" className={styles.dept} onClick={() => onOpen(department.code)}>
+    <button type="button" className={isOpen ? styles.deptOn : styles.dept}
+      aria-pressed={isOpen}
+      onClick={() => onToggle(department.code)}>
       <span className={styles.deptTop}>
         <span className={styles.deptName}>{department.name}</span>
         <span className={styles.floor}>Floor {department.floorNumber ?? '–'}</span>
@@ -45,7 +47,8 @@ DepartmentTile.propTypes = {
       PropTypes.shape({ code: PropTypes.string.isRequired, teamCount: PropTypes.number.isRequired })
     ).isRequired,
   }).isRequired,
-  onOpen: PropTypes.func.isRequired,
+  isOpen: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
 };
 
 export default DepartmentTile;

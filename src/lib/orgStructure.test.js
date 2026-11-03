@@ -64,6 +64,13 @@ describe('buildOrgStructure', () => {
     expect(managerOf(result, 'pm-3').departments.map((d) => d.code)).toEqual(['DEPT-009']);
   });
 
+  it('carries the named leaders from odcLeadership and leaves the other seats TBD', () => {
+    const result = build();
+    expect(result.deliveryManager.name).toBe('Mohammed Ibrahim S');
+    expect(managerOf(result, 'pm-3').name).toBe('Karthikeyan Rajendran');
+    expect(managerOf(result, 'pm-2').name).toBe('TBD');
+  });
+
   it('shows a live department missing from the config under Unassigned and hides deleted ones', () => {
     const result = build();
     const unassigned = managerOf(result, 'unassigned');
