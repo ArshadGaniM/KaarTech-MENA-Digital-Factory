@@ -201,11 +201,14 @@ export const MASTER_DATA_TABLES = [
       {
         key: "allocationPercentage",
         label:
-          "share of the resource's time spent on this position, above 0 and up to 100. One resource " +
+          "share of the resource's time spent on this position, at least 0.01 and up to 100. One resource " +
           "can have several rows (one per position); their percentages must not add up to more than " +
           "100 on any one day (only rows that share a day are added up) and should reach 100, and the " +
-          "same position cannot be used twice for a resource on the same day",
-        required: true,
+          "same position cannot be used twice for a resource on the same day. Required for every position " +
+          "except a Module Lead seat (a position whose name starts with \"Module Lead\"): there the " +
+          "server computes the share from the filled seats of the teams the person leads, ignores any " +
+          "value sent, and may set it to 0. A Module Lead cannot hold any other seat on the same days",
+        required: false,
         type: "number",
       },
       {

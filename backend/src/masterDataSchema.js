@@ -325,7 +325,7 @@ export function allocationSelectSql(table) {
 // A day as YYYY-MM-DD. The pg driver returns a `date` column as a Date at local midnight, so
 // a stored date (read back on PATCH or restore) is cut from its local parts. A string from the
 // request body is already ISO text.
-function dayOf(value) {
+export function dayOf(value) {
   if (value instanceof Date) {
     const pad = (n) => String(n).padStart(2, "0");
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;

@@ -139,31 +139,49 @@ function nextAssignmentOf(assignments, today) {
   return assignments.filter((a) => a.start > today).sort((a, b) => a.start.localeCompare(b.start))[0] ?? null;
 }
 
-// Planned utilization and cost for each month the assignment touches, from its
-// start month to its end month. A month's share is the days the assignment
-// covers; the cost is the team's monthly allocated cost scaled by that share.
-// A very long assignment is cut at MAX_PLAN_MONTHS (`truncated` says so), so one
-// absurd end date cannot make every popup fetch compute tens of thousands of months.
+// Planned utilization and cost for each month the assignments touch, from the
+// first start month to the last end month, and always including the viewed
+// month (0% and $0.00 when nothing runs in it). A month's share is the days the
+// assignments cover; the cost is the team's monthly allocated cost scaled by
+// that share. A very long plan is cut at MAX_PLAN_MONTHS (`truncated` says so),
+// so one absurd end date cannot make every popup fetch compute tens of
+// thousands of months.
 const MAX_PLAN_MONTHS = 120;
+const monthIndex = (isoDate) => {
+  const [year, month] = isoDate.split("-").map(Number);
+  return year * 12 + month - 1;
+};
 
-function monthlyPlan(assignment, allocatedTeamCost) {
-  if (!assignment) return { months: [], totalCost: 0, truncated: false };
-  const [startYear, startMonth] = assignment.start.split("-").map(Number);
-  const [endYear, endMonth] = assignment.end.split("-").map(Number);
+function monthlyPlan(planned, viewedMonth, allocatedTeamCost) {
+  const viewed = monthIndex(viewedMonth);
+  const first = Math.min(viewed, ...planned.map((a) => monthIndex(a.start)));
+  const last = Math.max(viewed, ...planned.map((a) => monthIndex(a.end)));
   const months = [];
   let totalCost = 0;
-  const first = startYear * 12 + startMonth - 1;
-  const last = endYear * 12 + endMonth - 1;
   const truncated = last - first + 1 > MAX_PLAN_MONTHS;
   for (let index = first; index <= Math.min(last, first + MAX_PLAN_MONTHS - 1); index += 1) {
     const month = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
     const window = monthWindow(month);
-    const share = coveredDays([assignment], window) / window.days;
+    const share = coveredDays(planned, window) / window.days;
     const cost = allocatedTeamCost * share;
     totalCost += cost;
     months.push({ month, utilizationPercent: round2(share * 100), cost: round2(cost) });
   }
   return { months, totalCost: round2(totalCost), truncated };
+}
+
+// The assignments the popup lists for the viewed month: those that start on or
+// before its last day and have not ended before the day the month is read on
+// (an end date's own day is still in, the day after is out).
+function runningIn(assignments, window, day) {
+  const lastDay = new Date(window.end).toISOString().slice(0, 10);
+  return assignments.filter((a) => a.start <= lastDay && a.end >= day).sort((a, b) => a.start.localeCompare(b.start));
+}
+
+// With nothing running in the viewed month, the plan keeps the latest
+// assignment that already ended, so its earlier months stay visible.
+function latestEndedBefore(assignments, day) {
+  return assignments.filter((a) => a.end < day).sort((a, b) => b.end.localeCompare(a.end))[0] ?? null;
 }
 
 function splitCompetencies(text) {
@@ -335,16 +353,21 @@ export function buildTeamDetail({ team, department, positions, deployments: team
   const deploymentsByPosition = indexBy(deployments, "positionCode");
   const teamCost = teamCosts({ teamPositions: positions, deploymentsByPosition, costs });
   const current = currentAssignmentOf(assignments, today);
+  const running = runningIn(assignments, window, day);
+  const lastEnded = running.length === 0 ? latestEndedBefore(assignments, day) : null;
 
   const seats = positions.flatMap((position) => {
     const counted = COUNTED_POSITIONS.has(position.name);
     const occupants = deploymentsByPosition.get(position.code) ?? [];
     const base = { positionCode: position.code, positionName: position.name, counted };
     if (occupants.length === 0) {
-      return [{ ...base, employeeId: null, employeeName: null, allocationPercentage: null, availablePercentage: null, ...NO_COST }];
+      return [{ ...base, deploymentId: null, startDate: null, endDate: null, employeeId: null, employeeName: null, allocationPercentage: null, availablePercentage: null, ...NO_COST }];
     }
     return occupants.map((d) => ({
       ...base,
+      deploymentId: d.id ?? null,
+      startDate: d.start,
+      endDate: d.end,
       employeeId: d.employeeId,
       employeeName: d.employeeName,
       allocationPercentage: d.allocationPercentage,
@@ -360,11 +383,9 @@ export function buildTeamDetail({ team, department, positions, deployments: team
     month,
     competencies: competenciesOf(positions).all,
     seats,
-    // Only the assignment covering today: the Projects list, the card's end date
-    // and the month-by-month panels all follow it.
-    projects: current
-      ? [{ id: current.id, projectId: current.projectId, projectName: current.projectName, start: current.start, end: current.end }]
-      : [],
+    // Only the assignments running in the viewed month: the Projects list and
+    // the month-by-month panels follow them.
+    projects: running.map(({ id, projectId, projectName, start, end }) => ({ id, projectId, projectName, start, end })),
     assignmentEndDate: current?.end ?? null,
     nextAssignment: (({ id, projectId, projectName, start, end }) => ({ id, projectId, projectName, start, end }))(
       nextAssignmentOf(assignments, today) ?? { id: null, projectId: null, projectName: null, start: null, end: null }
@@ -372,7 +393,7 @@ export function buildTeamDetail({ team, department, positions, deployments: team
     allocatedTeamCost: teamCost.allocatedTeamCost,
     defaultedCostCount: teamCost.defaultedCostCount,
     locationMix: teamCost.locationMix,
-    monthlyPlan: monthlyPlan(current, teamCost.allocatedTeamCost),
+    monthlyPlan: monthlyPlan(lastEnded ? [lastEnded] : running, month, teamCost.allocatedTeamCost),
     ...teamHours({ teamPositions: positions, deploymentsByPosition, teamAssignments: assignments, window }),
   };
 }
@@ -383,7 +404,7 @@ export async function loadControlCenterRows(query) {
     query('select code, name, department_code as "departmentCode" from teams where deleted_at is null order by code'),
     query('select code, name, team_code as "teamCode", competencies from positions where deleted_at is null order by code'),
     query(
-      `select rd.employee_id as "employeeId", r.name as "employeeName", rd.position_code as "positionCode",
+      `select rd.id, rd.employee_id as "employeeId", r.name as "employeeName", rd.position_code as "positionCode",
               rd.allocation_percentage::float as "allocationPercentage",
               rd.start_date::text as start, rd.end_date::text as "end"
          from resource_deployment rd

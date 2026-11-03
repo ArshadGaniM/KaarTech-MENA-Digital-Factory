@@ -78,6 +78,12 @@ returns 200 (not 404) for a soft-deleted resource — the response includes
 at all. Only PATCH/DELETE on those routes still 404 a soft-deleted resource,
 since those refuse to act on one; the inverse verb route `POST /v1/<table>/:id/restore` answers 409 (`<resource>_not_deleted`) for a row that exists but is *not* soft-deleted, and 404 only when the id doesn't exist.
 
+**Documented deviation (server-computed field):** on `/v1/resource-deployment`, `allocationPercentage`
+is optional and ignored when the position's name starts with `Module Lead`. The server computes it
+(`backend/src/moduleLeadAllocation.js`), overwrites what was sent, and may store 0; every other
+position still requires it, at least 0.01. The response carries the computed value. Do not "fix" it
+back to a required, caller-owned field.
+
 ## Error Responses
 Built with `ApiError` in `backend/src/errors.js`.
 ```json

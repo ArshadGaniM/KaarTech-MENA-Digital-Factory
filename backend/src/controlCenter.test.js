@@ -307,13 +307,62 @@ test("the monthly plan runs from the assignment's start month to its end month, 
 });
 
 test("a start part way through a month is prorated too, and the plan crosses a year end", () => {
-  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-12-16", end: "2027-01-15" }], today: "2026-12-20" });
+  const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-12-16", end: "2027-01-15" }], month: "2026-12", today: "2026-12-20" });
   assert.deepEqual(detail.monthlyPlan.months.map((m) => [m.month, m.utilizationPercent]), [["2026-12", 51.61], ["2027-01", 48.39]]);
 });
 
-test("a team with no current assignment shows no projects and an empty plan", () => {
+test("a project that ended before the viewed month is not listed, but its own months stay in the plan up to the viewed month at 0%", () => {
   const detail = detailOf({ assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-01-01", end: "2026-02-01" }] });
-  assert.deepEqual([detail.projects, detail.assignmentEndDate, detail.monthlyPlan], [[], null, { months: [], totalCost: 0, truncated: false }]);
+  assert.deepEqual([detail.projects, detail.assignmentEndDate], [[], null]);
+  assert.deepEqual(detail.monthlyPlan.months.map((m) => m.month), ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"]);
+  assert.deepEqual(detail.monthlyPlan.months.slice(0, 2).map((m) => m.utilizationPercent), [100, 3.57]);
+  assert.deepEqual(detail.monthlyPlan.months.at(-1), { month: "2026-10", utilizationPercent: 0, cost: 0 });
+});
+
+test("a team with no assignment at all still plans the viewed month at 0% and $0.00", () => {
+  const detail = detailOf();
+  assert.deepEqual(detail.projects, []);
+  assert.deepEqual(detail.monthlyPlan, { months: [{ month: "2026-10", utilizationPercent: 0, cost: 0 }], totalCost: 0, truncated: false });
+});
+
+test("viewing January 2027 after a 2026 project: no project listed, 2026 months kept, January 2027 at 0%", () => {
+  const detail = detailOf({
+    assignments: [{ id: "A", teamCode: "TEAM-001", projectId: "P", projectName: "Rollout", start: "2026-01-01", end: "2026-12-31" }],
+    month: "2027-01",
+    today: "2026-10-15",
+  });
+  assert.deepEqual(detail.projects, []);
+  assert.equal(detail.status, "unused");
+  const months = detail.monthlyPlan.months;
+  assert.equal(months[0].month, "2026-01");
+  assert.deepEqual(months.at(-2), { month: "2026-12", utilizationPercent: 100, cost: months.at(-2).cost });
+  assert.deepEqual(months.at(-1), { month: "2027-01", utilizationPercent: 0, cost: 0 });
+});
+
+test("boundary: the end date's own day is still running in the viewed month, the day after is not", () => {
+  const assignments = [{ id: "A", teamCode: "TEAM-001", projectId: "P", projectName: "Rollout", start: "2026-01-01", end: "2026-10-15" }];
+  assert.deepEqual(detailOf({ assignments, today: "2026-10-15" }).projects.map((p) => p.id), ["A"]);
+  assert.deepEqual(detailOf({ assignments, today: "2026-10-16" }).projects, []);
+  // Another month is read on its first day, so a project ending mid-month still runs in that month.
+  const endsMidMonth = [{ ...assignments[0], end: "2026-11-15" }];
+  assert.deepEqual(detailOf({ assignments: endsMidMonth, month: "2026-11", today: "2026-10-15" }).projects.map((p) => p.id), ["A"]);
+  assert.deepEqual(detailOf({ assignments: endsMidMonth, month: "2026-12", today: "2026-10-15" }).projects, []);
+});
+
+test("a project that starts later in the viewed month is listed for that month", () => {
+  const assignments = [{ id: "A", teamCode: "TEAM-001", projectId: "P", start: "2026-11-20", end: "2027-01-31" }];
+  assert.deepEqual(detailOf({ assignments, month: "2026-11", today: "2026-10-15" }).projects.map((p) => p.id), ["A"]);
+  assert.deepEqual(detailOf({ assignments, month: "2026-10", today: "2026-10-15" }).projects, []);
+});
+
+test("each seat carries its deployment id and dates so the popup can end or remove it; a vacant seat carries none", () => {
+  const detail = detailOf({ deployments: [{ id: "D-2", employeeId: 2, employeeName: "Lead Person", positionCode: "POS-2", allocationPercentage: 100, start: "2026-08-01", end: "2027-03-31" }] });
+  assert.deepEqual(
+    [seatOf(detail, 2).deploymentId, seatOf(detail, 2).startDate, seatOf(detail, 2).endDate],
+    ["D-2", "2026-08-01", "2027-03-31"]
+  );
+  const vacant = detail.seats.find((s) => s.employeeId === null);
+  assert.deepEqual([vacant.deploymentId, vacant.startDate, vacant.endDate], [null, null, null]);
 });
 
 test("when even the Senior Consultant planned cost is gone, a person costs zero and is tagged Missing, not Default", () => {
@@ -567,6 +616,7 @@ test("the loader reads each deployment's start and end date as text, so the read
   });
 
   const deploymentSql = sqls.find((sql) => sql.includes("from resource_deployment rd"));
+  assert.match(deploymentSql, /select rd\.id,/);
   assert.match(deploymentSql, /rd\.start_date::text as start/);
   assert.match(deploymentSql, /rd\.end_date::text as "end"/);
 });

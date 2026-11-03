@@ -30,6 +30,7 @@ import {
   searchTermOf,
 } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
+import { prepareWrite, recalculateAffected, seatOfRow } from "./moduleLeadAllocation.js";
 
 // No user/auth system exists yet — createdBy/updatedBy is caller-supplied
 // (matches CLAUDE.md's ask verbatim: "created by which is me Arshad
@@ -126,6 +127,19 @@ export function createMasterDataRouter(table) {
       client.release(rollbackFailed);
     }
   }
+
+  // FEAT-43: on a Module Lead table the percentage is optional on the wire (a Module
+  // Lead seat ignores it and may hold 0), so the body is checked with that field relaxed
+  // and prepareWrite then requires it, at the descriptor's minimum, for every other seat.
+  const percentageField = fields.find((f) => f.moduleLeadOptional);
+  const bodyTable = table.moduleLead
+    ? { ...table, fields: fields.map((f) => (f === percentageField ? { ...f, min: 0 } : f)) }
+    : table;
+  const prepare = async (db, candidate, excludeId, keep) =>
+    table.moduleLead
+      ? prepareWrite(db, candidate, { min: percentageField.min, excludeId, keep })
+      : { seat: null, forChecks: candidate };
+  const settle = (db, touched, actor) => (table.moduleLead ? recalculateAffected(db, touched, actor) : undefined);
 
   // A write's `returning *` has no lookup/total columns; re-select through the
   // list query so the response carries employeeTotalAllocation like a GET.
@@ -248,22 +262,23 @@ export function createMasterDataRouter(table) {
   router.post("/", requireInternalApiKey, async (req, res, next) => {
     try {
       normalizeLists(table, req.body);
-      validateBody(table, req.body);
+      validateBody(bodyTable, req.body);
       await validateReferences(table, req.body);
       validateCrossFields(table, req.body);
       const actor = actorOf(req.body);
 
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
-      const values = [...fields.map((f) => req.body[f.key]), actor, actor];
-      const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
+      const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
 
       const created = await withGroupLock(req.body[groupRule?.groupKey], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]]));
-        await validateGroupRules(db, table, candidate);
+        const { seat, forChecks } = await prepare(db, candidate, null, 0);
+        await validateGroupRules(db, table, forChecks);
         const result = await db.query(
           `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
-          values
+          [...fields.map((f) => candidate[f.column]), actor, actor]
         );
+        await settle(db, [{ employeeId: candidate.employee_id, seat }], actor);
         return reselect(db, result.rows[0]);
       });
       res.status(201).json({ data: toResponse(table, created) });
@@ -275,7 +290,7 @@ export function createMasterDataRouter(table) {
   router.patch("/:id", requireInternalApiKey, async (req, res, next) => {
     try {
       normalizeLists(table, req.body);
-      validateBody(table, req.body, { partial: true });
+      validateBody(bodyTable, req.body, { partial: true });
       await validateReferences(table, req.body, { partial: true });
       const existing = await pool.query(
         `select * from ${tableName} where id = $1 and deleted_at is null`,
@@ -294,19 +309,24 @@ export function createMasterDataRouter(table) {
       // (clear it), so an optional field like practiceId can actually be
       // unset again once it's been set.
       const merged = fields.map((f) => (Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column]));
-      const values = [...merged, actor];
       const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
 
       const groupIndex = fields.findIndex((f) => f.key === groupRule?.groupKey);
       const updated = await withGroupLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
         const candidate = Object.fromEntries(fields.map((f, i) => [f.column, merged[i]]));
-        await validateGroupRules(db, table, candidate, req.params.id);
+        const { seat, forChecks } = await prepare(db, candidate, req.params.id, Number(current[percentageField?.column]));
+        await validateGroupRules(db, table, forChecks, req.params.id);
+        const values = [...fields.map((f) => candidate[f.column]), actor];
         const result = await db.query(
           `update ${tableName} set ${setClause}
            where id = $${values.length + 1} and deleted_at is null returning *`,
           [...values, req.params.id]
         );
         if (result.rows.length === 0) throw notFound(resourceName, req.params.id);
+        if (table.moduleLead) {
+          const before = await seatOfRow(db, current);
+          await settle(db, [{ employeeId: current.employee_id, seat: before }, { employeeId: candidate.employee_id, seat }], actor);
+        }
         return reselect(db, result.rows[0]);
       });
       res.json({ data: toResponse(table, updated) });
@@ -321,11 +341,27 @@ export function createMasterDataRouter(table) {
       const guardSql = (table.deleteGuards ?? [])
         .map((g) => ` and not exists (select 1 from ${g.table} d where d.${g.column} = ${tableName}.${g.ownColumn} and d.deleted_at is null)`)
         .join("");
-      const result = await pool.query(
-        `update ${tableName} set deleted_at = now()
-         where id = $1 and deleted_at is null${guardSql} returning id`,
-        [req.params.id]
-      );
+      // A Module Lead table recalculates the shares the row leaves behind, so the delete
+      // runs in the transaction and under the lock of the row's group like any other write.
+      let groupValue = null;
+      if (table.moduleLead) {
+        const found = await pool.query(`select ${groupRule.groupColumn} from ${tableName} where id = $1 and deleted_at is null`, [req.params.id]);
+        if (found.rows.length === 0) throw notFound(resourceName, req.params.id);
+        groupValue = found.rows[0][groupRule.groupColumn];
+      }
+      const softDelete = async (db) => {
+        const removed = await db.query(
+          `update ${tableName} set deleted_at = now()
+           where id = $1 and deleted_at is null${guardSql} returning *`,
+          [req.params.id]
+        );
+        if (table.moduleLead && removed.rows.length > 0) {
+          const row = removed.rows[0];
+          await settle(db, [{ employeeId: row.employee_id, seat: await seatOfRow(db, row) }]);
+        }
+        return removed;
+      };
+      const result = await (table.moduleLead ? withGroupLock(groupValue, softDelete) : softDelete(pool));
       if (result.rows.length === 0) {
         // Either there is no such live row, or a guard blocked the delete.
         const live = table.deleteGuards
@@ -376,13 +412,16 @@ export function createMasterDataRouter(table) {
       const actor = actorOf(req.body);
       const restored = await withGroupLock(current[groupRule?.groupColumn], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, current[f.column]]));
-        await validateGroupRules(db, table, candidate, req.params.id);
+        const { seat, forChecks } = await prepare(db, candidate, req.params.id, Number(current[percentageField?.column]));
+        await validateGroupRules(db, table, forChecks, req.params.id);
         const result = await db.query(
           `update ${tableName} set deleted_at = null, updated_by = $1
            where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
           [actor, req.params.id]
         );
-        return result.rows.length === 0 ? null : reselect(db, result.rows[0]);
+        if (result.rows.length === 0) return null;
+        await settle(db, [{ employeeId: current.employee_id, seat }], actor);
+        return reselect(db, result.rows[0]);
       });
       if (restored === null) {
         // Either someone restored it first (409/404 below) or a parent was

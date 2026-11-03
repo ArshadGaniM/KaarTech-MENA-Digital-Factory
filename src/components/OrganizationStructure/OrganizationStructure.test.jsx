@@ -60,7 +60,8 @@ describe('OrganizationStructure', () => {
     await renderLoaded();
 
     const band = screen.getByRole('region', { name: 'ODC Delivery Manager' });
-    expect(within(band).getByText('Name TBD')).toBeInTheDocument();
+    expect(within(band).getByText('Mohammed Ibrahim S')).toBeInTheDocument();
+    expect(within(band).getByText('MI')).toBeInTheDocument();
     expect(within(band).getByText('Seats in total, 1 filled').nextSibling).toHaveTextContent('7');
     expect(within(band).getByText('Departments').nextSibling).toHaveTextContent('2');
     expect(within(band).getByText('Teams').nextSibling).toHaveTextContent('3');
@@ -69,7 +70,7 @@ describe('OrganizationStructure', () => {
   it('shows only the managers that have a team, with their seats', async () => {
     await renderLoaded();
 
-    const manager3 = screen.getByRole('button', { name: /Manager 3 Name TBD/ });
+    const manager3 = screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ });
     expect(manager3).toHaveTextContent('6 seats');
     expect(manager3).toHaveTextContent('Configuration');
     expect(screen.queryByRole('button', { name: /Manager 1 Name TBD/ })).not.toBeInTheDocument();
@@ -81,7 +82,7 @@ describe('OrganizationStructure', () => {
     expect(screen.getByRole('heading', { name: 'ODC Project Manager 2: departments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Design Services/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
 
     expect(screen.getByRole('heading', { name: 'ODC Project Manager 3: departments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Configuration Services/ })).toBeInTheDocument();
@@ -110,17 +111,20 @@ describe('OrganizationStructure', () => {
     expect(screen.getByText('No department matches. Try another word.')).toBeInTheDocument();
   });
 
-  it('opens the department drawer with practices, the shared Module Lead and team cards', async () => {
+  it('shows the department detail below the cards with practices, the shared Module Lead and team cards', async () => {
     const user = await renderLoaded();
-    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
 
     await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
 
-    const drawer = screen.getByRole('dialog', { name: 'Configuration Services' });
-    expect(within(drawer).getByText('Finance')).toBeInTheDocument();
-    expect(within(drawer).getByText('Asha Rao')).toBeInTheDocument();
-    expect(within(drawer).getByText('No practice')).toBeInTheDocument();
-    const team = within(drawer).getByText('TEAM-001').closest('li');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Configuration Services/ })).toHaveAttribute('aria-pressed', 'true');
+    const detail = screen.getByRole('region', { name: 'Configuration Services detail' });
+    expect(within(detail).getByText('Finance')).toBeInTheDocument();
+    expect(within(detail).getByText('Asha Rao')).toBeInTheDocument();
+    expect(within(detail).getAllByText('Module Lead, 1 team')).toHaveLength(2);
+    expect(within(detail).getByText('No practice')).toBeInTheDocument();
+    const team = within(detail).getByText('TEAM-001').closest('li');
     expect(within(team).getByText('1 of 5 seats filled')).toBeInTheDocument();
     expect(within(team).getByText('Consultants').nextSibling).toHaveTextContent('2');
     expect(within(team).getByText('Other').nextSibling).toHaveTextContent('1');
@@ -128,58 +132,97 @@ describe('OrganizationStructure', () => {
 
   it('marks a Module Lead seat that nobody holds as empty under TBD', async () => {
     const user = await renderLoaded();
-    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
     await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
 
-    const drawer = screen.getByRole('dialog');
-    expect(within(drawer).getByText('Seat empty')).toBeInTheDocument();
-    expect(within(drawer).getByText('TBD', { selector: 'b' })).toBeInTheDocument();
+    const detail = screen.getByRole('region', { name: 'Configuration Services detail' });
+    expect(within(detail).getByText('Seat empty')).toBeInTheDocument();
+    expect(within(detail).getByText('TBD', { selector: 'b' })).toBeInTheDocument();
   });
 
-  it('closes the drawer with the Close button, Escape or the backdrop, and returns focus to the tile', async () => {
+  it('does not reopen the old detail when the search text is cleared', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
+    expect(screen.getByRole('region', { name: 'Configuration Services detail' })).toBeInTheDocument();
+
+    const box = screen.getByRole('searchbox', { name: 'Find a department' });
+    await user.type(box, 'config');
+    await user.clear(box);
+
+    expect(screen.queryByRole('region', { name: /detail$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Configuration Services/ })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('switches the detail to another department and closes it when the same one is picked again', async () => {
+    const user = await renderLoaded();
+    await user.type(screen.getByRole('searchbox', { name: 'Find a department' }), 'services');
+    const config = screen.getByRole('button', { name: /Configuration Services/ });
+    const design = screen.getByRole('button', { name: /Design Services/ });
+
+    await user.click(config);
+    expect(screen.getByRole('region', { name: 'Configuration Services detail' })).toBeInTheDocument();
+    await user.click(design);
+    expect(screen.queryByRole('region', { name: 'Configuration Services detail' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Design Services detail' })).toBeInTheDocument();
+    expect(config).toHaveAttribute('aria-pressed', 'false');
+    expect(design).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(design);
+    expect(screen.queryByRole('region', { name: /detail$/ })).not.toBeInTheDocument();
+    expect(design).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('opens and closes the detail from the keyboard and keeps focus on the card', async () => {
     const user = await renderLoaded();
     const tile = screen.getByRole('button', { name: /Design Services/ });
+    tile.focus();
 
-    await user.click(tile);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('region', { name: 'Design Services detail' })).toBeInTheDocument();
     expect(tile).toHaveFocus();
-
-    await user.click(tile);
-    await user.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-    await user.click(tile);
-    await user.click(screen.getByRole('button', { name: 'Close department detail' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.keyboard(' ');
+    expect(screen.queryByRole('region', { name: 'Design Services detail' })).not.toBeInTheDocument();
     expect(tile).toHaveFocus();
   });
 
-  it('returns focus to the tile after Escape', async () => {
-    const user = await renderLoaded();
-    const tile = screen.getByRole('button', { name: /Design Services/ });
-
-    await user.click(tile);
-    await user.keyboard('{Escape}');
-
-    expect(tile).toHaveFocus();
+  it('scrolls the opened detail into view', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      const user = await renderLoaded();
+      await user.click(screen.getByRole('button', { name: /Design Services/ }));
+      expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    } finally {
+      delete Element.prototype.scrollIntoView;
+    }
   });
 
-  it('keeps Tab inside the open drawer', async () => {
+  it('clears the department detail when another manager is picked', async () => {
     const user = await renderLoaded();
     await user.click(screen.getByRole('button', { name: /Design Services/ }));
-    const drawer = screen.getByRole('dialog');
-    const controls = within(drawer).getAllByRole('button').concat(Array.from(drawer.querySelectorAll('summary')));
-    expect(controls.length).toBeGreaterThan(1);
+    expect(screen.getByRole('region', { name: 'Design Services detail' })).toBeInTheDocument();
 
-    for (let step = 0; step < controls.length + 2; step += 1) {
-      await user.tab();
-      expect(drawer).toContainElement(document.activeElement);
-    }
-    await user.tab({ shift: true });
-    expect(drawer).toContainElement(document.activeElement);
+    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+
+    expect(screen.queryByRole('region', { name: /detail$/ })).not.toBeInTheDocument();
+  });
+
+  it('hides the departments and their detail when the selected manager is picked again', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Design Services/ }));
+    const manager2 = screen.getByRole('button', { name: /Manager 2 Name TBD/ });
+    expect(manager2).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(manager2);
+
+    expect(manager2).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('button', { name: /Design Services/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /detail$/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Select a project manager to see its departments.')).toBeInTheDocument();
+
+    await user.click(manager2);
+    expect(screen.getByRole('button', { name: /Design Services/ })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('finds a department whatever the case and ignores whitespace-only input', async () => {
@@ -228,7 +271,8 @@ describe('OrganizationStructure tree view', () => {
     await user.click(screen.getByRole('button', { name: 'Tree' }));
     return user;
   };
-  const pickManager = (user, number) => user.click(screen.getByRole('button', { name: new RegExp(`Layer 2 ODC Project Manager ${number} Name TBD`) }));
+  const NAMES = { 2: 'Name TBD', 3: 'Karthikeyan Rajendran' };
+  const pickManager = (user, number) => user.click(screen.getByRole('button', { name: new RegExp(`Layer 2 ODC Project Manager ${number} ${NAMES[number]}`) }));
 
   it('starts on Cards and switches to a tree headed by the Delivery Manager and the managers', async () => {
     const user = await openTree();
@@ -287,13 +331,12 @@ describe('OrganizationStructure tree view', () => {
     expect(screen.getByRole('heading', { name: 'ODC Project Manager 3: departments' })).toBeInTheDocument();
   });
 
-  it('opens the department drawer from the tree', async () => {
+  it('has no side pop-up for a department in the tree', async () => {
     const user = await openTree();
     await pickManager(user, 3);
 
-    await user.click(screen.getByRole('button', { name: 'Open Configuration Services' }));
-
-    expect(screen.getByRole('dialog', { name: 'Configuration Services' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Configuration Services' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('shows initials for a deployed Module Lead and TBD only for an unfilled seat', async () => {

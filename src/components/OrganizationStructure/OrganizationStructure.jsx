@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import DepartmentDrawer from './DepartmentDrawer';
+import { useState } from 'react';
+import DepartmentDetail from './DepartmentDetail';
 import DepartmentTile from './DepartmentTile';
 import LeaderBand from './LeaderBand';
 import ManagerCard from './ManagerCard';
@@ -10,11 +10,11 @@ import styles from './OrganizationStructure.module.css';
 
 function OrganizationStructure() {
   const { data, isLoading, error } = useOrganizationStructure();
-  const [selectedId, setSelectedId] = useState(null);
+  // undefined: nothing picked yet, so the first manager shows. null: the picked manager was toggled off.
+  const [selectedId, setSelectedId] = useState(undefined);
   const [query, setQuery] = useState('');
   const [openCode, setOpenCode] = useState(null);
   const [view, setView] = useState('cards');
-  const closeDrawer = useCallback(() => setOpenCode(null), []);
 
   if (isLoading) {
     return (
@@ -32,15 +32,21 @@ function OrganizationStructure() {
   }
 
   const managers = data.projectManagers;
-  const selected = managers.find((manager) => manager.id === selectedId) ?? managers[0];
+  const selected = selectedId === null ? null : (managers.find((manager) => manager.id === selectedId) ?? managers[0]);
   const allDepartments = managers.flatMap((manager) => manager.departments);
   const term = query.trim().toLowerCase();
   const shown = term
     ? allDepartments.filter((department) => department.name.toLowerCase().includes(term))
     : (selected?.departments ?? []);
-  // Looked up by code on every render, so a live refresh updates an open drawer
-  // and a department that disappears closes it.
-  const openDepartment = allDepartments.find((department) => department.code === openCode);
+  // Looked up by code among the departments on show, so a live refresh updates
+  // the open detail and a department that disappears or is filtered out closes it.
+  const openDepartment = shown.find((department) => department.code === openCode);
+  const pickManager = (id) => {
+    setSelectedId(id === selected?.id ? null : id);
+    setOpenCode(null);
+    setQuery('');
+  };
+  const toggleDepartment = (code) => setOpenCode(code === openCode ? null : code);
   const maxSeats = Math.max(...managers.map((manager) => manager.seats), 1);
 
   return (
@@ -78,29 +84,25 @@ function OrganizationStructure() {
         <OrgTree
           leader={data.deliveryManager}
           managers={managers}
-          selected={selected}
+          selected={selected ?? managers[0]}
           onSelect={setSelectedId}
-          onOpenDepartment={setOpenCode}
         />
       ) : (
         <>
-          <SeatShareBar managers={managers} totalSeats={data.totalSeats} selectedId={selected.id} onSelect={setSelectedId} />
+          <SeatShareBar managers={managers} totalSeats={data.totalSeats} selectedId={selected?.id ?? null} onSelect={pickManager} />
           <div className={styles.managers}>
             {managers.map((manager) => (
               <ManagerCard
                 key={manager.id}
                 manager={manager}
                 maxSeats={maxSeats}
-                isSelected={manager.id === selected.id}
-                onSelect={(id) => {
-                  setSelectedId(id);
-                  setQuery('');
-                }}
+                isSelected={manager.id === selected?.id}
+                onSelect={pickManager}
               />
             ))}
           </div>
           <div className={styles.panelHead}>
-            <h2>{term ? `Departments matching "${query.trim()}"` : `${selected.title}: departments`}</h2>
+            <h2>{term ? `Departments matching "${query.trim()}"` : selected ? `${selected.title}: departments` : 'Departments'}</h2>
             <label className={styles.searchLabel}>
               <span className={styles.visuallyHidden}>Find a department</span>
               <input
@@ -108,22 +110,32 @@ function OrganizationStructure() {
                 className={styles.search}
                 placeholder="Find a department"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setOpenCode(null);
+                }}
               />
             </label>
           </div>
-          {shown.length === 0 ? (
+          {!term && !selected ? (
+            <p className={styles.empty}>Select a project manager to see its departments.</p>
+          ) : shown.length === 0 ? (
             <p className={styles.empty}>No department matches. Try another word.</p>
           ) : (
             <div className={styles.depts}>
               {shown.map((department) => (
-                <DepartmentTile key={department.code} department={department} onOpen={setOpenCode} />
+                <DepartmentTile
+                  key={department.code}
+                  department={department}
+                  isOpen={department.code === openCode}
+                  onToggle={toggleDepartment}
+                />
               ))}
             </div>
           )}
+          {openDepartment && <DepartmentDetail key={openDepartment.code} department={openDepartment} />}
         </>
       )}
-      {openDepartment && <DepartmentDrawer department={openDepartment} onClose={closeDrawer} />}
     </section>
   );
 }

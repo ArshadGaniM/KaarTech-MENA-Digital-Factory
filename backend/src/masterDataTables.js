@@ -258,6 +258,10 @@ export const MASTER_DATA_TABLES = [
     // row's period: only rows that share a day with it count, and the same
     // position may not be held twice on one day. The list shows the total of
     // the rows deployed today.
+    //
+    // FEAT-43: a Module Lead seat (position name starting "Module Lead") takes its
+    // percentage from the server (moduleLeadAllocation.js), never from the caller.
+    moduleLead: true,
     allocationRule: {
       groupKey: "employeeId",
       groupColumn: "employee_id",
@@ -319,7 +323,10 @@ export const MASTER_DATA_TABLES = [
       {
         key: "allocationPercentage",
         column: "allocation_percentage",
-        required: true,
+        // Optional only for a Module Lead seat, where it is computed and anything sent is
+        // ignored; the router requires it (at least `min`) for every other position.
+        required: false,
+        moduleLeadOptional: true,
         type: "number",
         numeric: true,
         min: 0.01,
