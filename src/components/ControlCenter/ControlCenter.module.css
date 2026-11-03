@@ -534,9 +534,110 @@
 }
 
 .projectList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   margin: 4px 0 0;
-  padding-left: var(--space-3);
+  padding: 0;
+  list-style: none;
   font-size: 14px;
+}
+
+.projectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.projectName {
+  display: block;
+  font-weight: 700;
+}
+
+.projectCode,
+.projectDates {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.seatButton {
+  margin-left: var(--space-1);
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.seatButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-1) 0;
+  padding: var(--space-2);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-style: normal;
+}
+
+.inlineFormTitle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.matchList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.matchList button {
+  width: 100%;
+  padding: 4px var(--space-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-status-unused-ink);
+}
+
+.inlineActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
 }
 
 .table {

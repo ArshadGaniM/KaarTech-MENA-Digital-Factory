@@ -6,6 +6,9 @@ import { formatDay, formatUsd } from '../../lib/money';
 import { MASTER_DATA_TABLES } from '../../lib/masterDataApi';
 import { formatMonth } from '../../lib/months';
 import RecordFormModal from '../RecordFormModal';
+import { todayIso, unassignSeat } from '../../lib/teamActions';
+import AssignSeatForm from './AssignSeatForm';
+import DeleteAssignmentForm from './DeleteAssignmentForm';
 import { statusClass } from './statusClass';
 import styles from './ControlCenter.module.css';
 
@@ -71,6 +74,80 @@ MonthPanel.propTypes = {
   mix: PropTypes.string,
 };
 
+// One seat: its row, and under a vacant seat the Assign form when it is open.
+function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUnassign, onSaved }) {
+  const vacant = seat.employeeId === null;
+  return (
+    <>
+      <tr className={vacant ? styles.vacantRow : undefined}>
+        <th scope="row">
+          {seat.positionName}
+          <span className={styles.rowMeta}>
+            {seat.positionCode}
+            {seat.counted ? '' : ', not counted in the team'}
+          </span>
+        </th>
+        <td>
+          {seat.employeeName ?? 'Vacant'}
+          {vacant && (
+            <button type="button" className={styles.seatButton} onClick={onAssign} disabled={assigning}>
+              Assign
+            </button>
+          )}
+          {!vacant && seat.deploymentId && (
+            <button type="button" className={styles.seatButton} onClick={onUnassign} disabled={busy}>
+              Unassign
+            </button>
+          )}
+        </td>
+        <td className={styles.numeric}>{percent(seat.allocationPercentage)}</td>
+        <td className={styles.numeric}>{percent(seat.availablePercentage)}</td>
+        <CostCell value={seat.plannedResourceCost} />
+        <CostCell value={seat.actualResourceCost} />
+        <td className={styles.numeric}>
+          {formatUsd(seat.allocatedResourceCost)}
+          {seat.costSource && <span className={styles.sourceTag}>{seat.costSource}</span>}
+        </td>
+      </tr>
+      {assigning && (
+        <tr>
+          <td colSpan={7}>
+            <AssignSeatForm seat={seat} seats={seats} onCancel={onCancelAssign} onSaved={onSaved} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+const seatShape = PropTypes.shape({
+  positionCode: PropTypes.string.isRequired,
+  positionName: PropTypes.string.isRequired,
+  counted: PropTypes.bool,
+  employeeId: PropTypes.number,
+  employeeName: PropTypes.string,
+  deploymentId: PropTypes.string,
+  startDate: PropTypes.string,
+  endDate: PropTypes.string,
+  allocationPercentage: PropTypes.number,
+  availablePercentage: PropTypes.number,
+  plannedResourceCost: PropTypes.number,
+  actualResourceCost: PropTypes.number,
+  allocatedResourceCost: PropTypes.number,
+  costSource: PropTypes.string,
+});
+
+SeatRows.propTypes = {
+  seat: seatShape.isRequired,
+  seats: PropTypes.arrayOf(seatShape).isRequired,
+  assigning: PropTypes.bool.isRequired,
+  busy: PropTypes.bool.isRequired,
+  onAssign: PropTypes.func.isRequired,
+  onCancelAssign: PropTypes.func.isRequired,
+  onUnassign: PropTypes.func.isRequired,
+  onSaved: PropTypes.func.isRequired,
+};
+
 // `pageError` is the page's own refresh failure: the popup is refetched from
 // the page's refreshes, so while those fail it must not claim to be live.
 function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
@@ -78,6 +155,12 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   // null, { mode: 'add' } or { mode: 'edit', record }. The record is taken when the
   // form opens, so a refetch cannot change which assignment an open form saves to.
   const [form, setForm] = useState(null);
+  // Inline forms in the popup: the position code of the vacant seat being
+  // assigned, and whether the Delete Project Assignment form is open.
+  const [assigning, setAssigning] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [seatBusy, setSeatBusy] = useState(false);
+  const [seatError, setSeatError] = useState(null);
   const { data: team, isLoading, error } = useTeamDetail(code, month, `${updatedAt.getTime()}-${reloads}`);
   const closeRef = useRef(null);
 
@@ -90,12 +173,34 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
 
   // Escape closes the form first when one is open, then the popup.
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && (form ? setForm(null) : onClose());
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (form) setForm(null);
+      else if (assigning || deleting) {
+        setAssigning(null);
+        setDeleting(false);
+      } else onClose();
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, form]);
+  }, [onClose, form, assigning, deleting]);
 
-  const current = team?.projects[0] ?? null;
+  const reload = () => setReloads((n) => n + 1);
+  const projects = team?.projects ?? [];
+  const current = projects[0] ?? null;
+
+  const unassign = async (seat) => {
+    setSeatBusy(true);
+    setSeatError(null);
+    try {
+      await unassignSeat(seat, todayIso());
+      reload();
+    } catch (err) {
+      setSeatError(err);
+    } finally {
+      setSeatBusy(false);
+    }
+  };
   // An older backend (frontend and backend deploy separately) sends no plan.
   const plan = team?.monthlyPlan ?? { months: [], totalCost: 0 };
   const maxCost = Math.max(1, ...plan.months.map((m) => m.cost));
@@ -123,8 +228,12 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
             </div>
             <div className={styles.dialogActions}>
               {team && (
-                <button type="button" className={styles.addAssignment} onClick={() => setForm({ mode: 'add' })}>
-                  Add Project Assignment
+                <button
+                  type="button"
+                  className={styles.addAssignment}
+                  onClick={() => (current ? setDeleting(true) : setForm({ mode: 'add' }))}
+                >
+                  {current ? 'Delete Project Assignment' : 'Add Project Assignment'}
                 </button>
               )}
               <button ref={closeRef} type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
@@ -187,30 +296,55 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                 <div className={styles.dialogMain}>
                   <h3 className={styles.dialogHeading}>Projects</h3>
                   {!current ? (
-                    <p className={styles.dialogLine}>No current assignment</p>
+                    <p className={styles.dialogLine}>No assignment</p>
                   ) : (
                     <ul className={styles.projectList}>
-                      <li>
-                        {current.projectName ?? current.projectId}, {current.start} to {current.end}
-                        <button
-                          type="button"
-                          className={styles.editAssignment}
-                          onClick={() => setForm({ mode: 'edit', record: assignmentRecord(team.code, current) })}
-                        >
-                          Edit
-                        </button>
-                      </li>
+                      {projects.map((project) => (
+                        <li key={project.id} className={styles.projectRow}>
+                          <div>
+                            <strong className={styles.projectName}>{project.projectName ?? project.projectId}</strong>
+                            {project.projectName && <span className={styles.projectCode}>{project.projectId}</span>}
+                            <span className={styles.projectDates}>
+                              {formatDay(project.start)} to {formatDay(project.end)}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.editAssignment}
+                            onClick={() => setForm({ mode: 'edit', record: assignmentRecord(team.code, project) })}
+                          >
+                            Edit
+                          </button>
+                        </li>
+                      ))}
                     </ul>
+                  )}
+
+                  {deleting && current && (
+                    <DeleteAssignmentForm
+                      key={current.id}
+                      project={current}
+                      onCancel={() => setDeleting(false)}
+                      onSaved={() => {
+                        setDeleting(false);
+                        reload();
+                      }}
+                    />
                   )}
 
                   {team.nextAssignment?.start && (
                     <p className={styles.dialogLine}>
-                      Next assignment: {team.nextAssignment.projectName ?? team.nextAssignment.projectId}, {team.nextAssignment.start} to{' '}
-                      {team.nextAssignment.end}
+                      Next assignment: {team.nextAssignment.projectName ?? team.nextAssignment.projectId}, {formatDay(team.nextAssignment.start)} to{' '}
+                      {formatDay(team.nextAssignment.end)}
                     </p>
                   )}
 
                   <h3 className={styles.dialogHeading}>Positions and people</h3>
+                  {seatError && (
+                    <p className={styles.statusError} role="alert">
+                      Could not unassign: {seatError.message}
+                    </p>
+                  )}
                   <div className={styles.tableScroll}>
                     <table className={styles.table}>
                       <thead>
@@ -236,27 +370,20 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                       </thead>
                       <tbody>
                         {team.seats.map((seat) => (
-                          <tr
+                          <SeatRows
                             key={`${seat.positionCode}-${seat.employeeId ?? 'vacant'}`}
-                            className={seat.employeeId === null ? styles.vacantRow : undefined}
-                          >
-                            <th scope="row">
-                              {seat.positionName}
-                              <span className={styles.rowMeta}>
-                                {seat.positionCode}
-                                {seat.counted ? '' : ', not counted in the team'}
-                              </span>
-                            </th>
-                            <td>{seat.employeeName ?? 'Vacant'}</td>
-                            <td className={styles.numeric}>{percent(seat.allocationPercentage)}</td>
-                            <td className={styles.numeric}>{percent(seat.availablePercentage)}</td>
-                            <CostCell value={seat.plannedResourceCost} />
-                            <CostCell value={seat.actualResourceCost} />
-                            <td className={styles.numeric}>
-                              {formatUsd(seat.allocatedResourceCost)}
-                              {seat.costSource && <span className={styles.sourceTag}>{seat.costSource}</span>}
-                            </td>
-                          </tr>
+                            seat={seat}
+                            seats={team.seats}
+                            assigning={assigning === seat.positionCode}
+                            busy={seatBusy}
+                            onAssign={() => setAssigning(seat.positionCode)}
+                            onCancelAssign={() => setAssigning(null)}
+                            onUnassign={() => unassign(seat)}
+                            onSaved={() => {
+                              setAssigning(null);
+                              reload();
+                            }}
+                          />
                         ))}
                       </tbody>
                     </table>
@@ -266,7 +393,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                 <aside className={styles.dialogSide}>
                   <MonthPanel
                     title="Month-wise Utilization Percentage"
-                    hasAssignment={Boolean(current)}
+                    hasAssignment={plan.months.length > 0}
                     mix={team.locationMix}
                     rows={plan.months.map((m) => ({
                       month: m.month,
@@ -274,11 +401,11 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                       fill: m.utilizationPercent,
                       text: `${m.utilizationPercent}%`,
                     }))}
-                    total={current ? `Assignment ends ${formatDay(current.end)}` : 'Planned utilization 0%'}
+                    total={current ? `Assignment ends ${formatDay(projects.at(-1).end)}` : 'Planned utilization 0%'}
                   />
                   <MonthPanel
                     title="Month-wise Utilization Cost"
-                    hasAssignment={Boolean(current)}
+                    hasAssignment={plan.months.length > 0}
                     mix={team.locationMix}
                     rows={plan.months.map((m) => ({
                       month: m.month,
@@ -310,12 +437,12 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
           singularLabel="Project Assignment"
           labelByKey={ASSIGNMENT_LABELS}
           record={form.record}
-          initialValues={{ teamId: team.code }}
+          initialValues={{ teamId: team.code, projectAssignmentStartDate: todayIso() }}
           lockedKeys={['teamId']}
           onClose={() => setForm(null)}
           onSaved={() => {
             setForm(null);
-            setReloads((n) => n + 1);
+            reload();
           }}
         />
       )}
