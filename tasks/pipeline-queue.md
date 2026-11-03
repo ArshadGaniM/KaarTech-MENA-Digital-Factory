@@ -6,12 +6,13 @@
 
 **Active run ID:** none — direct-build is the current standing mode, with the "continuous autonomous execution through the queue" standing instruction (§7.2) in effect: once a feature's gate passes and pushes, immediately pick up the next queued/in_flight feature without waiting to be told. Queue is now empty as of FEAT-16's completion — no further work queued. Also this session: found and fixed a real production gap — the Render backend's `autoDeploy` had silently stopped firing after PR #13 (2026-09-16), so every feature merged since (FEAT-5 through FEAT-12) never reached production despite the Vercel frontend being current. Triggered a manual deploy (`dep-dao4080ae00c73amau5g`) to the latest `main` commit; confirmed live via curl (`/v1/schema/entity-relationships` responding) and a full headless-browser walkthrough of the real site (marketing page, Dashboard, all 12 tables, Entity Relationship — no errors, empty tables correctly showing "No records yet"). A scheduled Routine ("KaarTech Digital Factory — Dev Pipeline Continuation", `trig_012guAqCcCZ6669t4pQAn5bC`, hourly) exists per the owner's standing instruction to keep executing queued features across session limits (CLAUDE.md §7.3) — **known limitation: it holds no MCP connectors**, so it can't reach Supabase/GitHub tools until recreated from a session or the claude.ai UI that holds those grants.
 
-**Feature counter:** 42
+**Feature counter:** 43
 
 ## Queue
 
 | ID | Status | Requirement | Branch |
 |---|---|---|---|
+| FEAT-43 | in_flight | Eight requirements built together (owner, 3 Nov 2026): ODC leaders named, Organization Structure drilldown below instead of a side pop-up, automatic Module Lead allocation for every practice (a Module Lead holds no other seat, 0% allowed on Module Lead seats), Mohanraj C as Module Lead of the 11 DeepTech teams, friendlier Projects block, Assign and Unassign on seats in the team pop-up, a month after a project ends shows No assignment and 0%, Delete Project Assignment replaces Add Project Assignment while a project runs. | claude/trusting-curie-hlx1r6 |
 | FEAT-41 | in_flight | Dashboard analytics round 4 (owner, 1 Nov 2026): Forecast tab, visuals 55 to 64, booked-forward from deployment and assignment dates, plus the monthly snapshot table (owner approved that migration, 1 Nov 2026). | claude/dreamy-knuth-76pnsa |
 
 ## Completed
