@@ -52,9 +52,28 @@ describe('unassignSeat', () => {
   });
 });
 
+describe('unassignSeat on an ended seat', () => {
+  it('refuses, so history is never lengthened', () => {
+    const seat = { deploymentId: 'D-1', startDate: '2026-08-01', endDate: '2026-10-10' };
+    expect(() => unassignSeat(seat, '2026-10-15')).toThrow(/already ended/);
+    expect(updateRecord).not.toHaveBeenCalled();
+    expect(deleteRecord).not.toHaveBeenCalled();
+  });
+
+  it('still ends a seat that runs today or later', () => {
+    unassignSeat({ deploymentId: 'D-1', startDate: '2026-08-01', endDate: '2026-10-15' }, '2026-10-15');
+    expect(updateRecord).toHaveBeenCalledWith('resource-deployment', 'D-1', { endDate: '2026-10-14' });
+  });
+});
+
 describe('deleteProjectAssignment', () => {
+  it('refuses an end date later than the project end', () => {
+    expect(() => deleteProjectAssignment({ id: 'A', start: '2026-09-01', end: '2026-12-05' }, '2026-12-06', '2026-10-15')).toThrow(/cannot be later/);
+    expect(updateRecord).not.toHaveBeenCalled();
+  });
+
   it('patches the end date of a started assignment and removes one that has not started', () => {
-    deleteProjectAssignment({ id: 'A', start: '2026-09-01' }, '2026-10-14', '2026-10-15');
+    deleteProjectAssignment({ id: 'A', start: '2026-09-01', end: '2026-12-05' }, '2026-10-14', '2026-10-15');
     expect(updateRecord).toHaveBeenCalledWith('project-assignments', 'A', { projectAssignmentEndDate: '2026-10-14' });
     deleteProjectAssignment({ id: 'B', start: '2026-10-15' }, '2026-10-14', '2026-10-15');
     expect(deleteRecord).toHaveBeenCalledWith('project-assignments', 'B');

@@ -12,6 +12,7 @@ function AssignSeatForm({ seat, seats, onSaved, onCancel }) {
   const moduleLead = isModuleLeadSeat(seat);
   const [search, setSearch] = useState('');
   const [matches, setMatches] = useState([]);
+  const [searched, setSearched] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [person, setPerson] = useState(null);
   const [startDate, setStartDate] = useState(todayIso);
@@ -29,8 +30,13 @@ function AssignSeatForm({ seat, seats, onSaved, onCancel }) {
         if (cancelled) return;
         setSearchError(null);
         setMatches(rows.filter((row) => row.markedDeleted !== 'Yes'));
+        setSearched(true);
       })
-      .catch((err) => !cancelled && setSearchError(err));
+      .catch((err) => {
+        if (cancelled) return;
+        setMatches([]);
+        setSearchError(err);
+      });
     return () => {
       cancelled = true;
     };
@@ -72,6 +78,9 @@ function AssignSeatForm({ seat, seats, onSaved, onCancel }) {
           onChange={(e) => {
             setSearch(e.target.value);
             setPerson(null);
+            setMatches([]);
+            setSearched(false);
+            if (e.target.value.trim() === '') setSearchError(null);
           }}
         />
         {person ? (
@@ -79,7 +88,8 @@ function AssignSeatForm({ seat, seats, onSaved, onCancel }) {
             Selected: {person.name} ({person.employeeId})
           </p>
         ) : (
-          search.trim() !== '' && matches.length > 0 && (
+          search.trim() !== '' &&
+          (matches.length > 0 ? (
             <ul className={styles.matchList} aria-label="People found">
               {matches.map((row) => (
                 <li key={row.employeeId}>
@@ -95,7 +105,9 @@ function AssignSeatForm({ seat, seats, onSaved, onCancel }) {
                 </li>
               ))}
             </ul>
-          )
+          ) : (
+            searched && !searchError && <p className={styles.rowMeta}>No people found</p>
+          ))
         )}
         {searchError && <p className={styles.fieldError} role="alert">Could not search people: {searchError.message}</p>}
       </div>

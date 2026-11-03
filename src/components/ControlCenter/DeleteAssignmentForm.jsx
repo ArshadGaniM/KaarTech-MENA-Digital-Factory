@@ -19,6 +19,10 @@ function DeleteAssignmentForm({ project, onSaved, onCancel }) {
       setError(new Error('Give an end date.'));
       return;
     }
+    if (!notStarted && (endDate < project.start || endDate > project.end)) {
+      setError(new Error(`The end date must be between ${formatDay(project.start)} and ${formatDay(project.end)}.`));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -31,7 +35,7 @@ function DeleteAssignmentForm({ project, onSaved, onCancel }) {
   };
 
   return (
-    <form className={styles.inlineForm} onSubmit={onSubmit} aria-label="Delete Project Assignment">
+    <form className={styles.inlineForm} onSubmit={onSubmit} aria-label="Delete Project Assignment" noValidate>
       <p className={styles.inlineFormTitle}>Delete Project Assignment</p>
       <p className={styles.dialogLine}>
         <strong>{project.projectName ?? project.projectId}</strong>
@@ -44,7 +48,15 @@ function DeleteAssignmentForm({ project, onSaved, onCancel }) {
       ) : (
         <div className={styles.formField}>
           <label htmlFor="delete-assignment-end">End date</label>
-          <input id="delete-assignment-end" type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <input
+            id="delete-assignment-end"
+            type="date"
+            required
+            min={project.start}
+            max={project.end}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
         </div>
       )}
       {error && (

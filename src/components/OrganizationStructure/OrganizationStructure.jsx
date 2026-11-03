@@ -110,7 +110,10 @@ function OrganizationStructure() {
                 className={styles.search}
                 placeholder="Find a department"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setOpenCode(null);
+                }}
               />
             </label>
           </div>

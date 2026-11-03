@@ -7,12 +7,10 @@ import { MASTER_DATA_TABLES } from '../../lib/masterDataApi';
 import { formatMonth } from '../../lib/months';
 import RecordFormModal from '../RecordFormModal';
 import { todayIso, unassignSeat } from '../../lib/teamActions';
-import AssignSeatForm from './AssignSeatForm';
 import DeleteAssignmentForm from './DeleteAssignmentForm';
+import SeatRows from './SeatRows';
 import { statusClass } from './statusClass';
 import styles from './ControlCenter.module.css';
-
-const percent = (value) => (value === null ? '—' : `${value}%`);
 
 const ASSIGNMENTS_TABLE = MASTER_DATA_TABLES.find((table) => table.route === 'project-assignments');
 const ASSIGNMENT_LABELS = Object.fromEntries(ASSIGNMENTS_TABLE.columns.map((column) => [column.key, column.label]));
@@ -27,12 +25,6 @@ const assignmentRecord = (teamCode, assignment) => ({
   projectAssignmentEndDate: assignment.end,
 });
 const LOCATION_CLASS = { Onsite: styles.dotOnsite, Offshore: styles.dotOffshore, Hybrid: styles.dotHybrid };
-
-function CostCell({ value }) {
-  return <td className={styles.numeric}>{formatUsd(value)}</td>;
-}
-
-CostCell.propTypes = { value: PropTypes.number };
 
 // One bar per month. `pending` months have no assignment, so the panel shows a
 // message and a zero total instead.
@@ -74,80 +66,6 @@ MonthPanel.propTypes = {
   mix: PropTypes.string,
 };
 
-// One seat: its row, and under a vacant seat the Assign form when it is open.
-function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUnassign, onSaved }) {
-  const vacant = seat.employeeId === null;
-  return (
-    <>
-      <tr className={vacant ? styles.vacantRow : undefined}>
-        <th scope="row">
-          {seat.positionName}
-          <span className={styles.rowMeta}>
-            {seat.positionCode}
-            {seat.counted ? '' : ', not counted in the team'}
-          </span>
-        </th>
-        <td>
-          {seat.employeeName ?? 'Vacant'}
-          {vacant && (
-            <button type="button" className={styles.seatButton} onClick={onAssign} disabled={assigning}>
-              Assign
-            </button>
-          )}
-          {!vacant && seat.deploymentId && (
-            <button type="button" className={styles.seatButton} onClick={onUnassign} disabled={busy}>
-              Unassign
-            </button>
-          )}
-        </td>
-        <td className={styles.numeric}>{percent(seat.allocationPercentage)}</td>
-        <td className={styles.numeric}>{percent(seat.availablePercentage)}</td>
-        <CostCell value={seat.plannedResourceCost} />
-        <CostCell value={seat.actualResourceCost} />
-        <td className={styles.numeric}>
-          {formatUsd(seat.allocatedResourceCost)}
-          {seat.costSource && <span className={styles.sourceTag}>{seat.costSource}</span>}
-        </td>
-      </tr>
-      {assigning && (
-        <tr>
-          <td colSpan={7}>
-            <AssignSeatForm seat={seat} seats={seats} onCancel={onCancelAssign} onSaved={onSaved} />
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-const seatShape = PropTypes.shape({
-  positionCode: PropTypes.string.isRequired,
-  positionName: PropTypes.string.isRequired,
-  counted: PropTypes.bool,
-  employeeId: PropTypes.number,
-  employeeName: PropTypes.string,
-  deploymentId: PropTypes.string,
-  startDate: PropTypes.string,
-  endDate: PropTypes.string,
-  allocationPercentage: PropTypes.number,
-  availablePercentage: PropTypes.number,
-  plannedResourceCost: PropTypes.number,
-  actualResourceCost: PropTypes.number,
-  allocatedResourceCost: PropTypes.number,
-  costSource: PropTypes.string,
-});
-
-SeatRows.propTypes = {
-  seat: seatShape.isRequired,
-  seats: PropTypes.arrayOf(seatShape).isRequired,
-  assigning: PropTypes.bool.isRequired,
-  busy: PropTypes.bool.isRequired,
-  onAssign: PropTypes.func.isRequired,
-  onCancelAssign: PropTypes.func.isRequired,
-  onUnassign: PropTypes.func.isRequired,
-  onSaved: PropTypes.func.isRequired,
-};
-
 // `pageError` is the page's own refresh failure: the popup is refetched from
 // the page's refreshes, so while those fail it must not claim to be live.
 function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
@@ -156,9 +74,9 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   // form opens, so a refetch cannot change which assignment an open form saves to.
   const [form, setForm] = useState(null);
   // Inline forms in the popup: the position code of the vacant seat being
-  // assigned, and whether the Delete Project Assignment form is open.
+  // assigned, and the id of the project the Delete Project Assignment form is on.
   const [assigning, setAssigning] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [seatBusy, setSeatBusy] = useState(false);
   const [seatError, setSeatError] = useState(null);
   const { data: team, isLoading, error } = useTeamDetail(code, month, `${updatedAt.getTime()}-${reloads}`);
@@ -176,18 +94,29 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       if (form) setForm(null);
-      else if (assigning || deleting) {
+      else if (assigning || deletingId) {
         setAssigning(null);
-        setDeleting(false);
+        setDeletingId(null);
       } else onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, form, assigning, deleting]);
+  }, [onClose, form, assigning, deletingId]);
 
-  const reload = () => setReloads((n) => n + 1);
+  const reload = () => {
+    setSeatError(null);
+    setReloads((n) => n + 1);
+  };
   const projects = team?.projects ?? [];
-  const current = projects[0] ?? null;
+  const today = todayIso();
+  // The assignment Delete acts on: the first one by start that has not ended.
+  const target = [...projects].sort((a, b) => a.start.localeCompare(b.start)).find((project) => project.end >= today) ?? null;
+  const deleteTarget = projects.find((project) => project.id === deletingId) ?? null;
+  const latestEnd = projects.reduce((latest, project) => (project.end > latest ? project.end : latest), '');
+
+  // A refresh can fill the seat or drop the project an open form is on; React re-renders at once.
+  if (team && assigning && !team.seats.some((seat) => seat.positionCode === assigning && seat.employeeId === null)) setAssigning(null);
+  if (team && deletingId && !team.projects.some((project) => project.id === deletingId)) setDeletingId(null);
 
   const unassign = async (seat) => {
     setSeatBusy(true);
@@ -231,9 +160,9 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                 <button
                   type="button"
                   className={styles.addAssignment}
-                  onClick={() => (current ? setDeleting(true) : setForm({ mode: 'add' }))}
+                  onClick={() => (target ? setDeletingId(target.id) : setForm({ mode: 'add' }))}
                 >
-                  {current ? 'Delete Project Assignment' : 'Add Project Assignment'}
+                  {target ? 'Delete Project Assignment' : 'Add Project Assignment'}
                 </button>
               )}
               <button ref={closeRef} type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
@@ -295,7 +224,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
               <div className={styles.dialogBody}>
                 <div className={styles.dialogMain}>
                   <h3 className={styles.dialogHeading}>Projects</h3>
-                  {!current ? (
+                  {projects.length === 0 ? (
                     <p className={styles.dialogLine}>No assignment</p>
                   ) : (
                     <ul className={styles.projectList}>
@@ -320,13 +249,13 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                     </ul>
                   )}
 
-                  {deleting && current && (
+                  {deleteTarget && (
                     <DeleteAssignmentForm
-                      key={current.id}
-                      project={current}
-                      onCancel={() => setDeleting(false)}
+                      key={deleteTarget.id}
+                      project={deleteTarget}
+                      onCancel={() => setDeletingId(null)}
                       onSaved={() => {
-                        setDeleting(false);
+                        setDeletingId(null);
                         reload();
                       }}
                     />
@@ -401,7 +330,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                       fill: m.utilizationPercent,
                       text: `${m.utilizationPercent}%`,
                     }))}
-                    total={current ? `Assignment ends ${formatDay(projects.at(-1).end)}` : 'Planned utilization 0%'}
+                    total={projects.length > 0 ? `Assignment ends ${formatDay(latestEnd)}` : 'Planned utilization 0%'}
                   />
                   <MonthPanel
                     title="Month-wise Utilization Cost"

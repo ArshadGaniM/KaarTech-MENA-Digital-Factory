@@ -140,6 +140,20 @@ describe('OrganizationStructure', () => {
     expect(within(detail).getByText('TBD', { selector: 'b' })).toBeInTheDocument();
   });
 
+  it('does not reopen the old detail when the search text is cleared', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
+    expect(screen.getByRole('region', { name: 'Configuration Services detail' })).toBeInTheDocument();
+
+    const box = screen.getByRole('searchbox', { name: 'Find a department' });
+    await user.type(box, 'config');
+    await user.clear(box);
+
+    expect(screen.queryByRole('region', { name: /detail$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Configuration Services/ })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('switches the detail to another department and closes it when the same one is picked again', async () => {
     const user = await renderLoaded();
     await user.type(screen.getByRole('searchbox', { name: 'Find a department' }), 'services');

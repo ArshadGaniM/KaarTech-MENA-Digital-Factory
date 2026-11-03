@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { splitShares, planAllocations, isModuleLeadName } from "./moduleLeadAllocation.js";
+import { splitShares, planAllocations, isModuleLeadName, prepareWrite } from "./moduleLeadAllocation.js";
 
 const shares = (teams) => Object.fromEntries(splitShares(teams));
 const team = (teamCode, filled) => ({ teamCode, filled });
@@ -108,4 +108,32 @@ test("two Module Lead seats of one person in one team split that team's share", 
   });
   assert.deepEqual(percentOf(plan), { a: 25, b: 25, c: 50 });
   assert.equal(plan.reduce((sum, item) => sum + item.cents, 0), 10000);
+});
+
+test("a seat that ends on the reference day still counts as filled", () => {
+  const plan = planAllocations({
+    today: TODAY,
+    rows: [lead("a", 7, "T1", "P1"), lead("b", 7, "T2", "P2")],
+    seats: [seat("T1", "2026-08-01", TODAY), seat("T2")],
+  });
+  assert.deepEqual(percentOf(plan), { a: 50, b: 50 });
+});
+
+test("a Module Lead row that ends today is still planned, the end day being included", () => {
+  const plan = planAllocations({
+    today: TODAY,
+    rows: [lead("a", 7, "T1", "P1", "2026-08-01", TODAY)],
+    seats: [seat("T1")],
+  });
+  assert.deepEqual(percentOf(plan), { a: 100 });
+});
+
+test("a Module Lead row counts as 0 in the 100% cap check, whatever percentage it keeps", async () => {
+  const db = {
+    query: async (sql) => ({ rows: sql.includes("module-lead:seat") ? [{ code: "POS-ML1", name: "Module Lead - FI", team_code: "T1" }] : [] }),
+  };
+  const candidate = { employee_id: 7, position_code: "POS-ML1", start_date: "2026-08-01", end_date: "2027-03-31", allocation_percentage: 77 };
+  const { forChecks } = await prepareWrite(db, candidate, { min: 0.01, keep: 40 });
+  assert.equal(candidate.allocation_percentage, 40);
+  assert.equal(forChecks.allocation_percentage, 0);
 });

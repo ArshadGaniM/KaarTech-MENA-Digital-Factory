@@ -431,6 +431,79 @@ describe('TeamDialog', () => {
       expect(screen.getByRole('form', { name: 'Delete Project Assignment' })).toBeInTheDocument();
     });
 
+    const ended = { id: 'A-0', projectId: 'P0', projectName: 'Old', start: '2026-05-01', end: '2026-10-10' };
+    const withProjects = (projects) => ({ data: { ...detail, projects }, isLoading: false, error: null });
+
+    it('targets the first project that has not ended, not an ended one that starts earlier', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue(withProjects([ended, detail.projects[0]]));
+      render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      const form = screen.getByRole('form', { name: 'Delete Project Assignment' });
+      expect(form).toHaveTextContent('Rollout');
+      expect(form).not.toHaveTextContent('Old');
+      await user.click(within(form).getByRole('button', { name: 'Save' }));
+      expect(updateRecord).toHaveBeenCalledWith('project-assignments', 'A-1', { projectAssignmentEndDate: '2026-10-14' });
+    });
+
+    it('offers Add Project Assignment when every listed project has ended', () => {
+      useTeamDetail.mockReturnValue(withProjects([ended]));
+      render(<TeamDialog {...props} />);
+      expect(screen.getByRole('button', { name: 'Add Project Assignment' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete Project Assignment' })).not.toBeInTheDocument();
+    });
+
+    it('limits the end date to the project dates and rejects one outside them without a request', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      const form = screen.getByRole('form', { name: 'Delete Project Assignment' });
+      const end = within(form).getByLabelText('End date');
+      expect(end).toHaveAttribute('min', '2026-09-01');
+      expect(end).toHaveAttribute('max', '2026-12-05');
+
+      for (const value of ['2026-12-06', '2026-08-31']) {
+        await user.clear(end);
+        await user.type(end, value);
+        await user.click(within(form).getByRole('button', { name: 'Save' }));
+        expect(within(form).getByRole('alert')).toHaveTextContent('between 1 Sep 2026 and 5 Dec 2026');
+      }
+      expect(updateRecord).not.toHaveBeenCalled();
+      expect(deleteRecord).not.toHaveBeenCalled();
+    });
+
+    it('stays on the project it was opened on when a refresh reorders the projects', async () => {
+      const user = userEvent.setup();
+      const later = { id: 'A-2', projectId: 'P2', projectName: 'Later', start: '2026-11-01', end: '2027-02-01' };
+      useTeamDetail.mockReturnValue(withProjects([detail.projects[0], later]));
+      const { rerender } = render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+
+      useTeamDetail.mockReturnValue(withProjects([{ ...detail.projects[0], end: '2026-10-14' }, later]));
+      rerender(<TeamDialog {...props} />);
+      expect(screen.getByRole('form', { name: 'Delete Project Assignment' })).toHaveTextContent('Rollout');
+    });
+
+    it('closes the form when its project disappears after a refresh', async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+
+      useTeamDetail.mockReturnValue(withProjects([]));
+      rerender(<TeamDialog {...props} />);
+      expect(screen.queryByRole('form', { name: 'Delete Project Assignment' })).not.toBeInTheDocument();
+      useTeamDetail.mockReturnValue(withProjects([detail.projects[0]]));
+      rerender(<TeamDialog {...props} />);
+      expect(screen.queryByRole('form', { name: 'Delete Project Assignment' })).not.toBeInTheDocument();
+    });
+
+    it('shows the latest end among the projects as the assignment end', () => {
+      const later = { id: 'A-2', projectId: 'P2', projectName: 'Later', start: '2026-09-02', end: '2027-02-01' };
+      useTeamDetail.mockReturnValue(withProjects([later, detail.projects[0]]));
+      render(<TeamDialog {...props} />);
+      expect(screen.getByRole('region', { name: 'Month-wise Utilization Percentage' })).toHaveTextContent('Assignment ends 1 Feb 2027');
+    });
+
     it('does not touch the Project Assignments master-data wording: Cancel just closes the form', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);
@@ -610,6 +683,88 @@ describe('TeamDialog', () => {
 
       expect(deleteRecord).toHaveBeenCalledWith('resource-deployment', 'D-3');
       expect(updateRecord).not.toHaveBeenCalled();
+    });
+
+    it('shows no Unassign on a seat whose deployment has already ended', () => {
+      useTeamDetail.mockReturnValue({
+        data: withSeats(detail.seats.map((s) => (s.employeeId === 3 ? { ...s, endDate: '2026-10-10' } : s))),
+        isLoading: false,
+        error: null,
+      });
+      render(<TeamDialog {...props} />);
+      expect(within(screen.getByRole('row', { name: /Sam Split/ })).queryByRole('button', { name: 'Unassign' })).not.toBeInTheDocument();
+      expect(within(screen.getByRole('row', { name: /Mona Lead/ })).getByRole('button', { name: 'Unassign' })).toBeInTheDocument();
+    });
+
+    it('keeps Unassign visible but disabled when an older backend sends no deployment id', () => {
+      useTeamDetail.mockReturnValue({
+        data: withSeats(detail.seats.map((s) => (s.employeeId === 3 ? { ...s, deploymentId: undefined } : s))),
+        isLoading: false,
+        error: null,
+      });
+      render(<TeamDialog {...props} />);
+      const button = within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('title', 'Reload after the server update');
+    });
+
+    it('removes an old "Could not unassign" banner after a later action reloads the team', async () => {
+      const user = userEvent.setup();
+      updateRecord.mockRejectedValueOnce(new Error('Backend unreachable'));
+      render(<TeamDialog {...props} />);
+      await user.click(within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not unassign');
+
+      await user.click(within(screen.getByRole('row', { name: /Mona Lead/ })).getByRole('button', { name: 'Unassign' }));
+      expect(screen.queryByText(/Could not unassign/)).not.toBeInTheDocument();
+    });
+
+    it('closes the Assign form when a refresh shows the seat is no longer vacant', async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(<TeamDialog {...props} />);
+      await openAssign(user);
+
+      useTeamDetail.mockReturnValue({
+        data: withSeats(detail.seats.map((s) => (s.positionCode === 'POS-4' ? { ...s, employeeId: 9, employeeName: 'New Person', deploymentId: 'D-9', endDate: '2027-03-31' } : s))),
+        isLoading: false,
+        error: null,
+      });
+      rerender(<TeamDialog {...props} />);
+      expect(screen.queryByRole('form', { name: 'Assign POS-4' })).not.toBeInTheDocument();
+    });
+
+    it('says "No people found" when a search returns nothing, and clears matches and errors as the text changes', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      const form = await openAssign(user);
+      const box = within(form).getByLabelText('Person');
+
+      fetchMasterDataTable.mockResolvedValue({ rows: [], total: 0 });
+      await user.type(box, 'zz');
+      expect(await within(form).findByText('No people found')).toBeInTheDocument();
+
+      fetchMasterDataTable.mockRejectedValueOnce(new Error('Search is down'));
+      await user.type(box, 'x');
+      expect(await within(form).findByRole('alert')).toHaveTextContent('Could not search people: Search is down');
+      expect(within(form).queryByText('No people found')).not.toBeInTheDocument();
+
+      await user.clear(box);
+      expect(within(form).queryByRole('alert')).not.toBeInTheDocument();
+      expect(within(form).queryByText('No people found')).not.toBeInTheDocument();
+    });
+
+    it('drops the old matches when a new search fails', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      const form = await openAssign(user);
+      const box = within(form).getByLabelText('Person');
+      await user.type(box, 'Am');
+      expect(await within(form).findByRole('button', { name: 'Amal Search (501)' })).toBeInTheDocument();
+
+      fetchMasterDataTable.mockRejectedValueOnce(new Error('Search is down'));
+      await user.type(box, 'a');
+      expect(await within(form).findByRole('alert')).toBeInTheDocument();
+      expect(within(form).queryByRole('button', { name: 'Amal Search (501)' })).not.toBeInTheDocument();
     });
 
     it('Unassign shows the API message and does not refetch when it fails', async () => {

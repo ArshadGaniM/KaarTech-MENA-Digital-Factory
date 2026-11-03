@@ -30,14 +30,20 @@ export function assignSeat(seat, { employeeId, startDate, endDate, allocationPer
   });
 }
 
+// A seat whose deployment has already ended is history: ending it again would
+// move its end date later.
+export const isSeatRunning = (seat, today) => !seat.endDate || seat.endDate >= today;
+
 // Ending a deployment keeps it as history. One that has not started cannot end
 // before it starts, so it is removed instead.
 export function unassignSeat(seat, today) {
+  if (!isSeatRunning(seat, today)) throw new Error(`This seat's deployment already ended on ${seat.endDate}.`);
   if (seat.startDate >= today) return deleteRecord(DEPLOYMENTS, seat.deploymentId);
   return updateRecord(DEPLOYMENTS, seat.deploymentId, { endDate: dayBefore(today) });
 }
 
 export function deleteProjectAssignment(project, endDate, today) {
   if (project.start >= today) return deleteRecord(ASSIGNMENTS, project.id);
+  if (endDate > project.end) throw new Error(`The end date cannot be later than the project's end, ${project.end}.`);
   return updateRecord(ASSIGNMENTS, project.id, { projectAssignmentEndDate: endDate });
 }

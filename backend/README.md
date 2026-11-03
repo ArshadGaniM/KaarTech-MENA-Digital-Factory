@@ -145,6 +145,12 @@ A Module Lead seat is a position whose name starts with `Module Lead`. A person 
 - Every other position keeps a minimum of 0.01 (422 on `allocationPercentage`). The 100% cap still applies, and the computed shares always fit under it.
 - `recalculateAllModuleLeads(db)` recomputes every group, one transaction per person. Nothing calls it at startup. Run it once after applying migration `0038`, or after loading data another way: `cd backend && node src/recalculateModuleLeads.js` (needs `DATABASE_URL`).
 
+Known limits:
+
+- Shares are recomputed only when a deployment is written. A seat that ends or starts later does not recalculate anything by itself, so run `node src/recalculateModuleLeads.js` after a date rollover if the stored shares need to catch up.
+- Renaming a position to or from `Module Lead`, or moving a position to another team, does not recalculate.
+- Two opposite concurrent moves of employees between Module Lead groups can deadlock on the advisory locks. Postgres aborts one of them, and a retry works.
+
 ### `/v1/allocation`
 
 Read-only (no auth, like every GET) counts for the Dashboard's Allocation
@@ -217,7 +223,7 @@ follows `resources.location_type`; no location type counts as offshore.
 `allocatedResourceCost` is that cost times the allocation percentage, and
 `allocatedTeamCost` sums it over the people in Consultant and Lead Consultant
 seats (vacant seats and Module Leads cost nothing). A month in `monthlyPlan`
-shows the share of its days the assignment covers, and the cost is
+shows the share of its days the assignments cover, and the cost is
 `allocatedTeamCost` times that share, so 1 to 5 December is 5/31.
 
 Hour rules, all measured in the selected month:
