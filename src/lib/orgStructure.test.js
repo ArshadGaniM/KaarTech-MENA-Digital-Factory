@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildOrgStructure, roleOf } from './orgStructure';
+import { ODC_PROJECT_MANAGERS } from './odcLeadership';
 
 const live = { markedDeleted: 'No' };
 const departments = [
@@ -67,8 +68,19 @@ describe('buildOrgStructure', () => {
   it('carries the named leaders from odcLeadership and leaves the other seats TBD', () => {
     const result = build();
     expect(result.deliveryManager.name).toBe('Mohammed Ibrahim S');
-    expect(managerOf(result, 'pm-3').name).toBe('Karthikeyan Rajendran');
+    expect(managerOf(result, 'pm-3').name).toBe('TBD');
     expect(managerOf(result, 'pm-2').name).toBe('TBD');
+  });
+
+  it('has six project managers: Configuration alone under 3, Development and System Administration under Karthikeyan Rajendran as 4', () => {
+    expect(ODC_PROJECT_MANAGERS.map((manager) => manager.id)).toEqual(['pm-1', 'pm-2', 'pm-3', 'pm-4', 'pm-5', 'pm-6']);
+    const byId = Object.fromEntries(ODC_PROJECT_MANAGERS.map((manager) => [manager.id, manager]));
+    expect(byId['pm-3'].departmentCodes).toEqual(['DEPT-009']);
+    expect(byId['pm-4']).toMatchObject({ name: 'Karthikeyan Rajendran', departmentCodes: ['DEPT-003', 'DEPT-012'] });
+    expect(byId['pm-5'].departmentCodes).toEqual(['DEPT-004', 'DEPT-010', 'DEPT-011']);
+    expect(byId['pm-6'].departmentCodes).toEqual(['DEPT-008', 'DEPT-005', 'DEPT-013']);
+    const all = ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes);
+    expect(new Set(all).size).toBe(all.length);
   });
 
   it('shows a live department missing from the config under Unassigned and hides deleted ones', () => {

@@ -70,7 +70,7 @@ describe('OrganizationStructure', () => {
   it('shows only the managers that have a team, with their seats', async () => {
     await renderLoaded();
 
-    const manager3 = screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ });
+    const manager3 = screen.getByRole('button', { name: /Manager 3 Name TBD/ });
     expect(manager3).toHaveTextContent('6 seats');
     expect(manager3).toHaveTextContent('Configuration');
     expect(screen.queryByRole('button', { name: /Manager 1 Name TBD/ })).not.toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('OrganizationStructure', () => {
     expect(screen.getByRole('heading', { name: 'ODC Project Manager 2: departments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Design Services/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
 
     expect(screen.getByRole('heading', { name: 'ODC Project Manager 3: departments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Configuration Services/ })).toBeInTheDocument();
@@ -113,7 +113,7 @@ describe('OrganizationStructure', () => {
 
   it('shows the department detail below the cards with practices, the shared Module Lead and team cards', async () => {
     const user = await renderLoaded();
-    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
 
     await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
 
@@ -132,7 +132,7 @@ describe('OrganizationStructure', () => {
 
   it('marks a Module Lead seat that nobody holds as empty under TBD', async () => {
     const user = await renderLoaded();
-    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
     await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
 
     const detail = screen.getByRole('region', { name: 'Configuration Services detail' });
@@ -142,7 +142,7 @@ describe('OrganizationStructure', () => {
 
   it('does not reopen the old detail when the search text is cleared', async () => {
     const user = await renderLoaded();
-    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
     await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
     expect(screen.getByRole('region', { name: 'Configuration Services detail' })).toBeInTheDocument();
 
@@ -203,7 +203,7 @@ describe('OrganizationStructure', () => {
     await user.click(screen.getByRole('button', { name: /Design Services/ }));
     expect(screen.getByRole('region', { name: 'Design Services detail' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
 
     expect(screen.queryByRole('region', { name: /detail$/ })).not.toBeInTheDocument();
   });
@@ -271,7 +271,7 @@ describe('OrganizationStructure tree view', () => {
     await user.click(screen.getByRole('button', { name: 'Tree' }));
     return user;
   };
-  const NAMES = { 2: 'Name TBD', 3: 'Karthikeyan Rajendran' };
+  const NAMES = { 2: 'Name TBD', 3: 'Name TBD' };
   const pickManager = (user, number) => user.click(screen.getByRole('button', { name: new RegExp(`Layer 2 ODC Project Manager ${number} ${NAMES[number]}`) }));
 
   it('starts on Cards and switches to a tree headed by the Delivery Manager and the managers', async () => {
