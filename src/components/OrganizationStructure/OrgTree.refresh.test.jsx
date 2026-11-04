@@ -35,7 +35,7 @@ describe('Organization Structure tree when live data changes', () => {
     useOrganizationStructure.mockReturnValue(build(base));
     const { rerender } = render(<OrganizationStructure />);
     await user.click(screen.getByRole('button', { name: 'Tree' }));
-    await user.click(screen.getByRole('button', { name: /Layer 2 ODC Project Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Layer 2 ODC Project Manager 3 Name TBD/ }));
     const department = screen.getByRole('button', { name: /Department Configuration Services/ });
     await user.click(department);
 
@@ -58,7 +58,7 @@ describe('Organization Structure tree when live data changes', () => {
     useOrganizationStructure.mockReturnValue(build(base));
     const { rerender } = render(<OrganizationStructure />);
     await user.click(screen.getByRole('button', { name: 'Tree' }));
-    await user.click(screen.getByRole('button', { name: /Layer 2 ODC Project Manager 3 Karthikeyan Rajendran/ }));
+    await user.click(screen.getByRole('button', { name: /Layer 2 ODC Project Manager 3 Name TBD/ }));
 
     useOrganizationStructure.mockReturnValue(build({ ...base, teams: base.teams.filter((team) => team.departmentCode !== 'DEPT-009') }));
     rerender(<OrganizationStructure />);

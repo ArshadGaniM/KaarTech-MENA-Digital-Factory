@@ -22,18 +22,24 @@ export const ODC_PROJECT_MANAGERS = [
   {
     id: 'pm-3',
     title: 'ODC Project Manager 3',
-    name: 'Karthikeyan Rajendran',
-    departmentCodes: ['DEPT-009', 'DEPT-003', 'DEPT-012'], // Configuration, Development, System Administration
+    name: 'TBD',
+    departmentCodes: ['DEPT-009'], // Configuration
   },
   {
     id: 'pm-4',
     title: 'ODC Project Manager 4',
-    name: 'TBD',
-    departmentCodes: ['DEPT-004', 'DEPT-010', 'DEPT-011'], // QA & Testing, Training, Data Migration
+    name: 'Karthikeyan Rajendran',
+    departmentCodes: ['DEPT-003', 'DEPT-012'], // Development, System Administration
   },
   {
     id: 'pm-5',
     title: 'ODC Project Manager 5',
+    name: 'TBD',
+    departmentCodes: ['DEPT-004', 'DEPT-010', 'DEPT-011'], // QA & Testing, Training, Data Migration
+  },
+  {
+    id: 'pm-6',
+    title: 'ODC Project Manager 6',
     name: 'TBD',
     departmentCodes: ['DEPT-008', 'DEPT-005', 'DEPT-013'], // L1, L2, L3 Operational Support
   },
