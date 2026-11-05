@@ -7,7 +7,7 @@ import { MASTER_DATA_TABLES } from '../../lib/masterDataApi';
 import { formatMonth } from '../../lib/months';
 import RecordFormModal from '../RecordFormModal';
 import DeleteRecordModal from '../DeleteRecordModal';
-import { todayIso, unassignSeat } from '../../lib/teamActions';
+import { isModuleLeadSeat, todayIso, unassignSeat } from '../../lib/teamActions';
 import DeleteAssignmentForm from './DeleteAssignmentForm';
 import IconButton from './IconButton';
 import SeatRows from './SeatRows';
@@ -156,7 +156,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   };
   // An older backend (frontend and backend deploy separately) sends no plan.
   const plan = team?.monthlyPlan ?? { months: [], totalCost: 0 };
-  const hasModuleLead = team?.seats.some((seat) => seat.positionName.startsWith('Module Lead')) ?? false;
+  const hasModuleLead = team?.seats.some(isModuleLeadSeat) ?? false;
   const maxCost = Math.max(1, ...plan.months.map((m) => m.cost));
 
   // The form is a sibling of the popup's overlay, not a child, so a click on
