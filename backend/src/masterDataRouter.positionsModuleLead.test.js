@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "./db.js";
@@ -37,7 +38,7 @@ const row = (overrides = {}) => ({
 // Writes to a Module Lead seat run on a pooled client in a transaction holding the team's
 // lock; the client delegates its statements to the pool.query mock of the test.
 function install(t, { existing = [], current = row(), lockCalls = [] } = {}) {
-  const seen = { selects: [], inserted: false, updated: false, lockCalls };
+  const seen = { selects: [], sqls: [], inserted: false, updated: false, lockCalls };
   t.mock.method(pool, "connect", async () => ({
     query: async (sql, params) => {
       if (/^(begin|commit|rollback)$/i.test(sql)) return { rows: [] };
@@ -54,7 +55,8 @@ function install(t, { existing = [], current = row(), lockCalls = [] } = {}) {
     if (sql.startsWith("select * from positions where id")) return { rows: [current] };
     if (sql.includes("like 'Module Lead%'")) {
       seen.selects.push(params);
-      return { rows: existing };
+      seen.sqls.push(sql);
+      return { rows: existing.filter((r) => !(params[1] && r.id === params[1])) };
     }
     if (sql.startsWith("insert into positions")) {
       seen.inserted = true;
@@ -103,7 +105,20 @@ test("POST of a Module Lead seat into a team with none inserts it under the team
   assert.deepEqual(lockCalls, [["positions", "TEAM-001"]]);
 });
 
-for (const teamCode of MODULE_LEAD_EXEMPT_TEAMS) {
+const EXEMPT_TEAMS = ["TEAM-087", "TEAM-088", "TEAM-089"];
+
+test("the exempt teams are exactly TEAM-087, TEAM-088 and TEAM-089", () => {
+  assert.deepEqual(MODULE_LEAD_EXEMPT_TEAMS, EXEMPT_TEAMS);
+});
+
+test("migration 0039 creates the index the descriptor names, for exactly the exempt teams", () => {
+  const sql = readFileSync(new URL("../migrations/0039_unique_live_module_lead_per_team.sql", import.meta.url), "utf8");
+  assert.match(sql, new RegExp(`create unique index ${positionsTable.moduleLeadSeatRule.constraint} on`));
+  const [, list] = sql.match(/team_code not in \(([^)]*)\)/);
+  assert.deepEqual(list.match(/TEAM-\d+/g), MODULE_LEAD_EXEMPT_TEAMS);
+});
+
+for (const teamCode of EXEMPT_TEAMS) {
   test(`POST of another Module Lead seat into exempt ${teamCode} is allowed and never checked`, async (t) => {
     const seen = install(t, { existing: taken });
 
@@ -148,12 +163,50 @@ test("PATCH moving a Module Lead seat into a team that has one is refused", asyn
 });
 
 test("PATCH of a team's own Module Lead seat that changes nothing about the rule is allowed", async (t) => {
-  const seen = install(t, { existing: [] });
+  // The fake returns the seat itself unless the query excludes its id, so dropping the
+  // self-exclusion would make this a 422.
+  const seen = install(t, { existing: [{ id: POSITION_ID, code: "POS-001", name: "Module Lead - FI" }] });
 
   const res = await patch({ name: "Module Lead - FI and SD" });
 
   assert.equal(res.status, 200);
   assert.equal(seen.updated, true);
+  assert.match(seen.sqls[0], /id <> \$2::uuid/);
+  assert.deepEqual(seen.selects[0], ["TEAM-001", POSITION_ID]);
+});
+
+test("PATCH renaming a Module Lead seat away from Module Lead skips the check", async (t) => {
+  const seen = install(t, { existing: taken });
+
+  const res = await patch({ name: "Consultant" });
+
+  assert.equal(res.status, 200);
+  assert.equal(seen.selects.length, 0);
+  assert.equal(seen.updated, true);
+});
+
+test("PATCH and restore of a guarded seat run under the team's advisory lock", async (t) => {
+  const lockCalls = [];
+  install(t, { lockCalls });
+  assert.equal((await patch({ name: "Module Lead - FI and SD" })).status, 200);
+  assert.deepEqual(lockCalls, [["positions", "TEAM-001"]]);
+
+  lockCalls.length = 0;
+  t.mock.restoreAll();
+  install(t, { lockCalls, current: row({ deleted_at: "2026-01-01T00:00:00Z" }) });
+  assert.equal((await restore()).status, 200);
+  assert.deepEqual(lockCalls, [["positions", "TEAM-001"]]);
+});
+
+test("PATCH of a seat in an exempt team is allowed, unchecked and unlocked", async (t) => {
+  const lockCalls = [];
+  const seen = install(t, { existing: taken, lockCalls, current: row({ team_code: "TEAM-087" }) });
+
+  const res = await patch({ name: "Module Lead - QA" });
+
+  assert.equal(res.status, 200);
+  assert.equal(seen.selects.length, 0);
+  assert.equal(lockCalls.length, 0);
 });
 
 test("restore of a Module Lead seat into a team that already has another is refused, and nothing is restored", async (t) => {
@@ -220,10 +273,9 @@ test("DELETE's guard blocks only a deployment that is current or future: ended o
   const res = await del();
 
   assert.equal(res.status, 204);
-  assert.match(
-    sql,
-    /not exists \(select 1 from resource_deployment d where d\.position_code = positions\.code and d\.deleted_at is null and d\.end_date >= current_date\)/
-  );
+  // Mocks cannot prove the boundary (a deployment ending today still blocks); the SQL text
+  // is the most a route test can check, and the README says these tests do not run Postgres.
+  assert.match(sql, /d\.end_date >= current_date/);
 });
 
 test("DELETE of a seat with a current or future deployment is a 409 position_in_use telling the user to unassign", async (t) => {

@@ -829,6 +829,22 @@ describe('TeamDialog', () => {
       });
     });
 
+    it('caps the pre-filled competencies at 500 characters, dropping trailing names that do not fit', async () => {
+      const names = Array.from({ length: 60 }, (_, i) => `Competency number ${String(i).padStart(2, '0')}`);
+      useTeamDetail.mockReturnValue({ data: { ...detail, competencies: names }, isLoading: false, error: null });
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Position' }));
+
+      const { initialValues } = JSON.parse(within(screen.getByRole('dialog', { name: 'form add' })).getByText(/route/).textContent);
+      const kept = initialValues.competencies.split(', ');
+      expect(initialValues.competencies.length).toBeLessThanOrEqual(500);
+      expect(kept.length).toBeLessThan(names.length);
+      expect(kept).toEqual(names.slice(0, kept.length));
+      expect(`${initialValues.competencies}, ${names[kept.length]}`.length).toBeGreaterThan(500);
+    });
+
     it('closes the form and refetches the team after it saves', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);

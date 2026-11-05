@@ -21,6 +21,19 @@ const POSITION_DETAIL_COLUMNS = POSITIONS_TABLE.columns.filter((column) =>
   ['code', 'name', 'teamName', 'competencies'].includes(column.key),
 );
 const LOCATIONS = ['Onsite', 'Offshore', 'Hybrid'];
+const COMPETENCIES_MAX_LENGTH = 500;
+
+// The team's competencies as the comma list the Position form pre-fills. Whole names only,
+// in order, so the list never passes the field's length limit (a 422 the user did not cause).
+const competenciesPrefill = (names) => {
+  let list = '';
+  for (const name of names) {
+    const next = list ? `${list}, ${name}` : name;
+    if (next.length > COMPETENCIES_MAX_LENGTH) break;
+    list = next;
+  }
+  return list;
+};
 
 // The row the Edit form opens on: the field names the Project Assignments table uses.
 const assignmentRecord = (teamCode, assignment) => ({
@@ -380,7 +393,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
           route="positions"
           singularLabel="Position"
           labelByKey={POSITION_LABELS}
-          initialValues={{ teamCode: team.code, competencies: team.competencies.join(', ') }}
+          initialValues={{ teamCode: team.code, competencies: competenciesPrefill(team.competencies) }}
           lockedKeys={['teamCode']}
           context={[
             { label: 'Team', value: `${team.code}, ${team.name}` },
