@@ -7,8 +7,9 @@ import { MASTER_DATA_TABLES } from '../../lib/masterDataApi';
 import { formatMonth } from '../../lib/months';
 import RecordFormModal from '../RecordFormModal';
 import DeleteRecordModal from '../DeleteRecordModal';
-import { todayIso, unassignSeat } from '../../lib/teamActions';
+import { isModuleLeadSeat, todayIso, unassignSeat } from '../../lib/teamActions';
 import DeleteAssignmentForm from './DeleteAssignmentForm';
+import IconButton from './IconButton';
 import SeatRows from './SeatRows';
 import { statusClass } from './statusClass';
 import styles from './ControlCenter.module.css';
@@ -43,6 +44,8 @@ const assignmentRecord = (teamCode, assignment) => ({
   projectAssignmentStartDate: assignment.start,
   projectAssignmentEndDate: assignment.end,
 });
+const MODULE_LEAD_NOTE = 'Module Lead position is not counted in the total available, allocated and planned utilization hours.';
+const OTHER_UNCOUNTED_NOTE = 'Positions other than Consultant and Lead Consultant are not counted in the team hours and cost.';
 const LOCATION_CLASS = { Onsite: styles.dotOnsite, Offshore: styles.dotOffshore, Hybrid: styles.dotHybrid };
 
 // One bar per month. `pending` months have no assignment, so the panel shows a
@@ -154,6 +157,9 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   };
   // An older backend (frontend and backend deploy separately) sends no plan.
   const plan = team?.monthlyPlan ?? { months: [], totalCost: 0 };
+  const totalCostText = `${plan.truncated ? 'at least ' : ''}${formatUsd(plan.totalCost)}`;
+  const hasModuleLead = team?.seats.some(isModuleLeadSeat) ?? false;
+  const hasOtherUncounted = team?.seats.some((seat) => !isModuleLeadSeat(seat) && seat.counted === false) ?? false;
   const maxCost = Math.max(1, ...plan.months.map((m) => m.cost));
 
   // The form is a sibling of the popup's overlay, not a child, so a click on
@@ -230,13 +236,17 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                   <span className={styles.statValue}>{formatHours(team.utilizedHours)}</span>
                 </li>
                 <li>
-                  <span className={styles.hoursLabel}>Allocated Team Cost</span>
+                  <span className={styles.hoursLabel}>Allocated Team Monthly Cost</span>
                   <span className={styles.statValue}>{formatUsd(team.allocatedTeamCost)}</span>
                   {team.defaultedCostCount > 0 && (
                     <span className={styles.rowMeta}>
                       {team.defaultedCostCount} {team.defaultedCostCount === 1 ? 'person' : 'people'} costed at the default rate
                     </span>
                   )}
+                </li>
+                <li>
+                  <span className={styles.hoursLabel}>Utilized Team Total Cost</span>
+                  <span className={styles.statValue}>{team.monthlyPlan ? totalCostText : '—'}</span>
                 </li>
                 <li className={`${styles.statusPill} ${statusClass(styles, team.status)}`}>{STATUS_LABELS[team.status]}</li>
               </ul>
@@ -341,10 +351,10 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                     </table>
                   </div>
                   <div className={styles.tableActions}>
-                    <button type="button" className={styles.addAssignment} onClick={() => setPositionModal({ mode: 'add' })}>
-                      Add Position
-                    </button>
+                    <IconButton icon="plus" label="Add Position" onClick={() => setPositionModal({ mode: 'add' })} />
                   </div>
+                  {hasModuleLead && <p className={styles.seatNote}>{MODULE_LEAD_NOTE}</p>}
+                  {hasOtherUncounted && <p className={styles.seatNote}>{OTHER_UNCOUNTED_NOTE}</p>}
                 </div>
 
                 <aside className={styles.dialogSide}>
@@ -370,7 +380,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                       fill: (m.cost / maxCost) * 100,
                       text: formatUsd(m.cost),
                     }))}
-                    total={`Total ${formatUsd(plan.totalCost)}`}
+                    total={`Total ${team.monthlyPlan ? totalCostText : '—'}`}
                   />
                   <ul className={styles.locationLegend} aria-label="Location of the people deployed">
                     {LOCATIONS.map((name) => (

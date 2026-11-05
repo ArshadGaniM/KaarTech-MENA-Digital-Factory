@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TeamDialog from './TeamDialog';
 import { useTeamDetail } from '../../hooks/useTeamDetail';
@@ -103,11 +103,12 @@ describe('TeamDialog', () => {
     expect(within(sam).getByText('25%')).toBeInTheDocument();
   });
 
-  it('labels a Module Lead as not counted and an empty seat as vacant with dashes', () => {
+  it('labels an empty seat as vacant with dashes and drops the old Module Lead suffix', () => {
     useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
     render(<TeamDialog {...props} />);
 
-    expect(screen.getByRole('row', { name: /Module Lead/ })).toHaveTextContent('not counted in the team');
+    expect(screen.getByRole('row', { name: /Module Lead/ })).not.toHaveTextContent('not counted in the team');
+    expect(screen.getByRole('row', { name: /Module Lead/ })).toHaveTextContent('POS-1');
     const vacant = screen.getByRole('row', { name: /Vacant/ });
     expect(within(vacant).getAllByText('—')).toHaveLength(5);
     expect(within(vacant).getByRole('button', { name: 'Assign' })).toBeInTheDocument();
@@ -245,10 +246,61 @@ describe('TeamDialog', () => {
       expect(within(screen.getByRole('row', { name: /Module Lead/ })).getAllByText('—').length).toBeGreaterThanOrEqual(3);
     });
 
-    it('shows the Allocated Team Cost at the top', () => {
+    it('shows the Allocated Team Monthly Cost at the top, and not the old label', () => {
       render(<TeamDialog {...props} />);
-      const stat = screen.getByText('Allocated Team Cost').closest('li');
+      const stat = screen.getByText('Allocated Team Monthly Cost').closest('li');
       expect(stat).toHaveTextContent('$2,375.00');
+      expect(screen.queryByText('Allocated Team Cost')).not.toBeInTheDocument();
+      expect(screen.queryByText('Allocated Team Total Cost')).not.toBeInTheDocument();
+    });
+
+    it('shows the Utilized Team Total Cost equal to the Total line of the cost panel', () => {
+      render(<TeamDialog {...props} />);
+      const stat = screen.getByText('Utilized Team Total Cost').closest('li');
+      expect(stat).toHaveTextContent('$7,508.06');
+      expect(screen.getByText('Total $7,508.06')).toBeInTheDocument();
+    });
+
+    it('shows a zero Utilized Team Total Cost for a team without plan months', () => {
+      useTeamDetail.mockReturnValue({ data: { ...detail, projects: [], monthlyPlan: { months: [], totalCost: 0 } }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('$0.00');
+    });
+
+    it('shows "at least" on the stat and the Total line when the plan is truncated', () => {
+      useTeamDetail.mockReturnValue({ data: { ...detail, monthlyPlan: { ...detail.monthlyPlan, truncated: true } }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('at least $7,508.06');
+      expect(screen.getByText('Total at least $7,508.06')).toBeInTheDocument();
+    });
+
+    it('shows a dash instead of $0.00 for the Utilized Team Total Cost when an older backend sends no plan', () => {
+      const { monthlyPlan: _plan, ...older } = detail;
+      useTeamDetail.mockReturnValue({ data: older, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('—');
+    });
+
+    it('shows the Module Lead note once at the bottom only when the team has a Module Lead seat', () => {
+      const note = 'Module Lead position is not counted in the total available, allocated and planned utilization hours.';
+      const { unmount } = render(<TeamDialog {...props} />);
+      expect(screen.getAllByText(note)).toHaveLength(1);
+      unmount();
+      useTeamDetail.mockReturnValue({ data: { ...detail, seats: detail.seats.filter((s) => s.positionName !== 'Module Lead') }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.queryByText(note)).not.toBeInTheDocument();
+    });
+
+    it('explains other uncounted positions too, only when the team has one', () => {
+      const note = 'Positions other than Consultant and Lead Consultant are not counted in the team hours and cost.';
+      const withArchitect = [...detail.seats, { ...detail.seats[2], positionCode: 'POS-9', positionName: 'Enterprise Architect', counted: false, employeeId: null, employeeName: null, deploymentId: null }];
+      useTeamDetail.mockReturnValue({ data: { ...detail, seats: withArchitect }, isLoading: false, error: null });
+      const { unmount } = render(<TeamDialog {...props} />);
+      expect(screen.getAllByText(note)).toHaveLength(1);
+      unmount();
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.queryByText(note)).not.toBeInTheDocument();
     });
 
     it('tags a person costed as the Senior Consultant default', () => {
@@ -289,7 +341,7 @@ describe('TeamDialog', () => {
       const { monthlyPlan: _plan, ...older } = detail;
       useTeamDetail.mockReturnValue({ data: older, isLoading: false, error: null });
       render(<TeamDialog {...props} />);
-      expect(screen.getByRole('region', { name: 'Month-wise Utilization Cost' })).toHaveTextContent('Total $0.00');
+      expect(screen.getByRole('region', { name: 'Month-wise Utilization Cost' })).toHaveTextContent('Total —');
     });
   });
 
@@ -735,9 +787,10 @@ describe('TeamDialog', () => {
         error: null,
       });
       render(<TeamDialog {...props} />);
-      const button = within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' });
-      expect(button).toBeDisabled();
-      expect(button).toHaveAttribute('title', 'Reload after the server update');
+      const button = within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: /Unassign/ });
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAccessibleName('Unassign: Reload after the server update');
     });
 
     it('removes an old "Could not unassign" banner after a later action reloads the team', async () => {
@@ -806,6 +859,34 @@ describe('TeamDialog', () => {
       await user.click(within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('Could not unassign: Backend unreachable');
       expect(useTeamDetail).not.toHaveBeenLastCalledWith('TEAM-001', '2026-10', `${props.updatedAt.getTime()}-1`);
+    });
+  });
+
+  describe('icon buttons', () => {
+    beforeEach(() => {
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+    });
+
+    it.each([
+      ['Assign', () => within(screen.getByRole('row', { name: /Vacant/ })).getByRole('button', { name: 'Assign' })],
+      ['Unassign', () => within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' })],
+      ['Delete Position', () => within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Delete Position' })],
+      ['Add Position', () => screen.getByRole('button', { name: 'Add Position' })],
+    ])('%s shows its tooltip on hover and on keyboard focus', async (name, find) => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      const button = find();
+      expect(button).toHaveAccessibleName(name);
+      expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument();
+      await user.hover(button);
+      expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(name);
+      await user.unhover(button);
+      expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument();
+      vi.spyOn(button, 'matches').mockReturnValue(true);
+      act(() => button.focus());
+      expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(name);
+      act(() => button.blur());
+      expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument();
     });
   });
 

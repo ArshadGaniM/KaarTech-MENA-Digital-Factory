@@ -91,18 +91,18 @@ describe('TeamCard', () => {
     expect(onOpen).toHaveBeenCalledWith('TEAM-007');
   });
 
-  it('shows the assignment end date and the Allocated Team Cost', () => {
+  it('shows the assignment end date and the Allocated Team Monthly Cost', () => {
     renderCard({ ...base, assignmentEndDate: '2026-12-05', allocatedTeamCost: 2375 });
     const card = screen.getByRole('button', { name: /Gamma, TEAM-007/ });
     expect(card).toHaveTextContent('Assignment ends5 Dec 2026');
-    expect(card).toHaveTextContent('Allocated Team Cost$2,375.00');
+    expect(card).toHaveTextContent('Allocated Team Monthly Cost$2,375.00');
   });
 
   it('says there is no current assignment, and shows a zero cost, for a team without one', () => {
     renderCard({ ...base, assignmentEndDate: null, allocatedTeamCost: 0 });
     const card = screen.getByRole('button', { name: /Gamma, TEAM-007/ });
     expect(card).toHaveTextContent('No current assignment');
-    expect(card).toHaveTextContent('Allocated Team Cost$0.00');
+    expect(card).toHaveTextContent('Allocated Team Monthly Cost$0.00');
   });
 
   it('says how many people were costed at the default rate, and says nothing when none were', () => {

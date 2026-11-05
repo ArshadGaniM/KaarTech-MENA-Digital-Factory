@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { formatDay, formatUsd } from '../../lib/money';
 import { isSeatRunning, todayIso } from '../../lib/teamActions';
 import AssignSeatForm from './AssignSeatForm';
+import IconButton from './IconButton';
 import styles from './ControlCenter.module.css';
 
 const percent = (value) => (value === null ? '—' : `${value}%`);
@@ -15,7 +16,6 @@ CostCell.propTypes = { value: PropTypes.number };
 const seatShape = PropTypes.shape({
   positionCode: PropTypes.string.isRequired,
   positionName: PropTypes.string.isRequired,
-  counted: PropTypes.bool,
   employeeId: PropTypes.number,
   employeeName: PropTypes.string,
   deploymentId: PropTypes.string,
@@ -38,32 +38,23 @@ function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUn
       <tr className={vacant ? styles.vacantRow : undefined}>
         <th scope="row">
           {seat.positionName}
-          <span className={styles.rowMeta}>
-            {seat.positionCode}
-            {seat.counted ? '' : ', not counted in the team'}
-          </span>
-          <button type="button" className={styles.seatButton} onClick={onDelete}>
-            Delete Position
-          </button>
+          <IconButton icon="trash" label="Delete Position" onClick={onDelete} />
+          <span className={styles.rowMeta}>{seat.positionCode}</span>
         </th>
         <td>
           {seat.employeeName ?? 'Vacant'}
           {vacant && (
-            <button type="button" className={styles.seatButton} onClick={onAssign} disabled={assigning}>
-              Assign
-            </button>
+            <IconButton icon="plus" label="Assign" onClick={onAssign} disabled={assigning} />
           )}
           {!vacant && !canUnassign && seat.endDate && <span className={styles.rowMeta}>Ended {formatDay(seat.endDate)}</span>}
           {canUnassign && (
-            <button
-              type="button"
-              className={styles.seatButton}
+            <IconButton
+              icon="close"
+              label="Unassign"
               onClick={onUnassign}
-              disabled={busy || !seat.deploymentId}
-              title={seat.deploymentId ? undefined : 'Reload after the server update'}
-            >
-              Unassign
-            </button>
+              disabled={busy}
+              disabledReason={seat.deploymentId ? undefined : 'Reload after the server update'}
+            />
           )}
         </td>
         <td className={styles.numeric}>{percent(seat.allocationPercentage)}</td>

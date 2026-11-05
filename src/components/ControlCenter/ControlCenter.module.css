@@ -566,25 +566,6 @@
   color: var(--color-text-muted);
 }
 
-.seatButton {
-  margin-left: var(--space-1);
-  padding: 1px 8px;
-  font: inherit;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.seatButton:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 .inlineForm {
   display: flex;
   flex-direction: column;
@@ -932,7 +913,67 @@
   margin-top: var(--space-2);
 }
 
-.rowMeta + .seatButton {
-  display: block;
-  margin: 2px 0 0;
+.iconWrap {
+  position: relative;
+  display: inline-block;
+  margin-left: var(--space-1);
+  vertical-align: middle;
+  font-style: normal;
+}
+
+.iconButton {
+  --icon-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.iconButton:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--color-bg-alt);
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.iconButton:disabled,
+.iconButton[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.iconSvg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.iconTip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 6px);
+  transform: translateY(-50%);
+  z-index: 5;
+  padding: 2px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.seatNote {
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
