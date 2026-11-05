@@ -936,7 +936,7 @@
   color: var(--color-text);
 }
 
-.iconButton:hover:not(:disabled) {
+.iconButton:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--color-bg-alt);
 }
 
@@ -945,7 +945,8 @@
   outline-offset: 2px;
 }
 
-.iconButton:disabled {
+.iconButton:disabled,
+.iconButton[aria-disabled='true'] {
   cursor: default;
   opacity: 0.6;
 }

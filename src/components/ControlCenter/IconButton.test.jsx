@@ -37,6 +37,16 @@ describe('IconButton', () => {
     expect(screen.queryByText('Assign')).not.toBeInTheDocument();
   });
 
+  it('still shows the tooltip on focus when the browser cannot evaluate :focus-visible', () => {
+    render(<IconButton icon="plus" label="Assign" onClick={() => {}} />);
+    const button = screen.getByRole('button', { name: 'Assign' });
+    vi.spyOn(button, 'matches').mockImplementation(() => {
+      throw new SyntaxError('unsupported selector');
+    });
+    act(() => button.focus());
+    expect(screen.getByText('Assign', { selector: '[role="tooltip"]' })).toBeInTheDocument();
+  });
+
   it('hides the tooltip after a click until the mouse leaves', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

@@ -1,44 +1,43 @@
-# Gate Report: Add Position and Delete Position in the team pop-up, one Module Lead seat per team
+# Gate Report: team pop-up revamp with small icon buttons, cost labels and a Module Lead note
 
-**Verdict: WARN** (zero FAIL, zero Critical. Security PASS.)
+**Verdict: WARN** (zero FAIL, zero Critical after round 2. Security PASS.)
 
 **Branch:** `claude/trusting-curie-hlx1r6` to `main`. Main had no new commits, so the branch was up to date.
-**Scope:** `git diff origin/main..HEAD`.
-- **Add Position:** A button in the team pop-up opens the shared create form. The team is locked and filled in, and the team's department and competencies show as context. The Competencies field is pre-filled (capped at 500 characters) and stays editable.
-- **Delete Position:** Every seat has a "Delete Position" button that opens the shared delete popup with the seat pre-selected. A position with a current or future deployment is refused with "Unassign the person first" (409 `position_in_use`). Ended deployments do not block it.
-- **One Module Lead seat per team:** The backend refuses a second live seat whose name starts with "Module Lead" on create, rename, move and restore, inside a per-team lock. TEAM-087, TEAM-088 and TEAM-089 hold 24 seats today and are the exception.
+**Scope:** `git diff origin/main..HEAD`. Frontend only. No backend change and no migration.
+- The ", not counted in the team" text is gone from the Module Lead row. A note at the bottom reads "Module Lead position is not counted in the total available, allocated and planned utilization hours." A second note covers other uncounted positions such as Enterprise Architect.
+- "Allocated Team Cost" is now "Allocated Team Monthly Cost", on the pop-up and on the Control Center team card.
+- A new "Utilized Team Total Cost" is the sum of every month in the Month-wise Utilization Cost list, the same number as its Total line. It reads "at least $X" when the plan is cut at 120 months and a dash when an older backend sends no plan.
+- Assign (+), Unassign (x), Delete Position (trash) and Add Position (+) are small icon buttons. Each shows its name on hover and on keyboard focus. Every button keeps its full name for screen readers. What they do has not changed.
 
-**Migration 0039** (one partial unique index, the backstop for that rule) was applied live under the standing yes after a live data check: no team outside the three exempt teams held two Module Lead seats. It is verified in the live index list.
+**Checks on the final code:** frontend 869/869, `vite build` clean, oxlint has no errors.
 
-**Checks on the final code:** backend 553/553, mcp-server 58/58, frontend 850/850, `vite build` clean, oxlint has no errors.
-
-## Agents
+## Agents (round 2, after the round 1 fix)
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | WARN | No Critical. Competencies pre-fill could pass 500 characters (fixed). Delete popup loads every position |
-| security-auditor | PASS | No findings. SQL from constants and bound parameters, no constraint name leaked |
-| debugger | PASS | All flows walked. Two low notes |
-| test-writer | PASS | Every new behaviour has a test. Backend 548, mcp 58, frontend 849 at that point |
-| refactorer | WARN | No duplicated logic. `TeamDialog.jsx` is 441 lines. The Module Lead name test is written several ways |
-| doc-writer | WARN | One stray table cell in the MCP README (fixed) |
-| silent-failure-hunter | PASS | No swallowed error. Two low notes |
-| pr-test-analyzer | WARN | Two mutations survived (empty exempt list, seat self-exclusion). Tests tightened |
+| code-reviewer | PASS | Round 1 fixes confirmed. One style note for an aria-disabled button (fixed) |
+| security-auditor | PASS | No findings. Static icons, escaped text, no new dependency |
+| debugger | PASS | Tooltip states walked. Two cosmetic notes |
+| test-writer | PASS | Every new behaviour has a test. 867 tests at that point |
+| refactorer | PASS | No duplication. The tooltip code is small and clear |
+| doc-writer | PASS | No stale text |
+| silent-failure-hunter | WARN | Other uncounted positions lost their note and the chart total showed $0.00 without a plan (both fixed). Tooltip may clip on a narrow screen |
+| pr-test-analyzer | WARN | Mutations caught. The throwing `:focus-visible` fallback had no test (added) |
 
-All agents ran on Sonnet. No agent made a negative file-existence claim that needed a manual cross-check (CLAUDE.md §8).
+Round 1 gave one FAIL from the silent-failure agent: the reason "Reload after the server update" on a disabled Unassign could not reach keyboard or touch users, because a disabled button cannot take focus or taps. It is fixed. The button now stays focusable, the reason is in its name and tooltip, and a click shows the reason and does nothing else. All agents ran on Sonnet. A test-quality agent changed two files temporarily for mutation checks and restored them. I checked the committed files are what was gated.
 
 ## Fixed during the gate
 
-- The exempt-team test looped over the constant it checks. It now hard-codes the three teams and compares the list to the migration.
-- The seat self-exclusion is now exercised by a stateful fake, and a test checks the migration's index name and exempt list match the code.
-- PATCH and restore lock tests, a rename away from Module Lead, and an exempt-team PATCH were added.
-- The Add Position competencies pre-fill is capped at 500 characters and keeps whole names in order.
-- The MCP README table row has three cells.
+- The disabled Unassign reason reaches keyboard, touch and screen reader users.
+- The tooltip moved to the right of the button. It no longer shows when focus returns from a closed modal. It hides after a click until the mouse leaves.
+- A truncated plan shows "at least". A missing plan shows a dash on the stat and on the chart total.
+- A second note explains positions other than Consultant and Lead Consultant.
+- An aria-disabled button looks dimmed and has no hover highlight.
+- New `IconButton.test.jsx`, plus tests for each fix.
 
 ## Open, not blocking
 
-- [ ] Deleting a position whose only deployments have ended hides that seat's past cost and hours from earlier months. Restore brings it back.
-- [ ] The Delete Position popup loads every position to find one code. A single lookup by code would be cheaper.
-- [ ] `TeamDialog.jsx` is about 440 lines. The Add and Delete Position block could become its own component.
-- [ ] The exempt-team list lives in the code and in the migration. A test now checks they match, but a change needs both.
-- [ ] Renaming a seat into or out of Module Lead while a person is deployed does not recalculate the Module Lead percentages until the next deployment write.
+- [ ] The tooltip sits inside the scrolling seat table. On a very narrow screen the long Unassign reason could still be cut off.
+- [ ] On a touch device that does not focus buttons on tap, the reason tooltip hides only on the next tap elsewhere.
+- [ ] `TeamDialog.jsx` is about 470 lines.
+- [ ] The new look has not been checked in a browser.

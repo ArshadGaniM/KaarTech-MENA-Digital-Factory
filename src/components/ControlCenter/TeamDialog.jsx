@@ -45,6 +45,7 @@ const assignmentRecord = (teamCode, assignment) => ({
   projectAssignmentEndDate: assignment.end,
 });
 const MODULE_LEAD_NOTE = 'Module Lead position is not counted in the total available, allocated and planned utilization hours.';
+const OTHER_UNCOUNTED_NOTE = 'Positions other than Consultant and Lead Consultant are not counted in the team hours and cost.';
 const LOCATION_CLASS = { Onsite: styles.dotOnsite, Offshore: styles.dotOffshore, Hybrid: styles.dotHybrid };
 
 // One bar per month. `pending` months have no assignment, so the panel shows a
@@ -158,6 +159,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   const plan = team?.monthlyPlan ?? { months: [], totalCost: 0 };
   const totalCostText = `${plan.truncated ? 'at least ' : ''}${formatUsd(plan.totalCost)}`;
   const hasModuleLead = team?.seats.some(isModuleLeadSeat) ?? false;
+  const hasOtherUncounted = team?.seats.some((seat) => !isModuleLeadSeat(seat) && seat.counted === false) ?? false;
   const maxCost = Math.max(1, ...plan.months.map((m) => m.cost));
 
   // The form is a sibling of the popup's overlay, not a child, so a click on
@@ -352,6 +354,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                     <IconButton icon="plus" label="Add Position" onClick={() => setPositionModal({ mode: 'add' })} />
                   </div>
                   {hasModuleLead && <p className={styles.seatNote}>{MODULE_LEAD_NOTE}</p>}
+                  {hasOtherUncounted && <p className={styles.seatNote}>{OTHER_UNCOUNTED_NOTE}</p>}
                 </div>
 
                 <aside className={styles.dialogSide}>
@@ -377,7 +380,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                       fill: (m.cost / maxCost) * 100,
                       text: formatUsd(m.cost),
                     }))}
-                    total={`Total ${totalCostText}`}
+                    total={`Total ${team.monthlyPlan ? totalCostText : '—'}`}
                   />
                   <ul className={styles.locationLegend} aria-label="Location of the people deployed">
                     {LOCATIONS.map((name) => (

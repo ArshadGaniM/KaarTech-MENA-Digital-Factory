@@ -291,6 +291,18 @@ describe('TeamDialog', () => {
       expect(screen.queryByText(note)).not.toBeInTheDocument();
     });
 
+    it('explains other uncounted positions too, only when the team has one', () => {
+      const note = 'Positions other than Consultant and Lead Consultant are not counted in the team hours and cost.';
+      const withArchitect = [...detail.seats, { ...detail.seats[2], positionCode: 'POS-9', positionName: 'Enterprise Architect', counted: false, employeeId: null, employeeName: null, deploymentId: null }];
+      useTeamDetail.mockReturnValue({ data: { ...detail, seats: withArchitect }, isLoading: false, error: null });
+      const { unmount } = render(<TeamDialog {...props} />);
+      expect(screen.getAllByText(note)).toHaveLength(1);
+      unmount();
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.queryByText(note)).not.toBeInTheDocument();
+    });
+
     it('tags a person costed as the Senior Consultant default', () => {
       useTeamDetail.mockReturnValue({
         data: { ...detail, seats: detail.seats.map((s) => (s.employeeId === 3 ? { ...s, costSource: 'Default' } : s)) },
@@ -329,7 +341,7 @@ describe('TeamDialog', () => {
       const { monthlyPlan: _plan, ...older } = detail;
       useTeamDetail.mockReturnValue({ data: older, isLoading: false, error: null });
       render(<TeamDialog {...props} />);
-      expect(screen.getByRole('region', { name: 'Month-wise Utilization Cost' })).toHaveTextContent('Total $0.00');
+      expect(screen.getByRole('region', { name: 'Month-wise Utilization Cost' })).toHaveTextContent('Total —');
     });
   });
 
