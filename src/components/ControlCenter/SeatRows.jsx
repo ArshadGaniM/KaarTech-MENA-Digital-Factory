@@ -30,7 +30,7 @@ const seatShape = PropTypes.shape({
 });
 
 // One seat: its row, and under a vacant seat the Assign form when it is open.
-function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUnassign, onSaved }) {
+function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUnassign, onDelete, onSaved }) {
   const vacant = seat.employeeId === null;
   const canUnassign = !vacant && isSeatRunning(seat, todayIso());
   return (
@@ -42,6 +42,9 @@ function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUn
             {seat.positionCode}
             {seat.counted ? '' : ', not counted in the team'}
           </span>
+          <button type="button" className={styles.seatButton} onClick={onDelete}>
+            Delete Position
+          </button>
         </th>
         <td>
           {seat.employeeName ?? 'Vacant'}
@@ -91,6 +94,7 @@ SeatRows.propTypes = {
   onAssign: PropTypes.func.isRequired,
   onCancelAssign: PropTypes.func.isRequired,
   onUnassign: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
   onSaved: PropTypes.func.isRequired,
 };
 

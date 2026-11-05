@@ -351,6 +351,29 @@ export const MASTER_DATA_TABLES = [
     tableName: "positions",
     resourceName: "position",
     hasCode: true,
+    // A position cannot be deleted while a person is deployed to it today or later: the
+    // seat would vanish from under them. An ended deployment is history and does not block.
+    // `whereSql` is added to the guard's subquery, whose alias is `d`.
+    deleteGuards: [
+      {
+        table: "resource_deployment",
+        column: "position_code",
+        ownColumn: "code",
+        whereSql: "d.end_date >= current_date",
+        noun: "people",
+        message: "This position cannot be deleted while a person is deployed to it. Unassign the person first.",
+      },
+    ],
+    // A team holds one live Module Lead seat (names starting "Module Lead"), except the
+    // teams in MODULE_LEAD_EXEMPT_TEAMS. Checked under the team's lock on create, edit and
+    // restore; the partial unique index (migration 0039) is the backstop.
+    moduleLeadSeatRule: {
+      groupKey: "teamCode",
+      groupColumn: "team_code",
+      nameKey: "name",
+      nameColumn: "name",
+      constraint: "ux_positions_team_module_lead_live",
+    },
     // teamName is NOT a stored column — it's a live lookup against teams
     // at read time (see lookupJoinSql/lookupSelectSql/toResponse above),
     // same mechanism as teams.departmentName.

@@ -600,6 +600,54 @@ describe('RecordFormModal', () => {
       expect(screen.getByLabelText('Team Code *')).toBeDisabled();
     });
 
+    it('shows the context lines, keeps a pre-filled unlocked field editable, and shows the API error', async () => {
+      const user = userEvent.setup();
+      useEntityRelationships.mockReturnValue({
+        data: [
+          {
+            route: 'positions',
+            identity: { type: 'auto-generated', field: 'code' },
+            fields: [
+              { key: 'name', type: 'string', required: true },
+              { key: 'teamCode', type: 'string', required: true },
+              { key: 'competencies', type: 'string', maxLength: 500 },
+            ],
+          },
+        ],
+        isLoading: false,
+        error: null,
+      });
+      createRecord.mockRejectedValue(new Error('Team TEAM-001 already has a Module Lead seat.'));
+      const onSaved = vi.fn();
+      render(
+        <RecordFormModal
+          route="positions"
+          singularLabel="Position"
+          labelByKey={{ name: 'Position Name', teamCode: 'Team Code', competencies: 'Competencies' }}
+          initialValues={{ teamCode: 'TEAM-001', competencies: 'FICO, MM' }}
+          lockedKeys={['teamCode']}
+          context={[{ label: 'Team', value: 'TEAM-001, Alpha' }, { label: 'Department', value: 'Design Services' }]}
+          onClose={vi.fn()}
+          onSaved={onSaved}
+        />
+      );
+
+      expect(screen.getByText('Team')).toBeInTheDocument();
+      expect(screen.getByText('TEAM-001, Alpha')).toBeInTheDocument();
+      expect(screen.getByText('Design Services')).toBeInTheDocument();
+      expect(screen.getByLabelText('Team Code *')).toBeDisabled();
+      const competencies = screen.getByLabelText('Competencies');
+      expect(competencies).toHaveValue('FICO, MM');
+      await user.clear(competencies);
+      await user.type(competencies, 'MM');
+      await user.type(screen.getByLabelText('Position Name *'), 'Module Lead - FI');
+      await user.click(screen.getByRole('button', { name: 'Add' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('already has a Module Lead seat');
+      expect(createRecord).toHaveBeenCalledWith('positions', { name: 'Module Lead - FI', teamCode: 'TEAM-001', competencies: 'MM' });
+      expect(onSaved).not.toHaveBeenCalled();
+    });
+
     it('leaves every field open and empty when neither prop is given', () => {
       render(<RecordFormModal route="project-assignments" singularLabel="Project Assignment" labelByKey={labels} onClose={vi.fn()} onSaved={vi.fn()} />);
       expect(screen.getByLabelText('Team Code *')).toHaveValue('');

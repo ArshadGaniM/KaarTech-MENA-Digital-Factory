@@ -24,6 +24,16 @@ vi.mock('../RecordFormModal', () => ({
   ),
 }));
 
+vi.mock('../DeleteRecordModal', () => ({
+  default: (props) => (
+    <div role="dialog" aria-label="delete position">
+      <span>{JSON.stringify({ route: props.route, selectedValue: props.selectedValue })}</span>
+      <button type="button" onClick={props.onDeleted}>confirm delete</button>
+      <button type="button" onClick={props.onClose}>close delete</button>
+    </div>
+  ),
+}));
+
 const detail = {
   code: 'TEAM-001',
   name: 'Alpha',
@@ -796,6 +806,94 @@ describe('TeamDialog', () => {
       await user.click(within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('Could not unassign: Backend unreachable');
       expect(useTeamDetail).not.toHaveBeenLastCalledWith('TEAM-001', '2026-10', `${props.updatedAt.getTime()}-1`);
+    });
+  });
+
+  describe('Add Position and Delete Position', () => {
+    beforeEach(() => {
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+    });
+
+    it('opens the shared Position form for this team: team locked, competencies pre-filled, team context shown', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Position' }));
+
+      const form = screen.getByRole('dialog', { name: 'form add' });
+      expect(JSON.parse(within(form).getByText(/route/).textContent)).toMatchObject({
+        route: 'positions',
+        record: null,
+        initialValues: { teamCode: 'TEAM-001', competencies: 'FICO, MM' },
+        lockedKeys: ['teamCode'],
+      });
+    });
+
+    it('caps the pre-filled competencies at 500 characters, dropping trailing names that do not fit', async () => {
+      const names = Array.from({ length: 60 }, (_, i) => `Competency number ${String(i).padStart(2, '0')}`);
+      useTeamDetail.mockReturnValue({ data: { ...detail, competencies: names }, isLoading: false, error: null });
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Position' }));
+
+      const { initialValues } = JSON.parse(within(screen.getByRole('dialog', { name: 'form add' })).getByText(/route/).textContent);
+      const kept = initialValues.competencies.split(', ');
+      expect(initialValues.competencies.length).toBeLessThanOrEqual(500);
+      expect(kept.length).toBeLessThan(names.length);
+      expect(kept).toEqual(names.slice(0, kept.length));
+      expect(`${initialValues.competencies}, ${names[kept.length]}`.length).toBeGreaterThan(500);
+    });
+
+    it('closes the form and refetches the team after it saves', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      await user.click(screen.getByRole('button', { name: 'Add Position' }));
+
+      await user.click(screen.getByRole('button', { name: 'save form' }));
+
+      expect(screen.queryByRole('dialog', { name: 'form add' })).not.toBeInTheDocument();
+      expect(useTeamDetail).toHaveBeenLastCalledWith('TEAM-001', '2026-10', `${props.updatedAt.getTime()}-1`);
+    });
+
+    it('gives every seat a Delete Position button, also one with a person seated', () => {
+      render(<TeamDialog {...props} />);
+      expect(screen.getAllByRole('button', { name: 'Delete Position' })).toHaveLength(detail.seats.length);
+    });
+
+    it('opens the shared Delete form on that seat, and refetches the team once it is deleted', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+
+      const row = screen.getByText('POS-4').closest('tr');
+      await user.click(within(row).getByRole('button', { name: 'Delete Position' }));
+
+      const modal = screen.getByRole('dialog', { name: 'delete position' });
+      expect(JSON.parse(within(modal).getByText(/route/).textContent)).toEqual({ route: 'positions', selectedValue: 'POS-4' });
+
+      await user.click(screen.getByRole('button', { name: 'confirm delete' }));
+
+      expect(screen.queryByRole('dialog', { name: 'delete position' })).not.toBeInTheDocument();
+      expect(useTeamDetail).toHaveBeenLastCalledWith('TEAM-001', '2026-10', `${props.updatedAt.getTime()}-1`);
+    });
+
+    it('closes an open modal before the popup on Escape', async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      render(<TeamDialog {...props} onClose={onClose} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Position' }));
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: 'form add' })).not.toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+
+      await user.click(within(screen.getByText('POS-4').closest('tr')).getByRole('button', { name: 'Delete Position' }));
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: 'delete position' })).not.toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+
+      await user.keyboard('{Escape}');
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
 
