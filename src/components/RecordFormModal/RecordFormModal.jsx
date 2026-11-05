@@ -125,7 +125,9 @@ FieldControl.propTypes = {
 // `initialValues` pre-fills an Add form (keyed by field key) and `lockedKeys`
 // names fields the user may not change, for a caller that opens the form on a
 // record's behalf, such as the team popup adding an assignment for that team.
-function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, onSaved, initialValues = {}, lockedKeys = [] }) {
+// `context` is read-only { label, value } lines shown above the fields, such as the
+// team a position is being added to.
+function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, onSaved, initialValues = {}, lockedKeys = [], context = [] }) {
   const isEdit = record != null;
   const title = `${isEdit ? 'Edit' : 'Add'} ${singularLabel}`;
   const submitLabel = isEdit ? 'Save' : 'Add';
@@ -282,6 +284,16 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="record-form-title">{title}</h2>
+        {context.length > 0 && (
+          <dl className={styles.context}>
+            {context.map(({ label, value }) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <form onSubmit={handleSubmit}>
           {fields.map((field) => {
             const label = labelByKey[field.key] ?? field.key;
@@ -340,6 +352,7 @@ RecordFormModal.propTypes = {
   onSaved: PropTypes.func.isRequired,
   initialValues: PropTypes.objectOf(PropTypes.oneOfType([PropTypes.string, PropTypes.number])),
   lockedKeys: PropTypes.arrayOf(PropTypes.string),
+  context: PropTypes.arrayOf(PropTypes.shape({ label: PropTypes.string.isRequired, value: PropTypes.string.isRequired })),
 };
 
 export default RecordFormModal;

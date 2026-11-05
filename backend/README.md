@@ -36,6 +36,10 @@ Actual progress against the locked initiative plan (the plan itself is read-only
 
 `DELETE /v1/practices/:id` is a 409 `practice_in_use` while live competencies belong to the practice (a table descriptor's `deleteGuards`), so no competency is left without a live practice.
 
+`DELETE /v1/positions/:id` is a 409 `position_in_use` ("Unassign the person first") while a live `resource_deployment` row on the position has an `end_date` of today or later; an ended deployment is history and does not block. The guard carries a `whereSql` condition and its own `message`, both optional on `deleteGuards`.
+
+A team holds one live Module Lead seat: a position whose name starts with `Module Lead` is refused with a 422 on `name` (naming the team's existing seat) on create, on PATCH that renames it or moves it into a team that has one, and on restore. `TEAM-087`, `TEAM-088` and `TEAM-089` are exempt (`MODULE_LEAD_EXEMPT_TEAMS` in `src/moduleLeadSeat.js`; they hold eight vacant seats each). The check runs in the transaction under a per-team advisory lock, and the partial unique index from migration `0039` is the backstop: a violation is also a 422, never a 500.
+
 All thirteen routes share the same shape (`src/masterDataRouter.js`), but each
 table's own business fields differ — see `src/masterDataTables.js` for the
 authoritative per-table field list (key, required, type), or fetch
@@ -395,6 +399,7 @@ See `migrations/` — applied to Supabase via the Supabase MCP tool
 | `0036_control_center_notify_practices.sql` | The `trg_control_center_notify` trigger on `practices`, so adding, renaming or deleting a practice refreshes open Organization Structure and Control Center pages. |
 | `0037_create_analytics_snapshots.sql` | `analytics_snapshots`: one row per month, team code and seat type with seats, filled seats, hours and onsite and offshore cost, plus the unique index `ux_analytics_snapshots_month_team_code_position_name`. Fed by `POST /v1/analytics/snapshots` and the backend's own schedule. |
 | `0038_module_lead_zero_allocation.sql` | Replaces `ck_resource_deployment_allocation_percentage` (above 0) with a check of 0 to 100, so a Module Lead row whose teams have no filled seat can hold 0. The API keeps the 0.01 minimum for every other position. Replaces a constraint, so the owner approves applying it; apply it before the backend that writes 0 deploys. |
+| `0039_unique_live_module_lead_per_team.sql` | The partial unique index `ux_positions_team_module_lead_live` on `positions (team_code)` for live rows named `Module Lead%`, leaving out `TEAM-087`, `TEAM-088` and `TEAM-089`. Additive. Backstop for the one-Module-Lead-seat-per-team rule; existing live data already satisfies it. Apply before the backend that relies on its 422 mapping deploys. |
 
 Base shape shared by all 6 tables (real per-table columns come from later
 migrations — see `src/masterDataTables.js` for the current field list):

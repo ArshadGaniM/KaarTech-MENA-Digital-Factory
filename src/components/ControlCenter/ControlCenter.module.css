@@ -927,3 +927,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.tableActions {
+  margin-top: var(--space-2);
+}
+
+.rowMeta + .seatButton {
+  display: block;
+  margin: 2px 0 0;
+}

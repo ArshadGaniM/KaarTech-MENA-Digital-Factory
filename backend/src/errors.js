@@ -14,8 +14,14 @@ export function notFound(resource, id) {
 // 409: the row exists but live rows of another table still depend on it
 // (a practice that competencies still belong to), so deleting it would
 // silently orphan them.
-export function inUse(resource, noun) {
-  return new ApiError(409, `${resource}_in_use`, `This ${resource} cannot be deleted while live ${noun} still belong to it. Move or delete them first.`);
+// A guard may carry its own `message` where the generic text would not tell the user
+// what to do (a position with a person deployed to it).
+export function inUse(resource, noun, message) {
+  return new ApiError(
+    409,
+    `${resource}_in_use`,
+    message ?? `This ${resource} cannot be deleted while live ${noun} still belong to it. Move or delete them first.`
+  );
 }
 
 // 409, not 404: the row exists, it just isn't in the state the action needs
@@ -62,6 +68,12 @@ export function positionOverlapRaceError(rule) {
   return validationError({
     [rule.uniqueKey]: `This ${rule.groupKey} already holds this position on some of these dates.`,
   });
+}
+
+// The same race for the one-Module-Lead-seat-per-team rule: the partial unique index
+// refused a second live Module Lead seat that two writes both let past the app check.
+export function moduleLeadSeatRaceError(rule) {
+  return validationError({ [rule.nameKey]: "This team already has a Module Lead seat. Only one is allowed per team." });
 }
 
 // Postgres foreign_key_violation (23503) surfaces as a raw 500 by default.

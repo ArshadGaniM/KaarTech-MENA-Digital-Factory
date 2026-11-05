@@ -14,6 +14,7 @@ import {
   inUse,
   overlapRaceError,
   positionOverlapRaceError,
+  moduleLeadSeatRaceError,
 } from "./errors.js";
 import {
   toResponse,
@@ -30,6 +31,7 @@ import {
   searchTermOf,
 } from "./masterDataSchema.js";
 import { requireInternalApiKey } from "./auth.js";
+import { isGuardedModuleLeadSeat, validateModuleLeadSeat } from "./moduleLeadSeat.js";
 import { prepareWrite, recalculateAffected, seatOfRow } from "./moduleLeadAllocation.js";
 
 // No user/auth system exists yet — createdBy/updatedBy is caller-supplied
@@ -76,11 +78,17 @@ function actorOf(body) {
 function mapWriteError(err, fields, body, table) {
   if (isExclusionViolation(err) && table?.overlapRule) return overlapRaceError(table.overlapRule);
   if (isExclusionViolation(err) && table?.allocationRule) return positionOverlapRaceError(table.allocationRule);
+  if (isUniqueViolation(err) && table?.moduleLeadSeatRule && err.constraint === table.moduleLeadSeatRule.constraint) {
+    return moduleLeadSeatRaceError(table.moduleLeadSeatRule);
+  }
   if (isUniqueViolation(err)) return duplicateFieldError(err, fields);
   if (isForeignKeyViolation(err)) return referenceNotFoundError(err, fields);
   if (isInvalidTextRepresentation(err)) return invalidValueError(err, fields, body);
   return err;
 }
+
+// Exported for tests only.
+export const mapWriteErrorForTest = mapWriteError;
 
 export function createMasterDataRouter(table) {
   const { tableName, resourceName, fields } = table;
@@ -104,10 +112,19 @@ export function createMasterDataRouter(table) {
   // can't both pass validateAllocation / validateOverlap and break the rule.
   // Tables with neither rule skip the transaction entirely.
   const groupRule = table.allocationRule ?? table.overlapRule;
-  async function withGroupLock(groupValue, fn) {
+  // Positions have one more group rule: a team holds one live Module Lead seat. Only a
+  // write that makes such a seat takes the team's lock, so every other position write
+  // keeps running outside a transaction. `seatName` is the name the row will hold.
+  const seatRule = table.moduleLeadSeatRule;
+  const lockRule = groupRule ?? seatRule;
+  async function withGroupLock(groupValue, fn, seatName) {
+    if (seatRule) return isGuardedModuleLeadSeat(seatName, groupValue) ? runLocked(groupValue, fn) : fn(pool);
     if (!groupRule) return fn(pool);
     // A null group value would make the lock a silent no-op, so refuse it.
     if (groupValue == null) throw new Error(`${tableName}: the group value for the write lock is missing.`);
+    return runLocked(groupValue, fn);
+  }
+  async function runLocked(groupValue, fn) {
     const client = await pool.connect();
     let rollbackFailed = false;
     try {
@@ -270,17 +287,18 @@ export function createMasterDataRouter(table) {
       const columns = [...fields.map((f) => f.column), "created_by", "updated_by"];
       const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
 
-      const created = await withGroupLock(req.body[groupRule?.groupKey], async (db) => {
+      const created = await withGroupLock(req.body[lockRule?.groupKey], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]]));
         const { seat, forChecks } = await prepare(db, candidate, null, 0);
         await validateGroupRules(db, table, forChecks);
+        await validateModuleLeadSeat(db, table, forChecks);
         const result = await db.query(
           `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
           [...fields.map((f) => candidate[f.column]), actor, actor]
         );
         await settle(db, [{ employeeId: candidate.employee_id, seat }], actor);
         return reselect(db, result.rows[0]);
-      });
+      }, req.body[seatRule?.nameKey]);
       res.status(201).json({ data: toResponse(table, created) });
     } catch (err) {
       next(mapWriteError(err, fields, req.body, table));
@@ -311,11 +329,13 @@ export function createMasterDataRouter(table) {
       const merged = fields.map((f) => (Object.hasOwn(req.body, f.key) ? req.body[f.key] : current[f.column]));
       const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(", ");
 
-      const groupIndex = fields.findIndex((f) => f.key === groupRule?.groupKey);
+      const groupIndex = fields.findIndex((f) => f.key === lockRule?.groupKey);
+      const seatName = seatRule ? merged[fields.findIndex((f) => f.key === seatRule.nameKey)] : undefined;
       const updated = await withGroupLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
         const candidate = Object.fromEntries(fields.map((f, i) => [f.column, merged[i]]));
         const { seat, forChecks } = await prepare(db, candidate, req.params.id, Number(current[percentageField?.column]));
         await validateGroupRules(db, table, forChecks, req.params.id);
+        await validateModuleLeadSeat(db, table, forChecks, req.params.id);
         const values = [...fields.map((f) => candidate[f.column]), actor];
         const result = await db.query(
           `update ${tableName} set ${setClause}
@@ -328,7 +348,7 @@ export function createMasterDataRouter(table) {
           await settle(db, [{ employeeId: current.employee_id, seat: before }, { employeeId: candidate.employee_id, seat }], actor);
         }
         return reselect(db, result.rows[0]);
-      });
+      }, seatName);
       res.json({ data: toResponse(table, updated) });
     } catch (err) {
       next(mapWriteError(err, fields, req.body, table));
@@ -339,7 +359,7 @@ export function createMasterDataRouter(table) {
     try {
       // Table and column names come only from the fixed descriptor.
       const guardSql = (table.deleteGuards ?? [])
-        .map((g) => ` and not exists (select 1 from ${g.table} d where d.${g.column} = ${tableName}.${g.ownColumn} and d.deleted_at is null)`)
+        .map((g) => ` and not exists (select 1 from ${g.table} d where d.${g.column} = ${tableName}.${g.ownColumn} and d.deleted_at is null${g.whereSql ? ` and ${g.whereSql}` : ""})`)
         .join("");
       // A Module Lead table recalculates the shares the row leaves behind, so the delete
       // runs in the transaction and under the lock of the row's group like any other write.
@@ -367,7 +387,7 @@ export function createMasterDataRouter(table) {
         const live = table.deleteGuards
           ? await pool.query(`select 1 from ${tableName} where id = $1 and deleted_at is null`, [req.params.id])
           : { rows: [] };
-        if (live.rows.length > 0) throw inUse(resourceName, table.deleteGuards[0].noun);
+        if (live.rows.length > 0) throw inUse(resourceName, table.deleteGuards[0].noun, table.deleteGuards[0].message);
         throw notFound(resourceName, req.params.id);
       }
       res.status(204).send();
@@ -410,10 +430,11 @@ export function createMasterDataRouter(table) {
       await validateReferences(table, referenceBody, { partial: true });
 
       const actor = actorOf(req.body);
-      const restored = await withGroupLock(current[groupRule?.groupColumn], async (db) => {
+      const restored = await withGroupLock(current[lockRule?.groupColumn], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, current[f.column]]));
         const { seat, forChecks } = await prepare(db, candidate, req.params.id, Number(current[percentageField?.column]));
         await validateGroupRules(db, table, forChecks, req.params.id);
+        await validateModuleLeadSeat(db, table, forChecks, req.params.id);
         const result = await db.query(
           `update ${tableName} set deleted_at = null, updated_by = $1
            where id = $2 and deleted_at is not null${liveParentsSql} returning *`,
@@ -422,7 +443,7 @@ export function createMasterDataRouter(table) {
         if (result.rows.length === 0) return null;
         await settle(db, [{ employeeId: current.employee_id, seat }], actor);
         return reselect(db, result.rows[0]);
-      });
+      }, current[seatRule?.nameColumn]);
       if (restored === null) {
         // Either someone restored it first (409/404 below) or a parent was
         // deleted in the window since the check above (the re-check throws

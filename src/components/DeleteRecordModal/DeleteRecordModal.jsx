@@ -23,7 +23,11 @@ function findActiveMatch(rows, identityKey, value) {
   );
 }
 
-function DeleteRecordModal({ route, singularLabel, onClose, onDeleted }) {
+// `selectedValue` opens the modal on one record, by its code or ID: the field is read-only
+// and the record's `detailColumns` ({ key, label }) are listed, so the user only confirms.
+// The record is still found in the live rows, so a refusal from the backend (a position with
+// a person on it) shows in the modal and leaves it open.
+function DeleteRecordModal({ route, singularLabel, onClose, onDeleted, selectedValue, detailColumns = [] }) {
   const { data: entities, isLoading: entitiesLoading, error: entitiesError } = useEntityRelationships();
   const tableEntity = entities?.find((entity) => entity.route === route);
   const identity = tableEntity?.identity;
@@ -40,12 +44,14 @@ function DeleteRecordModal({ route, singularLabel, onClose, onDeleted }) {
     error: dataError,
   } = useAsyncResource(() => fetchAllMasterDataTableRows(route), [route]);
 
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(selectedValue ?? '');
+  const isPreselected = selectedValue !== undefined;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   const loading = entitiesLoading || dataLoading;
   const loadError = entitiesError || dataError;
+  const selectedRow = isPreselected && data ? findActiveMatch(data, identityKey, selectedValue) : null;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -87,6 +93,16 @@ function DeleteRecordModal({ route, singularLabel, onClose, onDeleted }) {
           <p role="alert">Could not load form: {loadError.message}</p>
         ) : (
           <form onSubmit={handleSubmit}>
+            {selectedRow && (
+              <dl className={styles.details}>
+                {detailColumns.map(({ key, label: detailLabel }) => (
+                  <div key={key}>
+                    <dt>{detailLabel}</dt>
+                    <dd>{selectedRow[key] || '—'}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
             <div className={styles.formRow}>
               <label htmlFor="delete-record-value">{label}</label>
               <input
@@ -94,6 +110,7 @@ function DeleteRecordModal({ route, singularLabel, onClose, onDeleted }) {
                 type="text"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
+                readOnly={isPreselected}
                 required
               />
             </div>
@@ -124,6 +141,8 @@ DeleteRecordModal.propTypes = {
   singularLabel: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
   onDeleted: PropTypes.func.isRequired,
+  selectedValue: PropTypes.string,
+  detailColumns: PropTypes.arrayOf(PropTypes.shape({ key: PropTypes.string.isRequired, label: PropTypes.string.isRequired })),
 };
 
 export default DeleteRecordModal;

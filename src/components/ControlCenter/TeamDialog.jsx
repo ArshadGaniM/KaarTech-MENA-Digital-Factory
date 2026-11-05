@@ -6,6 +6,7 @@ import { formatDay, formatUsd } from '../../lib/money';
 import { MASTER_DATA_TABLES } from '../../lib/masterDataApi';
 import { formatMonth } from '../../lib/months';
 import RecordFormModal from '../RecordFormModal';
+import DeleteRecordModal from '../DeleteRecordModal';
 import { todayIso, unassignSeat } from '../../lib/teamActions';
 import DeleteAssignmentForm from './DeleteAssignmentForm';
 import SeatRows from './SeatRows';
@@ -14,6 +15,11 @@ import styles from './ControlCenter.module.css';
 
 const ASSIGNMENTS_TABLE = MASTER_DATA_TABLES.find((table) => table.route === 'project-assignments');
 const ASSIGNMENT_LABELS = Object.fromEntries(ASSIGNMENTS_TABLE.columns.map((column) => [column.key, column.label]));
+const POSITIONS_TABLE = MASTER_DATA_TABLES.find((table) => table.route === 'positions');
+const POSITION_LABELS = Object.fromEntries(POSITIONS_TABLE.columns.map((column) => [column.key, column.label]));
+const POSITION_DETAIL_COLUMNS = POSITIONS_TABLE.columns.filter((column) =>
+  ['code', 'name', 'teamName', 'competencies'].includes(column.key),
+);
 const LOCATIONS = ['Onsite', 'Offshore', 'Hybrid'];
 
 // The row the Edit form opens on: the field names the Project Assignments table uses.
@@ -79,6 +85,8 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   const [deletingId, setDeletingId] = useState(null);
   const [seatBusy, setSeatBusy] = useState(false);
   const [seatError, setSeatError] = useState(null);
+  // The shared Add / Delete Position modals: null, { mode: 'add' } or { mode: 'delete', code }.
+  const [positionModal, setPositionModal] = useState(null);
   const { data: team, isLoading, error } = useTeamDetail(code, month, `${updatedAt.getTime()}-${reloads}`);
   const closeRef = useRef(null);
 
@@ -93,7 +101,8 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
-      if (form) setForm(null);
+      if (positionModal) setPositionModal(null);
+      else if (form) setForm(null);
       else if (assigning || deletingId) {
         setAssigning(null);
         setDeletingId(null);
@@ -101,7 +110,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, form, assigning, deletingId]);
+  }, [onClose, form, positionModal, assigning, deletingId]);
 
   const reload = () => {
     setSeatError(null);
@@ -308,6 +317,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                             onAssign={() => setAssigning(seat.positionCode)}
                             onCancelAssign={() => setAssigning(null)}
                             onUnassign={() => unassign(seat)}
+                            onDelete={() => setPositionModal({ mode: 'delete', code: seat.positionCode })}
                             onSaved={() => {
                               setAssigning(null);
                               reload();
@@ -316,6 +326,11 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className={styles.tableActions}>
+                    <button type="button" className={styles.addAssignment} onClick={() => setPositionModal({ mode: 'add' })}>
+                      Add Position
+                    </button>
                   </div>
                 </div>
 
@@ -358,6 +373,42 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
           )}
         </div>
       </div>
+
+      {positionModal?.mode === 'add' && team && (
+        <RecordFormModal
+          key="add-position"
+          route="positions"
+          singularLabel="Position"
+          labelByKey={POSITION_LABELS}
+          initialValues={{ teamCode: team.code, competencies: team.competencies.join(', ') }}
+          lockedKeys={['teamCode']}
+          context={[
+            { label: 'Team', value: `${team.code}, ${team.name}` },
+            { label: 'Department', value: team.department.name ?? team.department.code },
+            { label: 'Team competencies', value: team.competencies.join(', ') || 'None' },
+          ]}
+          onClose={() => setPositionModal(null)}
+          onSaved={() => {
+            setPositionModal(null);
+            reload();
+          }}
+        />
+      )}
+
+      {positionModal?.mode === 'delete' && (
+        <DeleteRecordModal
+          key={positionModal.code}
+          route="positions"
+          singularLabel="Position"
+          selectedValue={positionModal.code}
+          detailColumns={POSITION_DETAIL_COLUMNS}
+          onClose={() => setPositionModal(null)}
+          onDeleted={() => {
+            setPositionModal(null);
+            reload();
+          }}
+        />
+      )}
 
       {form && team && (
         <RecordFormModal

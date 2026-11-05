@@ -225,4 +225,82 @@ describe('DeleteRecordModal', () => {
     expect(onClose).toHaveBeenCalled();
     expect(deleteRecord).not.toHaveBeenCalled();
   });
+
+  describe('selectedValue', () => {
+    const detailColumns = [
+      { key: 'code', label: 'Position ID' },
+      { key: 'name', label: 'Position Name' },
+      { key: 'teamName', label: 'Team Name' },
+      { key: 'competencies', label: 'Competencies' },
+    ];
+    const rows = [
+      { id: 'row-1', code: 'POS-001', name: 'Consultant', teamName: 'Alpha', competencies: 'FICO, MM', markedDeleted: 'No' },
+      { id: 'row-2', code: 'POS-002', name: 'Architect', teamName: 'Beta', competencies: null, markedDeleted: 'No' },
+    ];
+    const open = (props = {}) =>
+      render(
+        <DeleteRecordModal
+          route="positions"
+          singularLabel="Position"
+          selectedValue="POS-001"
+          detailColumns={detailColumns}
+          onClose={vi.fn()}
+          onDeleted={vi.fn()}
+          {...props}
+        />
+      );
+
+    beforeEach(() => {
+      useEntityRelationships.mockReturnValue({
+        data: [{ route: 'positions', identity: { type: 'auto-generated', field: 'code' } }],
+        isLoading: false,
+        error: null,
+      });
+      fetchAllMasterDataTableRows.mockResolvedValue(rows);
+    });
+
+    it('shows the pre-selected record, with the code read-only, so the user only confirms', async () => {
+      const onDeleted = vi.fn();
+      deleteRecord.mockResolvedValue();
+      const user = userEvent.setup();
+      open({ onDeleted });
+
+      expect(await screen.findByText('Consultant')).toBeInTheDocument();
+      expect(screen.getByText('Alpha')).toBeInTheDocument();
+      expect(screen.getByText('FICO, MM')).toBeInTheDocument();
+      expect(screen.queryByText('Architect')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Code')).toHaveValue('POS-001');
+      expect(screen.getByLabelText('Code')).toHaveAttribute('readonly');
+
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+      await waitFor(() => expect(deleteRecord).toHaveBeenCalledWith('positions', 'row-1'));
+      expect(onDeleted).toHaveBeenCalled();
+    });
+
+    it('shows the backend refusal and stays open', async () => {
+      const onDeleted = vi.fn();
+      const onClose = vi.fn();
+      deleteRecord.mockRejectedValue(new Error('This position cannot be deleted while a person is deployed to it. Unassign the person first.'));
+      const user = userEvent.setup();
+      open({ onDeleted, onClose });
+
+      await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Unassign the person first');
+      expect(onDeleted).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
+    });
+
+    it('says so when the pre-selected record no longer exists, and deletes nothing', async () => {
+      const user = userEvent.setup();
+      open({ selectedValue: 'POS-999' });
+
+      await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('No active position found with Code "POS-999"');
+      expect(deleteRecord).not.toHaveBeenCalled();
+    });
+  });
 });
