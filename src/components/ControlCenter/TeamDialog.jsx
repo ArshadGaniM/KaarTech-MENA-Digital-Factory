@@ -156,6 +156,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   };
   // An older backend (frontend and backend deploy separately) sends no plan.
   const plan = team?.monthlyPlan ?? { months: [], totalCost: 0 };
+  const totalCostText = `${plan.truncated ? 'at least ' : ''}${formatUsd(plan.totalCost)}`;
   const hasModuleLead = team?.seats.some(isModuleLeadSeat) ?? false;
   const maxCost = Math.max(1, ...plan.months.map((m) => m.cost));
 
@@ -243,7 +244,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                 </li>
                 <li>
                   <span className={styles.hoursLabel}>Utilized Team Total Cost</span>
-                  <span className={styles.statValue}>{formatUsd(plan.totalCost)}</span>
+                  <span className={styles.statValue}>{team.monthlyPlan ? totalCostText : '—'}</span>
                 </li>
                 <li className={`${styles.statusPill} ${statusClass(styles, team.status)}`}>{STATUS_LABELS[team.status]}</li>
               </ul>
@@ -376,7 +377,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                       fill: (m.cost / maxCost) * 100,
                       text: formatUsd(m.cost),
                     }))}
-                    total={`Total ${formatUsd(plan.totalCost)}`}
+                    total={`Total ${totalCostText}`}
                   />
                   <ul className={styles.locationLegend} aria-label="Location of the people deployed">
                     {LOCATIONS.map((name) => (

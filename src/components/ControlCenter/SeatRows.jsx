@@ -16,7 +16,6 @@ CostCell.propTypes = { value: PropTypes.number };
 const seatShape = PropTypes.shape({
   positionCode: PropTypes.string.isRequired,
   positionName: PropTypes.string.isRequired,
-  counted: PropTypes.bool,
   employeeId: PropTypes.number,
   employeeName: PropTypes.string,
   deploymentId: PropTypes.string,
@@ -53,8 +52,8 @@ function SeatRows({ seat, seats, assigning, busy, onAssign, onCancelAssign, onUn
               icon="close"
               label="Unassign"
               onClick={onUnassign}
-              disabled={busy || !seat.deploymentId}
-              title={seat.deploymentId ? undefined : 'Reload after the server update'}
+              disabled={busy}
+              disabledReason={seat.deploymentId ? undefined : 'Reload after the server update'}
             />
           )}
         </td>

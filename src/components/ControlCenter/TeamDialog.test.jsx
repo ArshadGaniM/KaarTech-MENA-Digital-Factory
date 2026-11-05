@@ -267,6 +267,20 @@ describe('TeamDialog', () => {
       expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('$0.00');
     });
 
+    it('shows "at least" on the stat and the Total line when the plan is truncated', () => {
+      useTeamDetail.mockReturnValue({ data: { ...detail, monthlyPlan: { ...detail.monthlyPlan, truncated: true } }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('at least $7,508.06');
+      expect(screen.getByText('Total at least $7,508.06')).toBeInTheDocument();
+    });
+
+    it('shows a dash instead of $0.00 for the Utilized Team Total Cost when an older backend sends no plan', () => {
+      const { monthlyPlan: _plan, ...older } = detail;
+      useTeamDetail.mockReturnValue({ data: older, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('—');
+    });
+
     it('shows the Module Lead note once at the bottom only when the team has a Module Lead seat', () => {
       const note = 'Module Lead position is not counted in the total available, allocated and planned utilization hours.';
       const { unmount } = render(<TeamDialog {...props} />);
@@ -761,9 +775,10 @@ describe('TeamDialog', () => {
         error: null,
       });
       render(<TeamDialog {...props} />);
-      const button = within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: 'Unassign' });
-      expect(button).toBeDisabled();
-      expect(button).toHaveAttribute('title', 'Reload after the server update');
+      const button = within(screen.getByRole('row', { name: /Sam Split/ })).getByRole('button', { name: /Unassign/ });
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAccessibleName('Unassign: Reload after the server update');
     });
 
     it('removes an old "Could not unassign" banner after a later action reloads the team', async () => {
@@ -850,15 +865,16 @@ describe('TeamDialog', () => {
       render(<TeamDialog {...props} />);
       const button = find();
       expect(button).toHaveAccessibleName(name);
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument();
       await user.hover(button);
-      expect(screen.getByRole('tooltip')).toHaveTextContent(name);
+      expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(name);
       await user.unhover(button);
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument();
+      vi.spyOn(button, 'matches').mockReturnValue(true);
       act(() => button.focus());
-      expect(screen.getByRole('tooltip')).toHaveTextContent(name);
+      expect(screen.getByRole('tooltip', { hidden: true })).toHaveTextContent(name);
       act(() => button.blur());
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument();
     });
   });
 
