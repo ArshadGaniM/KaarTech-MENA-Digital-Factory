@@ -1,3 +1,4 @@
+import { byDepartmentOrder } from './departmentOrder';
 import { ODC_DELIVERY_MANAGER, ODC_PROJECT_MANAGERS } from './odcLeadership';
 
 const isLive = (row) => row.markedDeleted !== 'Yes';
@@ -180,11 +181,11 @@ export function buildOrgStructure({ departments, teams, positions, competencies,
   const assigned = new Set(ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes));
 
   const projectManagers = ODC_PROJECT_MANAGERS.map((manager) => {
-    const managed = manager.departmentCodes.map((code) => populated.get(code)).filter(Boolean);
+    const managed = manager.departmentCodes.map((code) => populated.get(code)).filter(Boolean).sort(byDepartmentOrder);
     return managerOf(manager.id, manager.title, manager.name, managed);
   }).filter((manager) => manager.departments.length > 0);
 
-  const unassigned = [...populated.values()].filter((department) => !assigned.has(department.code));
+  const unassigned = [...populated.values()].filter((department) => !assigned.has(department.code)).sort(byDepartmentOrder);
   if (unassigned.length > 0) {
     projectManagers.push(managerOf('unassigned', 'Unassigned', null, unassigned));
   }

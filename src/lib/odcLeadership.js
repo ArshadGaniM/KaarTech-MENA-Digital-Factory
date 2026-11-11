@@ -17,7 +17,7 @@ export const ODC_PROJECT_MANAGERS = [
     id: 'pm-2',
     title: 'ODC Project Manager 2',
     name: 'TBD',
-    departmentCodes: ['DEPT-014', 'DEPT-002'], // Analyse, Design
+    departmentCodes: ['DEPT-014', 'DEPT-002', 'DEPT-011'], // Analyse, Design, Data Migration
   },
   {
     id: 'pm-3',
@@ -35,12 +35,18 @@ export const ODC_PROJECT_MANAGERS = [
     id: 'pm-5',
     title: 'ODC Project Manager 5',
     name: 'TBD',
-    departmentCodes: ['DEPT-004', 'DEPT-010', 'DEPT-011'], // QA & Testing, Training, Data Migration
+    departmentCodes: ['DEPT-004'], // QA & Testing
   },
   {
     id: 'pm-6',
     title: 'ODC Project Manager 6',
     name: 'TBD',
-    departmentCodes: ['DEPT-008', 'DEPT-005', 'DEPT-013'], // L1, L2, L3 Operational Support
+    departmentCodes: ['DEPT-008', 'DEPT-010'], // L1 Operational Support, Training
+  },
+  {
+    id: 'pm-7',
+    title: 'ODC Project Manager 7',
+    name: 'TBD',
+    departmentCodes: ['DEPT-005', 'DEPT-013'], // L2, L3 Operational Support
   },
 ];

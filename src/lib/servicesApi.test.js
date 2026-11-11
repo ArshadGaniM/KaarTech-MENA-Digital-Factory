@@ -18,9 +18,15 @@ describe('toServices', () => {
     expect(toServices([row()])).toEqual([{ code: 'DEPT-001', title: 'Design Services', description: 'Designs things.' }]);
   });
 
-  it('orders by floor number, highest first, and breaks ties by code', () => {
-    const rows = [row({ code: 'DEPT-002', name: 'B', floorNumber: 1 }), row({ code: 'DEPT-003', name: 'C', floorNumber: 3 }), row({ code: 'DEPT-001', name: 'A', floorNumber: 1 })];
-    expect(toServices(rows).map((service) => service.title)).toEqual(['C', 'A', 'B']);
+  it("orders by the owner's department order, with unlisted departments last in code order", () => {
+    const rows = [
+      row({ code: 'DEPT-001', name: 'A', floorNumber: 14 }),
+      row({ code: 'DEPT-098', name: 'Z', floorNumber: 20 }),
+      row({ code: 'DEPT-013', name: 'C', floorNumber: 1 }),
+      row({ code: 'DEPT-097', name: 'Y', floorNumber: 21 }),
+      row({ code: 'DEPT-002', name: 'B', floorNumber: 10 }),
+    ];
+    expect(toServices(rows).map((service) => service.title)).toEqual(['C', 'B', 'A', 'Y', 'Z']);
   });
 
   it('leaves out deleted departments', () => {

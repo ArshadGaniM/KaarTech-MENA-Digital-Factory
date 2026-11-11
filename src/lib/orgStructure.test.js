@@ -72,13 +72,15 @@ describe('buildOrgStructure', () => {
     expect(managerOf(result, 'pm-2').name).toBe('TBD');
   });
 
-  it('has six project managers: Configuration alone under 3, Development and System Administration under Karthikeyan Rajendran as 4', () => {
-    expect(ODC_PROJECT_MANAGERS.map((manager) => manager.id)).toEqual(['pm-1', 'pm-2', 'pm-3', 'pm-4', 'pm-5', 'pm-6']);
+  it('has seven project managers: Configuration alone under 3, Development and System Administration under Karthikeyan Rajendran as 4', () => {
+    expect(ODC_PROJECT_MANAGERS.map((manager) => manager.id)).toEqual(['pm-1', 'pm-2', 'pm-3', 'pm-4', 'pm-5', 'pm-6', 'pm-7']);
     const byId = Object.fromEntries(ODC_PROJECT_MANAGERS.map((manager) => [manager.id, manager]));
+    expect(byId['pm-2'].departmentCodes).toEqual(['DEPT-014', 'DEPT-002', 'DEPT-011']);
     expect(byId['pm-3'].departmentCodes).toEqual(['DEPT-009']);
     expect(byId['pm-4']).toMatchObject({ name: 'Karthikeyan Rajendran', departmentCodes: ['DEPT-003', 'DEPT-012'] });
-    expect(byId['pm-5'].departmentCodes).toEqual(['DEPT-004', 'DEPT-010', 'DEPT-011']);
-    expect(byId['pm-6'].departmentCodes).toEqual(['DEPT-008', 'DEPT-005', 'DEPT-013']);
+    expect(byId['pm-5'].departmentCodes).toEqual(['DEPT-004']);
+    expect(byId['pm-6'].departmentCodes).toEqual(['DEPT-008', 'DEPT-010']);
+    expect(byId['pm-7'].departmentCodes).toEqual(['DEPT-005', 'DEPT-013']);
     const all = ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes);
     expect(new Set(all).size).toBe(all.length);
   });

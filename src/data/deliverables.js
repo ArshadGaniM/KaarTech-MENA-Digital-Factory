@@ -22,13 +22,13 @@ const RUSHIKESH = 'Rushikesh Subhash Nikam';
 export const DELIVERABLE_DETAILS = {
   'sop-DEPT-001': { owner: SURYA }, // Digital/AI Transformation Consulting Services
   'sop-DEPT-006': { owner: SURYA }, // Assessment Services
-  'sop-DEPT-007': { owner: FAIZAN }, // Audit Services
-  'sop-DEPT-014': { owner: RUSHIKESH }, // Analyse Services
+  'sop-DEPT-007': { owner: SURYA }, // Audit Services
+  'sop-DEPT-014': { owner: SURYA }, // Analyse Services
   'sop-DEPT-002': { owner: SURYA }, // Design Services
   'sop-DEPT-009': { owner: RUSHIKESH }, // Configuration Services
   'sop-DEPT-003': { owner: RUSHIKESH }, // Development Services
   'sop-DEPT-004': { owner: RUSHIKESH }, // Quality Assurance & Testing Services
-  'sop-DEPT-010': { owner: SURYA }, // Training Services
+  'sop-DEPT-010': { owner: FAIZAN }, // Training Services
   'sop-DEPT-011': { owner: SURYA }, // Data Migration Services
   'sop-DEPT-012': { owner: RUSHIKESH }, // System Administration Services
   'sop-DEPT-008': { owner: FAIZAN }, // L1 Operational Support Services
@@ -39,7 +39,7 @@ export const DELIVERABLE_DETAILS = {
   'rollout-3': { owner: FAIZAN }, // Managed Services Project
 };
 
-// Services arrive in floor order, highest first, and keep that order. Streams
+// Services arrive in the owner's department order and keep it. Streams
 // arrive in plan order.
 export function buildDeliverables({ services, streams }) {
   const rows = [
