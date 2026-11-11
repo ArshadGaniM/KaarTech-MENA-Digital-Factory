@@ -45,6 +45,7 @@ function ControlCenter() {
       {data && (
         <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-label="Factory floors">
           <ol className={styles.floors}>
+            {/* The API sends floor order. The owner's department order wins on screen. */}
             {[...data.departments].sort(byDepartmentOrder).map((department, i) => (
               <FactoryFloor
                 key={department.code}

@@ -3,7 +3,8 @@
 // A name stays 'TBD' until the owner supplies it. A department missing from
 // every list below shows under "Unassigned" on the page. A code with no live
 // department (renamed, deleted, mistyped) is skipped, so check this list when a
-// manager's seat count drops.
+// manager's seat count drops. The order of codes inside a manager does not
+// matter: departmentOrder.js decides how they are shown.
 export const ODC_DELIVERY_MANAGER = { title: 'ODC Delivery Manager', name: 'Mohammed Ibrahim S' };
 
 export const ODC_PROJECT_MANAGERS = [

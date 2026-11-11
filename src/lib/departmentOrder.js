@@ -1,6 +1,7 @@
-// The owner's order for departments (11 Nov 2026). Every department list in the
-// app follows it. A department not listed here, such as a new one, goes last in
-// code order.
+// The owner's order for departments (11 Nov 2026). Organization Structure, the
+// Control Center, the Charter deliverables and the services list follow it. The
+// Analytics charts sort by value or name instead. A department not listed here,
+// such as a new one, goes last in code order.
 export const DEPARTMENT_ORDER = [
   'DEPT-013', // L3 Operational Support Services
   'DEPT-005', // L2 Operational Support Services
