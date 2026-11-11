@@ -3,6 +3,7 @@ import FactoryFloor from './FactoryFloor';
 import MonthPicker from './MonthPicker';
 import TeamDialog from './TeamDialog';
 import { useControlCenter } from '../../hooks/useControlCenter';
+import { byDepartmentOrder } from '../../lib/departmentOrder';
 import { currentMonth } from '../../lib/months';
 import styles from './ControlCenter.module.css';
 
@@ -44,7 +45,8 @@ function ControlCenter() {
       {data && (
         <section className={`${styles.building} ${isLoading ? styles.buildingBusy : ''}`} aria-label="Factory floors">
           <ol className={styles.floors}>
-            {data.departments.map((department, i) => (
+            {/* The API sends floor order. The owner's department order wins on screen. */}
+            {[...data.departments].sort(byDepartmentOrder).map((department, i) => (
               <FactoryFloor
                 key={department.code}
                 level={department.floorNumber}

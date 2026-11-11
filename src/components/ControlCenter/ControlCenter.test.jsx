@@ -26,7 +26,7 @@ const team = (overrides) => ({
   ...overrides,
 });
 
-// Departments arrive top floor first, as the backend sends them.
+// Departments arrive top floor first, as the backend sends them. The page shows them in the owner's order.
 const DEPARTMENTS = [
   { code: 'DEPT-001', floorNumber: 13 },
   { code: 'DEPT-002', floorNumber: 10 },
@@ -89,13 +89,13 @@ describe('ControlCenter', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('no departments');
   });
 
-  it('shows one floor per department, top floor first, numbered and named from the data', () => {
+  it("shows one floor per department in the owner's order, numbered and named from the data", () => {
     useControlCenter.mockReturnValue(loaded());
     render(<ControlCenter />);
 
     const names = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
-    expect(names).toEqual(DEPARTMENTS.map(({ code }) => `Name of ${code}`));
-    expect(screen.getAllByText(/^F\d+$/).map((label) => label.textContent)).toEqual(['F13', 'F10', 'F8', 'F1']);
+    expect(names).toEqual(['DEPT-013', 'DEPT-003', 'DEPT-002', 'DEPT-001'].map((code) => `Name of ${code}`));
+    expect(screen.getAllByText(/^F\d+$/).map((label) => label.textContent)).toEqual(['F1', 'F8', 'F10', 'F13']);
   });
 
   it('shows a department added later without any code change', () => {

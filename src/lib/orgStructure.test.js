@@ -65,6 +65,26 @@ describe('buildOrgStructure', () => {
     expect(managerOf(result, 'pm-3').departments.map((d) => d.code)).toEqual(['DEPT-009']);
   });
 
+  it("lists a manager's departments in the owner's department order, not the order in odcLeadership", () => {
+    const extraDepartments = [
+      { code: 'DEPT-014', name: 'Analyse Services', floorNumber: 11, ...live },
+      { code: 'DEPT-011', name: 'Data Migration Services', floorNumber: 5, ...live },
+    ];
+    const extraTeams = [
+      { code: 'TEAM-014', name: 'TEAM-014', departmentCode: 'DEPT-014', ...live },
+      { code: 'TEAM-011', name: 'TEAM-011', departmentCode: 'DEPT-011', ...live },
+    ];
+    const result = build({ departments: [...departments, ...extraDepartments], teams: [...teams, ...extraTeams] });
+    expect(managerOf(result, 'pm-2').departments.map((d) => d.code)).toEqual(['DEPT-011', 'DEPT-002', 'DEPT-014']);
+  });
+
+  it('lists the Unassigned departments in code order after the owner-ordered ones', () => {
+    const extraDepartments = [{ code: 'DEPT-098', name: 'Another New Department', floorNumber: 22, ...live }];
+    const extraTeams = [{ code: 'TEAM-098', name: 'TEAM-098', departmentCode: 'DEPT-098', ...live }];
+    const result = build({ departments: [...departments, ...extraDepartments], teams: [...teams, ...extraTeams] });
+    expect(managerOf(result, 'unassigned').departments.map((d) => d.code)).toEqual(['DEPT-098', 'DEPT-099']);
+  });
+
   it('carries the named leaders from odcLeadership and leaves the other seats TBD', () => {
     const result = build();
     expect(result.deliveryManager.name).toBe('Mohammed Ibrahim S');
@@ -72,13 +92,15 @@ describe('buildOrgStructure', () => {
     expect(managerOf(result, 'pm-2').name).toBe('TBD');
   });
 
-  it('has six project managers: Configuration alone under 3, Development and System Administration under Karthikeyan Rajendran as 4', () => {
-    expect(ODC_PROJECT_MANAGERS.map((manager) => manager.id)).toEqual(['pm-1', 'pm-2', 'pm-3', 'pm-4', 'pm-5', 'pm-6']);
+  it('has seven project managers: Configuration alone under 3, Development and System Administration under Karthikeyan Rajendran as 4', () => {
+    expect(ODC_PROJECT_MANAGERS.map((manager) => manager.id)).toEqual(['pm-1', 'pm-2', 'pm-3', 'pm-4', 'pm-5', 'pm-6', 'pm-7']);
     const byId = Object.fromEntries(ODC_PROJECT_MANAGERS.map((manager) => [manager.id, manager]));
+    expect(byId['pm-2'].departmentCodes).toEqual(['DEPT-014', 'DEPT-002', 'DEPT-011']);
     expect(byId['pm-3'].departmentCodes).toEqual(['DEPT-009']);
     expect(byId['pm-4']).toMatchObject({ name: 'Karthikeyan Rajendran', departmentCodes: ['DEPT-003', 'DEPT-012'] });
-    expect(byId['pm-5'].departmentCodes).toEqual(['DEPT-004', 'DEPT-010', 'DEPT-011']);
-    expect(byId['pm-6'].departmentCodes).toEqual(['DEPT-008', 'DEPT-005', 'DEPT-013']);
+    expect(byId['pm-5'].departmentCodes).toEqual(['DEPT-004']);
+    expect(byId['pm-6'].departmentCodes).toEqual(['DEPT-008', 'DEPT-010']);
+    expect(byId['pm-7'].departmentCodes).toEqual(['DEPT-005', 'DEPT-013']);
     const all = ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes);
     expect(new Set(all).size).toBe(all.length);
   });
