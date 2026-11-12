@@ -8,7 +8,7 @@ import styles from './OrganizationStructure.module.css';
 
 // Mounted only while its department is selected (keyed by code), so mounting
 // is "open": the section scrolls into view under the department cards.
-function DepartmentDetail({ department }) {
+function DepartmentDetail({ department, onOpenTeam }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ function DepartmentDetail({ department }) {
                   </div>
                   <ul className={styles.teams}>
                     {lead.teams.map((team) => (
-                      <TeamCard key={team.code} team={team} />
+                      <TeamCard key={team.code} team={team} onOpen={onOpenTeam} />
                     ))}
                   </ul>
                 </div>
@@ -88,6 +88,7 @@ DepartmentDetail.propTypes = {
       })
     ).isRequired,
   }).isRequired,
+  onOpenTeam: PropTypes.func.isRequired,
 };
 
 export default DepartmentDetail;

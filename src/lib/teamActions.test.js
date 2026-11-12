@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRecord, deleteRecord, updateRecord } from './masterDataApi';
-import { assignSeat, dayBefore, deleteProjectAssignment, isModuleLeadSeat, latestSeatedEnd, unassignSeat } from './teamActions';
+import { assignSeat, dayBefore, deleteProjectAssignment, isModuleLeadSeat, latestSeatedEnd, remainingAllocation, unassignSeat } from './teamActions';
 
 vi.mock('./masterDataApi', () => ({ createRecord: vi.fn(), updateRecord: vi.fn(), deleteRecord: vi.fn() }));
 
@@ -77,5 +77,24 @@ describe('deleteProjectAssignment', () => {
     expect(updateRecord).toHaveBeenCalledWith('project-assignments', 'A', { projectAssignmentEndDate: '2026-10-14' });
     deleteProjectAssignment({ id: 'B', start: '2026-10-15' }, '2026-10-14', '2026-10-15');
     expect(deleteRecord).toHaveBeenCalledWith('project-assignments', 'B');
+  });
+});
+
+describe('remainingAllocation', () => {
+  const project = (start, end, allocationPercentage) => ({ start, end, allocationPercentage });
+
+  it('is 100 when no project runs that day', () => {
+    expect(remainingAllocation([], '2026-10-15')).toBe(100);
+    expect(remainingAllocation([project('2026-11-01', '2026-12-31', 60)], '2026-10-15')).toBe(100);
+  });
+
+  it('takes away the projects running that day, both ends included', () => {
+    const projects = [project('2026-09-01', '2026-10-15', 25), project('2026-10-15', '2026-12-31', 33.33), project('2026-09-01', '2026-10-14', 40)];
+    expect(remainingAllocation(projects, '2026-10-15')).toBe(41.67);
+  });
+
+  it('counts a project with no percentage as 100 and never goes below 0', () => {
+    expect(remainingAllocation([project('2026-09-01', '2026-12-31')], '2026-10-15')).toBe(0);
+    expect(remainingAllocation([project('2026-09-01', '2026-12-31', 80), project('2026-09-01', '2026-12-31', 80)], '2026-10-15')).toBe(0);
   });
 });

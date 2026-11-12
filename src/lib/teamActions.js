@@ -42,6 +42,15 @@ export function unassignSeat(seat, today) {
   return updateRecord(DEPLOYMENTS, seat.deploymentId, { endDate: dayBefore(today) });
 }
 
+// What is left of the team on `day`, in percent, after the projects running that day.
+// A starting figure for the Add form: the server checks the whole period.
+export function remainingAllocation(projects, day) {
+  const taken = projects
+    .filter((project) => project.start <= day && project.end >= day)
+    .reduce((sum, project) => sum + (project.allocationPercentage ?? 100), 0);
+  return Math.max(0, Math.round((100 - taken) * 100) / 100);
+}
+
 export function deleteProjectAssignment(project, endDate, today) {
   if (project.start >= today) return deleteRecord(ASSIGNMENTS, project.id);
   if (endDate > project.end) throw new Error(`The end date cannot be later than the project's end, ${project.end}.`);

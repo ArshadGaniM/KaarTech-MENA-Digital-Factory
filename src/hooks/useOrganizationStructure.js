@@ -21,10 +21,11 @@ async function loadOrgStructure() {
   return buildOrgStructure({ departments, teams, positions, competencies, practices, deployments });
 }
 
-// Returns { data, isLoading, error }. If a refresh fails the last data stays
-// on screen and `error` says the latest try failed.
+// Returns { data, isLoading, error, updatedAt }. If a refresh fails the last data
+// stays on screen and `error` says the latest try failed. `updatedAt` is when the
+// data last loaded, so an open team popup knows to refetch.
 export function useOrganizationStructure() {
-  const [state, setState] = useState({ data: null, error: null });
+  const [state, setState] = useState({ data: null, error: null, updatedAt: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +38,7 @@ export function useOrganizationStructure() {
       const request = ++latest;
       return loadOrgStructure()
         .then((data) => {
-          if (!cancelled && request === latest) setState({ data, error: null });
+          if (!cancelled && request === latest) setState({ data, error: null, updatedAt: new Date() });
         })
         .catch((error) => {
           if (!cancelled && request === latest) setState((prev) => ({ ...prev, error }));
@@ -61,5 +62,5 @@ export function useOrganizationStructure() {
     };
   }, []);
 
-  return { data: state.data, error: state.error, isLoading: state.data === null && state.error === null };
+  return { data: state.data, error: state.error, updatedAt: state.updatedAt, isLoading: state.data === null && state.error === null };
 }

@@ -111,6 +111,7 @@ FieldControl.propTypes = {
     integer: PropTypes.bool,
     min: PropTypes.number,
     max: PropTypes.number,
+    defaultValue: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     values: PropTypes.arrayOf(PropTypes.string),
     references: PropTypes.shape({ table: PropTypes.string, route: PropTypes.string }),
   }).isRequired,
@@ -223,7 +224,7 @@ function RecordFormModal({ route, singularLabel, labelByKey, record, onClose, on
   // (even an edit to ''), otherwise the record's own value (edit mode) or
   // empty (add mode).
   function valueOf(field) {
-    return values[field.key] ?? (isEdit ? formValueOf(record, field) : String(initialValues[field.key] ?? ''));
+    return values[field.key] ?? (isEdit ? formValueOf(record, field) : String(initialValues[field.key] ?? field.defaultValue ?? ''));
   }
 
   // The caller-supplied identity (e.g. employeeId, projectId) is the row's

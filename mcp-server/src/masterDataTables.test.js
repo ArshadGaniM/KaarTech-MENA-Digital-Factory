@@ -259,14 +259,23 @@ function projectAssignmentTable() {
   return table;
 }
 
-test("project_assignment's writable fields are exactly projectId/teamId/projectAssignmentStartDate/projectAssignmentEndDate", () => {
+test("project_assignment's writable fields are exactly projectId/teamId/projectAssignmentStartDate/projectAssignmentEndDate/allocationPercentage", () => {
   const fieldKeys = projectAssignmentTable().fields.map((f) => f.key).sort();
   assert.deepEqual(fieldKeys, [
+    "allocationPercentage",
     "projectAssignmentEndDate",
     "projectAssignmentStartDate",
     "projectId",
     "teamId",
   ]);
+});
+
+test("project_assignment's allocationPercentage is an optional number whose label explains the 100 a day limit and the default", () => {
+  const field = projectAssignmentTable().fields.find((f) => f.key === "allocationPercentage");
+  assert.equal(field.type, "number");
+  assert.equal(field.required, false);
+  assert.match(field.label, /more than 100/);
+  assert.match(field.label, /Left out, it is 100/);
 });
 
 test("project_assignment never exposes projectName/projectProfitCenterCode/teamName/departmentId/departmentName as writable MCP fields (live lookups only)", () => {

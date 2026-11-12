@@ -40,7 +40,7 @@ function DeleteAssignmentForm({ project, onSaved, onCancel }) {
       <p className={styles.dialogLine}>
         <strong>{project.projectName ?? project.projectId}</strong>
         <span className={styles.rowMeta}>
-          {formatDay(project.start)} to {formatDay(project.end)}
+          {formatDay(project.start)} to {formatDay(project.end)}, allocation {project.allocationPercentage ?? 100}%
         </span>
       </p>
       {notStarted ? (
@@ -88,6 +88,7 @@ DeleteAssignmentForm.propTypes = {
     projectName: PropTypes.string,
     start: PropTypes.string.isRequired,
     end: PropTypes.string.isRequired,
+    allocationPercentage: PropTypes.number,
   }).isRequired,
   onSaved: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

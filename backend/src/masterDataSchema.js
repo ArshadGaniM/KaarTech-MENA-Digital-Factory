@@ -64,7 +64,7 @@ export function toResponse(table, row) {
   }
   if (table.allocationRule) {
     // Only present on rows from the router's own SELECT (see allocationSelectSql).
-    response.employeeTotalAllocation =
+    response[table.allocationRule.totalKey ?? "employeeTotalAllocation"] =
       row.employee_total_allocation != null ? Number(row.employee_total_allocation) : null;
   }
   // A lookup column is only present on rows the router's own SELECT
@@ -278,42 +278,10 @@ export function validateActor(actor) {
   }
 }
 
-// Rejects a row whose date range shares a day with another live row of the same
-// group (a team may not have two project assignments on the same day). Both
-// ends are inclusive, so one ending on 5 Dec clashes with one starting on 5 Dec.
-// `candidate` is keyed by column name; `excludeId` is the row being edited.
-export async function validateOverlap(pool, table, candidate, excludeId = null) {
-  const rule = table.overlapRule;
-  if (!rule) return;
-  const start = candidate[rule.startColumn];
-  const end = candidate[rule.endColumn];
-  if (start == null || end == null) return;
-  const { rows } = await pool.query(
-    `select ${rule.startColumn}::text as start, ${rule.endColumn}::text as "end"
-     from ${table.tableName}
-     where ${rule.groupColumn} = $1 and deleted_at is null and ($2::uuid is null or id <> $2::uuid)
-       and ${rule.startColumn} <= $4::date and ${rule.endColumn} >= $3::date
-     order by ${rule.startColumn} limit 1`,
-    [candidate[rule.groupColumn], excludeId, start, end]
-  );
-  if (rows.length > 0) {
-    throw validationError({
-      [rule.startKey]: `${rule.groupLabel} ${candidate[rule.groupColumn]} already has an assignment from ${rows[0].start} to ${rows[0].end}. Assignments of one team cannot share a day.`,
-    });
-  }
-}
-
-// The rules a write must pass inside the group lock: the allocation total (a
-// resource) and the no-overlap dates (a team). A table has at most one of them.
-export async function validateGroupRules(db, table, candidate, excludeId = null) {
-  await validateAllocation(db, table, candidate, excludeId);
-  await validateOverlap(db, table, candidate, excludeId);
-}
-
-// A resource's allocation total across its live rows that are deployed today
-// (start date on or before today, end date on or after), selected next to each
-// row so the table shows when a resource is short of the target. A row that has
-// ended or not started yet does not count: that person is TBD.
+// A group's (a resource's, or a team's) allocation total across its live rows that
+// run today (start date on or before today, end date on or after), selected next to
+// each row so the table shows when a group is short of the target. A row that has
+// ended or not started yet does not count.
 export function allocationSelectSql(table) {
   const rule = table.allocationRule;
   if (!rule) return [];
@@ -336,8 +304,8 @@ export function dayOf(value) {
   return text.slice(0, 10);
 }
 
-// Rejects a row that would push its group (resource) past the rule's total on
-// any day, or hold a unique value (position) twice on one day. Only rows that
+// Rejects a row that would push its group (a resource, or a team) past the rule's
+// total on any day, or hold a unique value (a position, or a project) twice on one day. Only rows that
 // share a day with the candidate count, so 100% until 31 Dec and another 100%
 // from 1 Jan is allowed. The most that is allocated on one day is found at the
 // candidate's first day or at the day another overlapping row starts.

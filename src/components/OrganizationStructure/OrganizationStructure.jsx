@@ -5,16 +5,20 @@ import LeaderBand from './LeaderBand';
 import ManagerCard from './ManagerCard';
 import OrgTree from './OrgTree';
 import SeatShareBar from './SeatShareBar';
+import TeamDialog from '../ControlCenter/TeamDialog';
 import { useOrganizationStructure } from '../../hooks/useOrganizationStructure';
+import { currentMonth } from '../../lib/months';
 import styles from './OrganizationStructure.module.css';
 
 function OrganizationStructure() {
-  const { data, isLoading, error } = useOrganizationStructure();
+  const { data, isLoading, error, updatedAt } = useOrganizationStructure();
   // undefined: nothing picked yet, so the first manager shows. null: the picked manager was toggled off.
   const [selectedId, setSelectedId] = useState(undefined);
   const [query, setQuery] = useState('');
   const [openCode, setOpenCode] = useState(null);
   const [view, setView] = useState('cards');
+  // The team popup: the same one the Control Center opens. It opens on the current month.
+  const [openTeam, setOpenTeam] = useState(null);
 
   if (isLoading) {
     return (
@@ -133,8 +137,17 @@ function OrganizationStructure() {
               ))}
             </div>
           )}
-          {openDepartment && <DepartmentDetail key={openDepartment.code} department={openDepartment} />}
+          {openDepartment && (
+            <DepartmentDetail
+              key={openDepartment.code}
+              department={openDepartment}
+              onOpenTeam={(code) => setOpenTeam({ code, month: currentMonth() })}
+            />
+          )}
         </>
+      )}
+      {openTeam && (
+        <TeamDialog code={openTeam.code} month={openTeam.month} updatedAt={updatedAt} pageError={error} onClose={() => setOpenTeam(null)} />
       )}
     </section>
   );

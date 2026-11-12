@@ -620,3 +620,83 @@ test("the loader reads each deployment's start and end date as text, so the read
   assert.match(deploymentSql, /rd\.start_date::text as start/);
   assert.match(deploymentSql, /rd\.end_date::text as "end"/);
 });
+
+// A team on several projects at once, each with its own allocation percentage.
+// TEAM-001 has 240 allocated hours and a monthly cost of $2,375.00 in these tests.
+const onProject = (id, allocationPercentage, start, end) => ({
+  id, projectId: `P-${id}`, projectName: `Project ${id}`, teamCode: "TEAM-001", start, end, allocationPercentage,
+});
+
+test("two projects at 25% each for the whole month are 50% utilized, and each project carries its own share of hours and cost", () => {
+  const detail = detailOf({ assignments: [onProject("A", 25, "2026-10-01", "2026-10-31"), onProject("B", 25, "2026-10-01", "2026-10-31")] });
+
+  assert.equal(detail.allocatedHours, 240);
+  assert.equal(detail.utilizedHours, 120);
+  assert.equal(detail.status, "partial");
+  assert.equal(detail.monthlyPlan.months[0].utilizationPercent, 50);
+  assert.equal(detail.monthlyPlan.totalCost, 1187.5);
+  assert.deepEqual(
+    detail.projects.map(({ id, allocationPercentage, utilizedHours, utilizedMonthlyCost, utilizedTotalCost }) => ({ id, allocationPercentage, utilizedHours, utilizedMonthlyCost, utilizedTotalCost })),
+    [
+      { id: "A", allocationPercentage: 25, utilizedHours: 60, utilizedMonthlyCost: 593.75, utilizedTotalCost: 593.75 },
+      { id: "B", allocationPercentage: 25, utilizedHours: 60, utilizedMonthlyCost: 593.75, utilizedTotalCost: 593.75 },
+    ]
+  );
+});
+
+test("a project's total cost adds its share of every month it runs, a part month counting by days", () => {
+  // 50% from 1 Oct to 15 Nov: October is half the monthly cost, November 15 of 30 days at half.
+  const detail = detailOf({ assignments: [onProject("A", 50, "2026-10-01", "2026-11-15")] });
+  const [project] = detail.projects;
+
+  assert.equal(project.utilizedMonthlyCost, 1187.5);
+  assert.equal(project.utilizedTotalCost, 1781.25);
+  assert.equal(project.utilizedTotalTruncated, false);
+  assert.equal(detail.monthlyPlan.totalCost, 1781.25);
+});
+
+test("a project that runs only part of the viewed month is scaled by those days as well as by its percentage", () => {
+  // 40% for 16 of the 31 days of October.
+  const [project] = detailOf({ assignments: [onProject("A", 40, "2026-10-16", "2026-10-31")] }).projects;
+  assert.equal(project.utilizedHours, round(240 * 0.4 * (16 / 31), 1));
+  assert.equal(project.utilizedMonthlyCost, round(2375 * 0.4 * (16 / 31), 2));
+});
+
+test("an assignment with no allocation percentage counts as 100%, so a backend that predates it keeps its numbers", () => {
+  const legacy = { id: "A", projectId: "P-A", projectName: "Old", teamCode: "TEAM-001", start: "2026-10-01", end: "2026-10-31" };
+  const detail = detailOf({ assignments: [legacy] });
+
+  assert.equal(detail.utilizedHours, 240);
+  assert.equal(detail.status, "full");
+  assert.equal(detail.projects[0].allocationPercentage, 100);
+});
+
+test("the team's assignment end date is the latest end among the projects running today", () => {
+  const detail = detailOf({ assignments: [onProject("A", 50, "2026-10-01", "2026-10-20"), onProject("B", 50, "2026-10-01", "2026-12-31")] });
+  assert.equal(detail.assignmentEndDate, "2026-12-31");
+});
+
+test("a floor card counts a team on two 25% projects as half utilized", () => {
+  const result = buildControlCenter({
+    ...base,
+    assignments: [onProject("A", 25, "2026-10-01", "2026-10-31"), onProject("B", 25, "2026-10-01", "2026-10-31")],
+    ...costInputs,
+  });
+  const team = teamOf(result, "TEAM-001");
+  assert.equal(team.monthCoveragePercent, 50);
+  assert.equal(team.utilizedHours, team.allocatedHours / 2);
+});
+
+test("the loader reads each assignment's allocation percentage as a number", async () => {
+  const sqls = [];
+  await loadControlCenterRows(async (sql) => {
+    sqls.push(sql);
+    return { rows: [] };
+  });
+  assert.match(sqls.find((sql) => sql.includes("from project_assignments pa")), /pa\.allocation_percentage::float as "allocationPercentage"/);
+});
+
+function round(value, places) {
+  const factor = 10 ** places;
+  return Math.round(value * factor) / factor;
+}

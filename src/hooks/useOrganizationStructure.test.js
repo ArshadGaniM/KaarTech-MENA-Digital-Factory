@@ -49,6 +49,21 @@ describe('useOrganizationStructure', () => {
     expect(result.current.data.projectManagers).toEqual([]);
   });
 
+  it('says when the data last loaded, so an open team popup can refetch, and moves it on every reload', async () => {
+    vi.setSystemTime(new Date('2026-11-12T09:00:00Z'));
+    const { result } = renderHook(() => useOrganizationStructure());
+    expect(result.current.updatedAt).toBeNull();
+    await act(async () => {});
+    expect(result.current.updatedAt).toEqual(new Date('2026-11-12T09:00:00Z'));
+
+    // The 30 second poll reloads, and the clock moves 30 seconds with it.
+    vi.setSystemTime(new Date('2026-11-12T09:00:10Z'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(result.current.updatedAt).toEqual(new Date('2026-11-12T09:00:40Z'));
+  });
+
   it('works when the browser has no EventSource', async () => {
     vi.unstubAllGlobals();
     const { result } = renderHook(() => useOrganizationStructure());

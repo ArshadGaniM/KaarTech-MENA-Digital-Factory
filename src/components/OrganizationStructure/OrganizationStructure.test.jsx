@@ -2,6 +2,17 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OrganizationStructure from './OrganizationStructure';
+import { currentMonth } from '../../lib/months';
+
+// The real popup is tested with the Control Center. Here it only has to be opened with the right props.
+vi.mock('../ControlCenter/TeamDialog', () => ({
+  default: ({ code, month, updatedAt, pageError, onClose }) => (
+    <div role="dialog" aria-label={`popup ${code}`}>
+      <span>{`${month} ${updatedAt instanceof Date ? 'date' : 'no date'} ${pageError ? 'error' : 'ok'}`}</span>
+      <button type="button" onClick={onClose}>close popup</button>
+    </div>
+  ),
+}));
 
 const live = { markedDeleted: 'No' };
 const ROWS = {
@@ -128,6 +139,41 @@ describe('OrganizationStructure', () => {
     expect(within(team).getByText('1 of 5 seats filled')).toBeInTheDocument();
     expect(within(team).getByText('Consultants').nextSibling).toHaveTextContent('2');
     expect(within(team).getByText('Other').nextSibling).toHaveTextContent('1');
+  });
+
+  it('opens the same team popup as the Control Center from a team card, on the current month, and closes it', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
+    await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
+
+    await user.click(screen.getByRole('button', { name: 'TEAM-001, TEAM-001. Open details' }));
+
+    const popup = screen.getByRole('dialog', { name: 'popup TEAM-001' });
+    expect(popup).toHaveTextContent(`${currentMonth()} date ok`);
+    await user.click(within(popup).getByRole('button', { name: 'close popup' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('opens the popup when the card itself is clicked, not only its name', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
+    await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
+
+    await user.click(screen.getByText('1 of 5 seats filled'));
+
+    expect(screen.getByRole('dialog', { name: 'popup TEAM-001' })).toBeInTheDocument();
+  });
+
+  it('opens a different team in the popup when another card is clicked after closing', async () => {
+    const user = await renderLoaded();
+    await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
+    await user.click(screen.getByRole('button', { name: /Configuration Services/ }));
+    await user.click(screen.getByRole('button', { name: 'TEAM-001, TEAM-001. Open details' }));
+    await user.click(screen.getByRole('button', { name: 'close popup' }));
+
+    await user.click(screen.getByRole('button', { name: 'TEAM-002, TEAM-002. Open details' }));
+
+    expect(screen.getByRole('dialog', { name: 'popup TEAM-002' })).toBeInTheDocument();
   });
 
   it('marks a Module Lead seat that nobody holds as empty under TBD', async () => {
