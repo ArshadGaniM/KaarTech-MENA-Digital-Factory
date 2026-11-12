@@ -176,6 +176,20 @@ describe('OrganizationStructure', () => {
     expect(screen.getByRole('dialog', { name: 'popup TEAM-002' })).toBeInTheDocument();
   });
 
+  it('offers three views, Cards, Layers and Tree, and shows the Tree as a hierarchy that opens the team popup', async () => {
+    const user = await renderLoaded();
+    const views = within(screen.getByRole('group', { name: 'View' })).getAllByRole('button');
+    expect(views.map((button) => button.textContent)).toEqual(['Cards', 'Layers', 'Tree']);
+
+    await user.click(screen.getByRole('button', { name: 'Tree' }));
+    expect(screen.getByRole('button', { name: 'Tree' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('list', { name: 'Organization tree' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await user.click(screen.getByRole('button', { name: 'TEAM-001, TEAM-001. Open details' }));
+    expect(screen.getByRole('dialog', { name: 'popup TEAM-001' })).toBeInTheDocument();
+  });
+
   it('marks a Module Lead seat that nobody holds as empty under TBD', async () => {
     const user = await renderLoaded();
     await user.click(screen.getByRole('button', { name: /Manager 3 Name TBD/ }));
@@ -314,7 +328,7 @@ describe('OrganizationStructure', () => {
 describe('OrganizationStructure tree view', () => {
   const openTree = async () => {
     const user = await renderLoaded();
-    await user.click(screen.getByRole('button', { name: 'Tree' }));
+    await user.click(screen.getByRole('button', { name: 'Layers' }));
     return user;
   };
   const NAMES = { 2: 'Name TBD', 3: 'Name TBD' };
@@ -323,7 +337,7 @@ describe('OrganizationStructure tree view', () => {
   it('starts on Cards and switches to a tree headed by the Delivery Manager and the managers', async () => {
     const user = await openTree();
 
-    expect(screen.getByRole('button', { name: 'Tree' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Layers' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Cards' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByText(/Layer 1/)).toHaveTextContent('ODC Delivery Manager');
     expect(screen.queryByRole('region', { name: 'ODC Delivery Manager' })).not.toBeInTheDocument();

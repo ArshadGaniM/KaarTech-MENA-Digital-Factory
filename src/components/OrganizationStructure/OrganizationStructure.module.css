@@ -1013,3 +1013,186 @@
     padding-left: 24px;
   }
 }
+
+/* Tree view: a top-down hierarchy chart. Each level is a row of boxes joined by lines. */
+.hier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hierTools {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.hierTools button {
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.hierScroll {
+  overflow-x: auto;
+  padding: var(--space-2) var(--space-1) var(--space-3);
+}
+
+.hierTree,
+.hierTree ul {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hierTree {
+  width: max-content;
+  min-width: 100%;
+}
+
+.hierTree ul {
+  position: relative;
+  padding-top: 24px;
+}
+
+.hierTree li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 8px 0;
+}
+
+.hierTree > li {
+  padding-top: 0;
+}
+
+.hierTree li::before,
+.hierTree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.hierTree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1px solid var(--color-border);
+}
+
+.hierTree > li::before,
+.hierTree > li::after,
+.hierTree li:only-child::before,
+.hierTree li:only-child::after {
+  display: none;
+}
+
+.hierTree li:only-child {
+  padding-top: 24px;
+}
+
+.hierTree > li:only-child {
+  padding-top: 0;
+}
+
+.hierTree li:first-child::before,
+.hierTree li:last-child::after {
+  border: 0 none;
+}
+
+.hierTree li:last-child::before {
+  border-right: 1px solid var(--color-border);
+  border-radius: 0 6px 0 0;
+}
+
+.hierTree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+.hierTree ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 24px;
+  border-left: 1px solid var(--color-border);
+}
+
+.hierBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 190px;
+  padding: 8px 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.hierBox:disabled {
+  cursor: default;
+  color: var(--color-text);
+}
+
+.hierBox:not(:disabled):hover {
+  border-color: var(--color-primary);
+}
+
+.hier_leader {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.hier_leader:disabled {
+  color: var(--color-on-primary);
+}
+
+.hier_manager {
+  border-color: var(--color-primary);
+}
+
+.hierTeam {
+  background: var(--color-bg-alt);
+}
+
+.hierLabel {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.hierTitle {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.hierMeta {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.hierCount {
+  align-self: flex-end;
+  font-size: 12px;
+  font-weight: 700;
+}

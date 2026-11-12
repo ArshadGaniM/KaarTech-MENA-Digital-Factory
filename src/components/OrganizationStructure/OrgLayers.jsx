@@ -20,7 +20,7 @@ const allKeys = (manager) => new Set(manager.departments.flatMap((department) =>
 // then for the picked manager its departments, practices, Module Leads and
 // teams. A team under No practice or a seat with no Module Lead shows as the
 // builder grouped it.
-function OrgTree({ leader, managers, selected, onSelect }) {
+function OrgLayers({ leader, managers, selected, onSelect }) {
   // Open state belongs to the picked manager. Picking any manager starts from the default.
   const [expansion, setExpansion] = useState({ managerId: null, keys: new Set() });
   const keys = expansion.managerId === selected.id ? expansion.keys : defaultOpen(selected);
@@ -153,7 +153,7 @@ function OrgTree({ leader, managers, selected, onSelect }) {
   );
 }
 
-OrgTree.propTypes = {
+OrgLayers.propTypes = {
   leader: PropTypes.shape({ title: PropTypes.string, name: PropTypes.string }).isRequired,
   managers: PropTypes.arrayOf(PropTypes.object).isRequired,
   selected: PropTypes.shape({
@@ -164,4 +164,4 @@ OrgTree.propTypes = {
   onSelect: PropTypes.func.isRequired,
 };
 
-export default OrgTree;
+export default OrgLayers;

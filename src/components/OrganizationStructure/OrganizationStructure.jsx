@@ -3,12 +3,15 @@ import DepartmentDetail from './DepartmentDetail';
 import DepartmentTile from './DepartmentTile';
 import LeaderBand from './LeaderBand';
 import ManagerCard from './ManagerCard';
-import OrgTree from './OrgTree';
+import OrgHierarchy from './OrgHierarchy';
+import OrgLayers from './OrgLayers';
 import SeatShareBar from './SeatShareBar';
 import TeamDialog from '../ControlCenter/TeamDialog';
 import { useOrganizationStructure } from '../../hooks/useOrganizationStructure';
 import { currentMonth } from '../../lib/months';
 import styles from './OrganizationStructure.module.css';
+
+const VIEW_LABELS = { cards: 'Cards', layers: 'Layers', tree: 'Tree' };
 
 function OrganizationStructure() {
   const { data, isLoading, error, updatedAt } = useOrganizationStructure();
@@ -62,9 +65,9 @@ function OrganizationStructure() {
       )}
       <div className={styles.toolbar}>
         <div className={styles.viewSwitch} role="group" aria-label="View">
-          {['cards', 'tree'].map((name) => (
+          {['cards', 'layers', 'tree'].map((name) => (
             <button key={name} type="button" aria-pressed={view === name} onClick={() => setView(name)}>
-              {name === 'cards' ? 'Cards' : 'Tree'}
+              {VIEW_LABELS[name]}
             </button>
           ))}
         </div>
@@ -85,7 +88,9 @@ function OrganizationStructure() {
       {managers.length === 0 ? (
         <p className={styles.empty}>No teams yet.</p>
       ) : view === 'tree' ? (
-        <OrgTree
+        <OrgHierarchy structure={data} onOpenTeam={(code) => setOpenTeam({ code, month: currentMonth() })} />
+      ) : view === 'layers' ? (
+        <OrgLayers
           leader={data.deliveryManager}
           managers={managers}
           selected={selected ?? managers[0]}

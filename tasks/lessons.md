@@ -74,3 +74,6 @@ The owner gave this on 31 October 2026 and asked for it to be used. It is stored
 
 ### Standing yes for safe migrations (owner, 1 Nov 2026)
 The owner asked, in their own words, for a standing yes for safe migrations, after being asked why each one needed approval. The rule is in CLAUDE.md §21 step 1. Safe means add-only, with any fill touching only the new column, checked against live data, one transaction or a written reverse statement. A migration that drops, replaces, renames, deletes, or changes stored values still needs a yes each time. The owner can withdraw the standing yes at any point.
+
+### Migration 0041 approved (owner, 12 Nov 2026)
+The owner said yes to migration 0041 (drops `ex_project_assignments_team_no_overlap`, so a team may be on several projects at once) in reply to a screenshot of the question. It is not a safe migration under CLAUDE.md §21, so this yes covers 0041 only. Apply 0040, then 0041, before the backend that relies on them deploys.
