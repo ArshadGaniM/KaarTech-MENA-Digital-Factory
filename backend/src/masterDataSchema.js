@@ -114,8 +114,9 @@ export function validateBody(table, body, { partial = false } = {}) {
 
     const value = safeBody[field.key];
     // A non-required field sent as null is an explicit "clear this" —
-    // valid, not a type error. A required field can never be nulled.
-    if (value === null && !field.required) continue;
+    // valid, not a type error. A required field can never be nulled, and neither
+    // can a field that is `nullable: false` (it has a default and a NOT NULL column).
+    if (value === null && !field.required && field.nullable !== false) continue;
 
     if (field.type === "number") {
       if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -126,6 +127,10 @@ export function validateBody(table, body, { partial = false } = {}) {
         details[field.key] = `${field.key} must be at least ${field.min}.`;
       } else if (field.max !== undefined && value > field.max) {
         details[field.key] = `${field.key} must be at most ${field.max}.`;
+      } else if (field.decimals !== undefined && Math.abs(value * 10 ** field.decimals - Math.round(value * 10 ** field.decimals)) > 1e-7) {
+        // The column stores this many decimals and rounds the rest, which the
+        // allocation total would then not match.
+        details[field.key] = `${field.key} must have at most ${field.decimals} decimal places.`;
       }
       continue;
     }

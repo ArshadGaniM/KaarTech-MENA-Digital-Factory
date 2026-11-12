@@ -807,3 +807,13 @@ test("validateBody rejects a date that is not a real calendar day, such as 30 Fe
   assert.doesNotThrow(() => validateBody(table, { d: "2028-02-29" }));
   assert.throws(() => validateBody(table, { d: "2027-02-29" }), (err) => Boolean(err.details.d));
 });
+
+test("validateBody rejects null for a field marked nullable: false, and more decimals than the field stores", () => {
+  const table = { fields: [{ key: "pct", column: "pct", required: false, nullable: false, type: "number", decimals: 2, min: 0.01, max: 100 }] };
+  assert.throws(() => validateBody(table, { pct: null }, { partial: true }), (err) => /must be a number/.test(err.details.pct));
+  assert.throws(() => validateBody(table, { pct: 33.333 }), (err) => /at most 2 decimal places/.test(err.details.pct));
+  assert.throws(() => validateBody(table, { pct: 99.995 }), (err) => /at most 2 decimal places/.test(err.details.pct));
+  for (const ok of [33.33, 0.01, 100, 12.5, 25]) assert.doesNotThrow(() => validateBody(table, { pct: ok }), String(ok));
+  // Without the flag a null still clears an optional field.
+  assert.doesNotThrow(() => validateBody({ fields: [{ key: "n", column: "n", required: false, type: "number" }] }, { n: null }));
+});

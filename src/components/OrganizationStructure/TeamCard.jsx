@@ -5,7 +5,6 @@ import styles from './OrganizationStructure.module.css';
 // and a click anywhere else on the card reaches the same handler.
 function TeamCard({ team, onOpen }) {
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- the name button inside is the keyboard way in
     <li className={`${styles.team} ${styles.teamClickable}`} onClick={() => onOpen(team.code)}>
       <div className={styles.teamTop}>
         <button type="button" className={styles.teamOpen} aria-label={`${team.name}, ${team.code}. Open details`}>

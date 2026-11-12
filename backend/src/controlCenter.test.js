@@ -696,6 +696,25 @@ test("the loader reads each assignment's allocation percentage as a number", asy
   assert.match(sqls.find((sql) => sql.includes("from project_assignments pa")), /pa\.allocation_percentage::float as "allocationPercentage"/);
 });
 
+test("a month cannot pass 100% utilized even if the saved percentages add up to more than 100", () => {
+  const detail = detailOf({ assignments: [onProject("A", 100, "2026-10-01", "2026-10-31"), onProject("B", 100, "2026-10-01", "2026-10-31")] });
+  assert.equal(detail.monthlyPlan.months[0].utilizationPercent, 100);
+  assert.equal(detail.utilizedHours, detail.allocatedHours);
+});
+
+test("a project that runs more than 120 months is cut there and says so, and a shorter one does not", () => {
+  const long = detailOf({ assignments: [onProject("A", 50, "2026-10-01", "2040-12-31")] });
+  assert.equal(long.projects[0].utilizedTotalTruncated, true);
+  assert.equal(long.monthlyPlan.truncated, true);
+  assert.equal(long.monthlyPlan.months.length, 120);
+  // 120 months of half the monthly cost.
+  assert.equal(long.projects[0].utilizedTotalCost, round(120 * 2375 * 0.5, 2));
+
+  const short = detailOf({ assignments: [onProject("A", 50, "2026-10-01", "2027-09-30")] });
+  assert.equal(short.projects[0].utilizedTotalTruncated, false);
+  assert.equal(short.projects[0].utilizedTotalCost, round(12 * 2375 * 0.5, 2));
+});
+
 function round(value, places) {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;

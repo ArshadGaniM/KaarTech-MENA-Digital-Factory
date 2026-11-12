@@ -1079,6 +1079,16 @@ describe('TeamDialog', () => {
       expect(passed.initialValues.allocationPercentage).toBe(25);
     });
 
+    it('starts the Add form with the percentage empty in a month other than the current one, where the list may miss projects running today', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue({ data: { ...detail, month: '2026-11', projects: [] }, isLoading: false, error: null });
+      render(<TeamDialog {...props} month="2026-11" />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Project Assignment' }));
+      const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form add' })).getByText(/route/).textContent);
+      expect(passed.initialValues.allocationPercentage).toBe('');
+    });
+
     it('starts the Add form with the percentage empty when nothing is left', async () => {
       const user = userEvent.setup();
       useTeamDetail.mockReturnValue({ data: { ...detail, projects: [{ ...twoProjects[0], allocationPercentage: 100 }] }, isLoading: false, error: null });
@@ -1108,6 +1118,32 @@ describe('TeamDialog', () => {
       await user.click(screen.getByRole('button', { name: 'Previous month' }));
       await user.click(screen.getByRole('button', { name: 'Previous month' }));
       expect(useTeamDetail).toHaveBeenLastCalledWith('TEAM-001', '2026-09', expect.any(String));
+    });
+
+    it('does not show the last month\'s figures under the new month while it loads, and says so when it fails', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Rollout')).toBeInTheDocument();
+
+      // The hook still holds October's team while November loads.
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: true, error: null });
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(screen.queryByText('Rollout')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+      expect(screen.getByLabelText('Month, November 2026')).toBeInTheDocument();
+
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: new Error('Backend unreachable') });
+      await user.click(screen.getByRole('button', { name: 'Previous month' }));
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+    });
+
+    it('shows the figures once the team for the picked month has arrived', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      useTeamDetail.mockReturnValue({ data: { ...detail, month: '2026-11', name: 'Alpha in November' }, isLoading: false, error: null });
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(screen.getByRole('heading', { name: 'Alpha in November' })).toBeInTheDocument();
     });
   });
 });

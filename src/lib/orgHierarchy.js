@@ -20,7 +20,7 @@ export function buildHierarchy(structure) {
     teamCode: t.code,
     children: [],
   });
-  const lead = (practice, l) => ({
+  const lead = (l) => ({
     key: l.key,
     kind: 'lead',
     label: 'Module Lead',
@@ -34,7 +34,7 @@ export function buildHierarchy(structure) {
     label: 'Practice',
     title: p.name,
     meta: `${seatsText(p.filled, p.seats)} · ${pluralize(p.teamCount, 'team')}`,
-    children: p.moduleLeads.map((l) => lead(p, l)),
+    children: p.moduleLeads.map(lead),
   });
   const department = (manager, d) => ({
     key: `${manager.id}/${d.code}`,

@@ -534,9 +534,11 @@ export const MASTER_DATA_TABLES = [
         key: "allocationPercentage",
         column: "allocation_percentage",
         required: false,
+        nullable: false,
         defaultValue: 100,
         type: "number",
         numeric: true,
+        decimals: 2,
         min: 0.01,
         max: 100,
       },
@@ -550,7 +552,7 @@ export const MASTER_DATA_TABLES = [
     // A team may be on several projects at once, but on any one day the live
     // assignments of the team may not add up to more than 100%, and it may not
     // hold the same project twice (both ends are inclusive). Checked under a
-    // per-team lock, with an exclusion constraint (migration 0041) behind the
+    // per-team lock, with an exclusion constraint (migration 0040) behind the
     // second part. Shown per row as teamTotalAllocation.
     allocationRule: {
       groupKey: "teamId",

@@ -159,23 +159,27 @@ const monthIndex = (isoDate) => {
 
 const monthOf = (index) => `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 
+// The months from `first` to `last` (month indexes), cut at MAX_PLAN_MONTHS.
+function planMonths(first, last) {
+  const count = Math.min(last - first + 1, MAX_PLAN_MONTHS);
+  return { months: Array.from({ length: count }, (_, offset) => monthOf(first + offset)), truncated: last - first + 1 > MAX_PLAN_MONTHS };
+}
+
 // One project's share of the figures, from its own allocation percentage: the
 // utilized hours and monthly cost in the viewed month, and the cost over every
 // month it runs (cut at MAX_PLAN_MONTHS, `truncated` says so).
 function projectPlan(assignment, viewedWindow, allocatedHours, allocatedTeamCost) {
   const viewedShare = coveredDays([assignment], viewedWindow) / viewedWindow.days;
-  const first = monthIndex(assignment.start);
-  const last = monthIndex(assignment.end);
-  let totalCost = 0;
-  for (let index = first; index <= Math.min(last, first + MAX_PLAN_MONTHS - 1); index += 1) {
-    const window = monthWindow(monthOf(index));
-    totalCost += (allocatedTeamCost * coveredDays([assignment], window)) / window.days;
-  }
+  const { months, truncated } = planMonths(monthIndex(assignment.start), monthIndex(assignment.end));
+  const totalCost = months.reduce((sum, month) => {
+    const window = monthWindow(month);
+    return sum + (allocatedTeamCost * coveredDays([assignment], window)) / window.days;
+  }, 0);
   return {
     utilizedHours: round1(allocatedHours * viewedShare),
     utilizedMonthlyCost: round2(allocatedTeamCost * viewedShare),
     utilizedTotalCost: round2(totalCost),
-    utilizedTotalTruncated: last - first + 1 > MAX_PLAN_MONTHS,
+    utilizedTotalTruncated: truncated,
   };
 }
 
@@ -183,17 +187,15 @@ function monthlyPlan(planned, viewedMonth, allocatedTeamCost) {
   const viewed = monthIndex(viewedMonth);
   const first = Math.min(viewed, ...planned.map((a) => monthIndex(a.start)));
   const last = Math.max(viewed, ...planned.map((a) => monthIndex(a.end)));
-  const months = [];
+  const { months: names, truncated } = planMonths(first, last);
   let totalCost = 0;
-  const truncated = last - first + 1 > MAX_PLAN_MONTHS;
-  for (let index = first; index <= Math.min(last, first + MAX_PLAN_MONTHS - 1); index += 1) {
-    const month = monthOf(index);
+  const months = names.map((month) => {
     const window = monthWindow(month);
     const share = coveredDays(planned, window) / window.days;
     const cost = allocatedTeamCost * share;
     totalCost += cost;
-    months.push({ month, utilizationPercent: round2(share * 100), cost: round2(cost) });
-  }
+    return { month, utilizationPercent: round2(share * 100), cost: round2(cost) };
+  });
   return { months, totalCost: round2(totalCost), truncated };
 }
 

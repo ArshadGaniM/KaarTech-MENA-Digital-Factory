@@ -590,6 +590,49 @@ test("POST /v1/project-assignments maps a database exclusion violation (a race p
   assert.match((await res.json()).error.details.projectId, /already holds this project/);
 });
 
+test("PATCH /v1/project-assignments/:id is 422, not a 500 from the NOT NULL column, when allocationPercentage is null or has too many decimals", async (t) => {
+  let updateCalled = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from project_assignments where id")) return { rows: [baseRow()] };
+    if (sql.startsWith("update project_assignments")) updateCalled = true;
+    return { rows: [baseRow()] };
+  });
+  for (const allocationPercentage of [null, 33.333, 0, 100.01]) {
+    const res = await fetch(`${baseUrl}/v1/project-assignments/${ASSIGNMENT_ID}`, { method: "PATCH", headers: writeHeaders, body: JSON.stringify({ allocationPercentage }) });
+    assert.equal(res.status, 422, String(allocationPercentage));
+    assert.ok((await res.json()).error.details.allocationPercentage);
+  }
+  assert.equal(updateCalled, false);
+});
+
+test("POST /v1/project-assignments finds the day two other projects stack up: 60% from 1 Nov and 50% from 15 Nov leave nothing for a 30% from 1 Nov", async (t) => {
+  otherRows = [other({ unique_value: "PRJ-2001", value: "60.00", start: "2026-11-01", end: "2026-12-31" }), other({ unique_value: "PRJ-2002", value: "50.00", start: "2026-11-15", end: "2026-12-31" })];
+  mockWrites(t);
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-11-01", projectAssignmentEndDate: "2026-12-31", allocationPercentage: 30 }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /on 2026-11-15 110% is already allocated, so at most 0% remains/);
+});
+
+test("POST /v1/project-assignments adds three shares that total exactly 100 when written to 2 decimals, and answers with the team's total today", async (t) => {
+  otherRows = [other({ unique_value: "PRJ-2001", value: "33.33" }), other({ unique_value: "PRJ-2002", value: "33.33" })];
+  mockWrites(t);
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-10-01", projectAssignmentEndDate: "2026-12-05", allocationPercentage: 33.34 }),
+  });
+
+  assert.equal(res.status, 201);
+  assert.equal((await res.json()).data.teamTotalAllocation, 100);
+});
+
 test("POST /v1/project-assignments is 422, not 500, for a date that is not a real calendar day", async (t) => {
   t.mock.method(pool, "query", async () => ({ rows: [{}] }));
   const res = await fetch(`${baseUrl}/v1/project-assignments`, {

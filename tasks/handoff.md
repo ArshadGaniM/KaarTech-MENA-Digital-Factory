@@ -101,3 +101,5 @@ Add one line per migration applied to the live database: number, date, safe or o
 - 0037 (1 Nov 2026): safe. Adds the `analytics_snapshots` table and its unique index only, and the owner approved it in advance for round 4.
 - 0038 (3 Nov 2026): owner-approved. Replaced the allocation check with 0 to 100 so Module Lead seats can hold 0%.
 - 0039 (5 Nov 2026): safe. Adds one partial unique index on live Module Lead seats per team (TEAM-087 to TEAM-089 exempt). The live data was checked first: no other team had two.
+- 0040 (12 Nov 2026): safe. Adds `allocation_percentage numeric(5,2) not null default 100` (the 30 live assignments took 100), its range check and the exclusion constraint on team, project and dates. Checked first: no same-project overlap, no null dates.
+- 0041 (12 Nov 2026): owner-approved (screenshot reply, 12 Nov 2026). Drops `ex_project_assignments_team_no_overlap`, so a team may be on several projects at once. The 100% per day rule is now checked in the API under a per-team lock.
