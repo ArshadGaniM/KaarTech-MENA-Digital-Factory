@@ -205,7 +205,7 @@ export const CATALOG_SQL = `
 export const ASSIGNMENTS_SQL = `
   select pa.team_code as "teamCode", t.name as "teamName", d.name as "departmentName",
          pa.project_id as "projectId", p.project_name as "projectName",
-         p.project_profit_center_code as "profitCenter",
+         p.project_profit_center_code as "profitCenter", pa.allocation_percentage::float as "allocationPercentage",
          pa.project_assignment_start_date::text as start, pa.project_assignment_end_date::text as "end"
     from project_assignments pa
     left join teams t on t.code = pa.team_code and t.deleted_at is null

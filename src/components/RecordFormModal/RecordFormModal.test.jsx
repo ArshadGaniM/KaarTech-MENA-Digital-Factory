@@ -582,6 +582,37 @@ describe('RecordFormModal', () => {
       expect(createRecord).toHaveBeenCalledWith('project-assignments', { teamId: 'TEAM-001', projectAssignmentEndDate: '2026-12-05' });
     });
 
+    it("starts an Add form on the field's default value, and lets initialValues and the user override it", async () => {
+      const user = userEvent.setup();
+      createRecord.mockResolvedValue({});
+      useEntityRelationships.mockReturnValue({
+        data: [{ ...entity, fields: [...entity.fields, { key: 'allocationPercentage', type: 'number', required: false, defaultValue: 100, min: 0.01, max: 100 }] }],
+        isLoading: false,
+        error: null,
+      });
+      const labelsWithShare = { ...labels, allocationPercentage: 'Allocation %' };
+      const { unmount } = render(
+        <RecordFormModal route="project-assignments" singularLabel="Project Assignment" labelByKey={labelsWithShare} onClose={vi.fn()} onSaved={vi.fn()} />
+      );
+      expect(screen.getByLabelText('Allocation %')).toHaveValue(100);
+      unmount();
+
+      render(
+        <RecordFormModal
+          route="project-assignments"
+          singularLabel="Project Assignment"
+          labelByKey={labelsWithShare}
+          initialValues={{ allocationPercentage: 25 }}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      );
+      expect(screen.getByLabelText('Allocation %')).toHaveValue(25);
+      await user.clear(screen.getByLabelText('Allocation %'));
+      await user.type(screen.getByLabelText('Allocation %'), '33.33');
+      expect(screen.getByLabelText('Allocation %')).toHaveValue(33.33);
+    });
+
     it('ignores initialValues in edit mode, showing the record, and still locks the field', () => {
       render(
         <RecordFormModal

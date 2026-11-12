@@ -1,39 +1,48 @@
-# Gate Report: seven project managers, department order and SOP owners
+# Gate Report: allocation percentage on project assignments, one team pop-up, Layers and Tree views, PM 5 name
 
-**Verdict: WARN** (zero FAIL, zero Critical. Security PASS.)
+**Verdict: WARN** (zero FAIL, zero Critical. Security: no exploitable finding, one low item fixed.)
 
 **Branch:** `claude/trusting-curie-hlx1r6` to `main`. Main had no new commits, so the branch was up to date.
-**Scope:** `git diff origin/main..HEAD`. Frontend only. No backend change and no migration.
-- There are seven ODC project managers. PM 2 gains Data Migration. PM 5 keeps Quality Assurance & Testing only. PM 6 holds L1 Support and Training. PM 7 holds L2 and L3 Support. Seats are 14, 39, 55, 125, 25, 134 and 137, which add up to 529.
-- Surya M owns the Audit and Analyse SOP documents. Faizan R owns the Training SOP document.
-- Every department list follows the owner's order from `src/lib/departmentOrder.js`: Organization Structure, the Control Center, the Charter deliverables and the services list. A department not in the list goes last in code order. The Analytics charts and the master-data Departments table are unchanged.
+**Scope:** `git diff origin/main..HEAD`, changes 17 to 22.
+- A team can be on several projects at once. Each assignment has an allocation percentage (0.01 to 100, at most 2 decimals, never null). On any one day the live assignments of a team may not add up to more than 100, and a team may not hold the same project twice. A 422 names the day and how much is left. Left out, the percentage is 100, so older clients still work.
+- The team pop-up lists every project in a card with its percentage, Planned Utilization, Utilized Team Monthly Cost and Utilized Team Total Cost, with Edit and Delete Project Assignment on each card. A month's utilization is the average of the daily totals.
+- One team pop-up for Control Center and Organization Structure (team cards open it), with a month picker inside it.
+- Organization Structure has three views: Cards, Layers (the old Tree) and a new Tree hierarchy chart. Yasam Panidhar is ODC Project Manager 5.
 
-**Checks on the final code:** frontend 875/875, `vite build` clean, oxlint has no errors. Removing either department sort in `orgStructure.js` makes the two new tests fail.
+**Migrations (applied to the live database before the backend deploys):**
+- 0040, safe: the column (the 30 live rows took 100), its range check and the same-project exclusion constraint. Live data was checked first: no same-project overlap, no null dates.
+- 0041, owner-approved on 12 Nov 2026: drops the old one-project-at-a-time constraint.
+- Both were also run on a throwaway Postgres.
+
+**Checks on the final code:** backend 571/571, mcp-server 59/59, frontend 902/902, `vite build` clean, oxlint has no errors.
 
 ## Agents
 
 | Agent | Verdict | Notes |
 |---|---|---|
-| code-reviewer | PASS | Two notes: the Control Center sort overrides the API floor order, and the code order inside a manager has no effect (both now commented) |
-| security-auditor | PASS | No findings. No new network code, no HTML sinks |
-| debugger | PASS | Unknown codes, empty data and the new pm-7 walked. A row with no code would throw, but every row has one |
-| test-writer | WARN | The order inside a manager had no test (added, with the Unassigned order) |
-| refactorer | PASS | One source of the order. The manager code order is now unused for display (commented) |
-| doc-writer | WARN | The order comment overclaimed (reworded) |
-| silent-failure-hunter | WARN | A mistyped manager code or a new department is silent (a test now checks the manager codes against the order list) |
-| pr-test-analyzer | WARN | Same gap as test-writer (fixed) |
+| code-reviewer | WARN | PATCH with null gave a 500 (fixed). Rounding on 3 decimals (fixed). Wrong migration number in a comment (fixed). Stale README text (fixed) |
+| security-auditor | WARN | No exploitable finding. Same PATCH null 500 (fixed). Parameters bound, no new HTML sinks |
+| debugger | WARN | Same PATCH null 500 (fixed). Several projects, truncation, older backend and refresh paths walked, no other failure |
+| test-writer | WARN | Every behaviour has a test. PATCH range and decimals now tested too |
+| refactorer | WARN | Month loop shared (fixed). Project card moved to its own file. Unused parameter removed |
+| doc-writer | WARN | Five README and comment fixes made |
+| silent-failure-hunter | WARN | Last month's figures no longer show under a new month. Add form starts empty outside the current month |
+| pr-test-analyzer | WARN | Tests added for the 100 cap, the 120 month cut, the peak-day case and teamTotalAllocation |
 
 All agents ran on Sonnet and edited no file. I checked the tree was clean before the fixes.
 
 ## Fixed during the gate
 
-- A test for the department order inside a manager and for the Unassigned order.
-- A test that the manager codes and the order list name the same 14 departments.
-- Comments in `departmentOrder.js`, `odcLeadership.js` and `ControlCenter.jsx`.
+- PATCH of `allocationPercentage` with null, or with more than 2 decimals, is now a 422 and not a 500.
+- The month picker no longer shows the last month's team under the new month's heading while it loads or after a failed load.
+- The Add form starts the percentage on what is left today, but only in the current month.
+- The README now describes the several-projects rule, the new project fields and the weighted utilization.
 
 ## Open, not blocking
 
-- [ ] A new department sorts last until it is added to `DEPARTMENT_ORDER`.
-- [ ] The Control Center sort runs in the view on each render. It is 14 rows.
-- [ ] The new screens have not been checked in a browser.
-- [ ] Names for PM 1, 2, 3, 5, 6 and 7 are still TBD.
+- [ ] The 100% per day rule is checked in the API under a per-team lock. The database has no backstop for the sum, only for the same project twice.
+- [ ] If saved percentages ever add to more than 100 on a day, utilization is capped at 100% and nothing flags it.
+- [ ] The Analytics Projects tab still counts a day once when assignments overlap and ignores the percentage.
+- [ ] `TeamDialog.jsx` is still about 480 lines.
+- [ ] The new screens, including the Tree view, have not been checked in a browser.
+- [ ] Names for PM 1, 2, 3, 6 and 7 are still TBD.

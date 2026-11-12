@@ -8,7 +8,9 @@
 //  - Allocated hours: for each seat with someone deployed, 160 scaled by the
 //    deployment's allocation percentage (a seat never exceeds 160).
 //  - Utilized hours: the allocated hours scaled by the share of the month
-//    covered by the team's project assignments (shown as planned utilization).
+//    covered by the team's project assignments, each weighted by its allocation
+//    percentage (shown as planned utilization). A team may be on several projects
+//    at once, up to 100% on any day.
 //  - A deployment counts only on the day the page looks at: today for the
 //    current month, the first day of any other month. Before its start date and
 //    after its end date (both days included) the person is TBD, not deployed.
@@ -58,15 +60,18 @@ export function deployedOn(deployments, day) {
   return deployments.filter((d) => d.start <= day && d.end >= day);
 }
 
-// Days of the month covered by at least one assignment (overlaps counted once).
+// Days of the month the assignments cover, each assignment weighted by its allocation
+// percentage: a project at 25% for the whole month is a quarter of its days. An
+// assignment with no percentage counts as 100. The percentages on one day never
+// add up to more than 100, so the total never passes the days in the month.
 export function coveredDays(assignments, window) {
-  const covered = new Set();
+  let covered = 0;
   for (const a of assignments) {
     const from = Math.max(toUtcDay(a.start), window.start);
     const to = Math.min(toUtcDay(a.end), window.end);
-    for (let day = from; day <= to; day += DAY_MS) covered.add(day);
+    if (to >= from) covered += (((to - from) / DAY_MS + 1) * (a.allocationPercentage ?? 100)) / 100;
   }
-  return covered.size;
+  return Math.min(covered, window.days);
 }
 
 // The lookups costOf needs: each person's resource row, their actual cost and
@@ -127,10 +132,10 @@ function teamCosts({ teamPositions, deploymentsByPosition, costs }) {
   };
 }
 
-// The assignment covering `today`, if any. A team's assignments cannot share a
-// day, so at most one matches.
+// Of the assignments covering `today`, the one that ends last: the team is
+// on a project until then.
 function currentAssignmentOf(assignments, today) {
-  return assignments.find((a) => a.start <= today && today <= a.end) ?? null;
+  return assignments.filter((a) => a.start <= today && today <= a.end).sort((a, b) => b.end.localeCompare(a.end))[0] ?? null;
 }
 
 // The earliest assignment that starts after `today`, shown as information so a
@@ -152,21 +157,45 @@ const monthIndex = (isoDate) => {
   return year * 12 + month - 1;
 };
 
+const monthOf = (index) => `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+
+// The months from `first` to `last` (month indexes), cut at MAX_PLAN_MONTHS.
+function planMonths(first, last) {
+  const count = Math.min(last - first + 1, MAX_PLAN_MONTHS);
+  return { months: Array.from({ length: count }, (_, offset) => monthOf(first + offset)), truncated: last - first + 1 > MAX_PLAN_MONTHS };
+}
+
+// One project's share of the figures, from its own allocation percentage: the
+// utilized hours and monthly cost in the viewed month, and the cost over every
+// month it runs (cut at MAX_PLAN_MONTHS, `truncated` says so).
+function projectPlan(assignment, viewedWindow, allocatedHours, allocatedTeamCost) {
+  const viewedShare = coveredDays([assignment], viewedWindow) / viewedWindow.days;
+  const { months, truncated } = planMonths(monthIndex(assignment.start), monthIndex(assignment.end));
+  const totalCost = months.reduce((sum, month) => {
+    const window = monthWindow(month);
+    return sum + (allocatedTeamCost * coveredDays([assignment], window)) / window.days;
+  }, 0);
+  return {
+    utilizedHours: round1(allocatedHours * viewedShare),
+    utilizedMonthlyCost: round2(allocatedTeamCost * viewedShare),
+    utilizedTotalCost: round2(totalCost),
+    utilizedTotalTruncated: truncated,
+  };
+}
+
 function monthlyPlan(planned, viewedMonth, allocatedTeamCost) {
   const viewed = monthIndex(viewedMonth);
   const first = Math.min(viewed, ...planned.map((a) => monthIndex(a.start)));
   const last = Math.max(viewed, ...planned.map((a) => monthIndex(a.end)));
-  const months = [];
+  const { months: names, truncated } = planMonths(first, last);
   let totalCost = 0;
-  const truncated = last - first + 1 > MAX_PLAN_MONTHS;
-  for (let index = first; index <= Math.min(last, first + MAX_PLAN_MONTHS - 1); index += 1) {
-    const month = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+  const months = names.map((month) => {
     const window = monthWindow(month);
     const share = coveredDays(planned, window) / window.days;
     const cost = allocatedTeamCost * share;
     totalCost += cost;
-    months.push({ month, utilizationPercent: round2(share * 100), cost: round2(cost) });
-  }
+    return { month, utilizationPercent: round2(share * 100), cost: round2(cost) };
+  });
   return { months, totalCost: round2(totalCost), truncated };
 }
 
@@ -355,6 +384,7 @@ export function buildTeamDetail({ team, department, positions, deployments: team
   const current = currentAssignmentOf(assignments, today);
   const running = runningIn(assignments, window, day);
   const lastEnded = running.length === 0 ? latestEndedBefore(assignments, day) : null;
+  const hours = teamHours({ teamPositions: positions, deploymentsByPosition, teamAssignments: assignments, window });
 
   const seats = positions.flatMap((position) => {
     const counted = COUNTED_POSITIONS.has(position.name);
@@ -384,8 +414,17 @@ export function buildTeamDetail({ team, department, positions, deployments: team
     competencies: competenciesOf(positions).all,
     seats,
     // Only the assignments running in the viewed month: the Projects list and
-    // the month-by-month panels follow them.
-    projects: running.map(({ id, projectId, projectName, start, end }) => ({ id, projectId, projectName, start, end })),
+    // the month-by-month panels follow them. Each project carries its own share of
+    // the utilized hours and cost, from its allocation percentage.
+    projects: running.map((assignment) => ({
+      id: assignment.id,
+      projectId: assignment.projectId,
+      projectName: assignment.projectName,
+      start: assignment.start,
+      end: assignment.end,
+      allocationPercentage: assignment.allocationPercentage ?? 100,
+      ...projectPlan(assignment, window, hours.allocatedHours, teamCost.allocatedTeamCost),
+    })),
     assignmentEndDate: current?.end ?? null,
     nextAssignment: (({ id, projectId, projectName, start, end }) => ({ id, projectId, projectName, start, end }))(
       nextAssignmentOf(assignments, today) ?? { id: null, projectId: null, projectName: null, start: null, end: null }
@@ -394,7 +433,7 @@ export function buildTeamDetail({ team, department, positions, deployments: team
     defaultedCostCount: teamCost.defaultedCostCount,
     locationMix: teamCost.locationMix,
     monthlyPlan: monthlyPlan(lastEnded ? [lastEnded] : running, month, teamCost.allocatedTeamCost),
-    ...teamHours({ teamPositions: positions, deploymentsByPosition, teamAssignments: assignments, window }),
+    ...hours,
   };
 }
 
@@ -413,6 +452,7 @@ export async function loadControlCenterRows(query) {
     ),
     query(
       `select pa.id, pa.team_code as "teamCode", pa.project_id as "projectId", p.project_name as "projectName",
+              pa.allocation_percentage::float as "allocationPercentage",
               pa.project_assignment_start_date::text as start, pa.project_assignment_end_date::text as "end"
          from project_assignments pa
          left join projects p on p.project_id = pa.project_id and p.deleted_at is null

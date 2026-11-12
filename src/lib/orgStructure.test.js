@@ -98,7 +98,7 @@ describe('buildOrgStructure', () => {
     expect(byId['pm-2'].departmentCodes).toEqual(['DEPT-014', 'DEPT-002', 'DEPT-011']);
     expect(byId['pm-3'].departmentCodes).toEqual(['DEPT-009']);
     expect(byId['pm-4']).toMatchObject({ name: 'Karthikeyan Rajendran', departmentCodes: ['DEPT-003', 'DEPT-012'] });
-    expect(byId['pm-5'].departmentCodes).toEqual(['DEPT-004']);
+    expect(byId['pm-5']).toMatchObject({ name: 'Yasam Panidhar', departmentCodes: ['DEPT-004'] });
     expect(byId['pm-6'].departmentCodes).toEqual(['DEPT-008', 'DEPT-010']);
     expect(byId['pm-7'].departmentCodes).toEqual(['DEPT-005', 'DEPT-013']);
     const all = ODC_PROJECT_MANAGERS.flatMap((manager) => manager.departmentCodes);

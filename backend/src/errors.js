@@ -48,25 +48,19 @@ export function duplicateFieldError(err, fields) {
   return validationError({ [key]: `${key} must be unique — this value is already in use.` });
 }
 
-// Postgres exclusion_violation (23P01): the backstop for the project assignment
-// no-overlap rule and for the resource deployment rule that one resource may not
-// hold a position twice on a shared day. The app check gives the friendly message
-// first; this only fires if two writes race past it.
+// Postgres exclusion_violation (23P01): the backstop for the rule that a group (a
+// resource, or a team) may not hold the same position, or the same project, twice
+// on a shared day. The app check gives the friendly message first; this only
+// fires if two writes race past it.
 export function isExclusionViolation(err) {
   return err?.code === "23P01";
 }
 
-export function overlapRaceError(rule) {
-  return validationError({
-    [rule.startKey]: `This ${rule.groupLabel} already has an assignment on some of these dates.`,
-  });
-}
-
-// The same race for a resource's deployments: the exclusion constraint refused a
-// second row for the same position on a shared day.
+// The exclusion constraint refused a second row for the same position (a resource's
+// deployments) or the same project (a team's assignments) on a shared day.
 export function positionOverlapRaceError(rule) {
   return validationError({
-    [rule.uniqueKey]: `This ${rule.groupKey} already holds this position on some of these dates.`,
+    [rule.uniqueKey]: `This ${rule.groupKey} already holds this ${rule.uniqueNoun ?? "position"} on some of these dates.`,
   });
 }
 

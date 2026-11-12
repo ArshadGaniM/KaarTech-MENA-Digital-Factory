@@ -8,7 +8,6 @@ import {
   validateCrossFields,
   lookupJoinSql,
   lookupSelectSql,
-  validateOverlap,
 } from "./masterDataSchema.js";
 import {
   isUniqueViolation,
@@ -716,6 +715,14 @@ test("toResponse turns a numeric field's pg string into a number, leaves null al
   assert.equal("employeeTotalAllocation" in toResponse(rangedTable, { ...base, pct: "1" }), false);
 });
 
+test("toResponse puts a rule's total under the key the rule names", () => {
+  const table = { ...rangedTable, allocationRule: { totalKey: "teamTotalAllocation" } };
+  const base = { id: "x", created_by: "a", created_at: "t", updated_by: "a", updated_at: "t", deleted_at: null };
+  const response = toResponse(table, { ...base, pct: "25.00", employee_total_allocation: "75.50" });
+  assert.equal(response.teamTotalAllocation, 75.5);
+  assert.equal("employeeTotalAllocation" in response, false);
+});
+
 test("allocationSelectSql is empty without a rule and filters soft-deleted rows with one", () => {
   assert.deepEqual(allocationSelectSql(rangedTable), []);
   const dated = { tableName: "t", allocationRule: { groupColumn: "employee_id", valueColumn: "v", startColumn: "s", endColumn: "e" } };
@@ -794,40 +801,19 @@ test("validateBody enforces integer, min and max on a whole-number field, on cre
   assert.ok(errorOf({}));
 });
 
-const overlapTable = {
-  tableName: "project_assignments",
-  overlapRule: {
-    groupKey: "teamId", groupLabel: "team", groupColumn: "team_code",
-    startKey: "projectAssignmentStartDate", startColumn: "project_assignment_start_date", endColumn: "project_assignment_end_date",
-  },
-};
-const candidate = { team_code: "TEAM-001", project_assignment_start_date: "2026-12-05", project_assignment_end_date: "2027-01-31" };
-
-test("validateOverlap does nothing for a table without the rule, or before both dates are known", async () => {
-  let asked = false;
-  const db = { query: async () => ((asked = true), { rows: [] }) };
-  await validateOverlap(db, { tableName: "x" }, candidate);
-  await validateOverlap(db, overlapTable, { ...candidate, project_assignment_end_date: null });
-  assert.equal(asked, false);
-});
-
-test("validateOverlap asks about the team and dates, leaves the edited row out, and names the clash in a 422", async () => {
-  let params;
-  const db = { query: async (sql, p) => ((params = p), { rows: [{ start: "2026-09-01", end: "2026-12-05" }] }) };
-  await assert.rejects(
-    () => validateOverlap(db, overlapTable, candidate, "11111111-1111-1111-1111-111111111111"),
-    (err) => err.status === 422 && /team TEAM-001 already has an assignment from 2026-09-01 to 2026-12-05/.test(err.details.projectAssignmentStartDate)
-  );
-  assert.deepEqual(params, ["TEAM-001", "11111111-1111-1111-1111-111111111111", "2026-12-05", "2027-01-31"]);
-});
-
-test("validateOverlap passes when nothing clashes", async () => {
-  await validateOverlap({ query: async () => ({ rows: [] }) }, overlapTable, candidate);
-});
-
 test("validateBody rejects a date that is not a real calendar day, such as 30 February", () => {
   const table = { fields: [{ key: "d", column: "d", required: true, type: "date" }] };
   assert.throws(() => validateBody(table, { d: "2026-02-30" }), (err) => err.status === 422 && Boolean(err.details.d));
   assert.doesNotThrow(() => validateBody(table, { d: "2028-02-29" }));
   assert.throws(() => validateBody(table, { d: "2027-02-29" }), (err) => Boolean(err.details.d));
+});
+
+test("validateBody rejects null for a field marked nullable: false, and more decimals than the field stores", () => {
+  const table = { fields: [{ key: "pct", column: "pct", required: false, nullable: false, type: "number", decimals: 2, min: 0.01, max: 100 }] };
+  assert.throws(() => validateBody(table, { pct: null }, { partial: true }), (err) => /must be a number/.test(err.details.pct));
+  assert.throws(() => validateBody(table, { pct: 33.333 }), (err) => /at most 2 decimal places/.test(err.details.pct));
+  assert.throws(() => validateBody(table, { pct: 99.995 }), (err) => /at most 2 decimal places/.test(err.details.pct));
+  for (const ok of [33.33, 0.01, 100, 12.5, 25]) assert.doesNotThrow(() => validateBody(table, { pct: ok }), String(ok));
+  // Without the flag a null still clears an optional field.
+  assert.doesNotThrow(() => validateBody({ fields: [{ key: "n", column: "n", required: false, type: "number" }] }, { n: null }));
 });

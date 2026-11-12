@@ -1,11 +1,15 @@
 import PropTypes from 'prop-types';
 import styles from './OrganizationStructure.module.css';
 
-function TeamCard({ team }) {
+// The whole card opens the team popup. The name is the button, so keyboard users reach it,
+// and a click anywhere else on the card reaches the same handler.
+function TeamCard({ team, onOpen }) {
   return (
-    <li className={styles.team}>
+    <li className={`${styles.team} ${styles.teamClickable}`} onClick={() => onOpen(team.code)}>
       <div className={styles.teamTop}>
-        <b>{team.name}</b>
+        <button type="button" className={styles.teamOpen} aria-label={`${team.name}, ${team.code}. Open details`}>
+          {team.name}
+        </button>
         <span className={styles.badge} aria-label={`${team.seats} seats`}>
           {team.seats}
         </span>
@@ -46,7 +50,9 @@ function TeamCard({ team }) {
 }
 
 TeamCard.propTypes = {
+  onOpen: PropTypes.func.isRequired,
   team: PropTypes.shape({
+    code: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     seats: PropTypes.number.isRequired,
     filled: PropTypes.number.isRequired,

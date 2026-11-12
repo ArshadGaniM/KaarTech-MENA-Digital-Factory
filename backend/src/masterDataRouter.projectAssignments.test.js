@@ -27,12 +27,13 @@ let baseUrl;
 
 // Writes run on a pooled client inside a transaction holding a per-team
 // advisory lock (withGroupLock in masterDataRouter.js). The client answers
-// the transaction plumbing and the no-overlap lookup itself (`overlapRows`,
-// recording the parameters it was asked with) and delegates every other
+// the transaction plumbing and the allocation lookup itself (`otherRows`, the
+// team's other live assignments, recording the parameters it was asked with) and delegates every other
 // statement to whatever pool.query mock the current test installed.
-let overlapRows = [];
-let overlapParams = null;
+let otherRows = [];
+let otherParams = null;
 let clientStatements = [];
+let lastWrittenRow = null;
 
 before(async () => {
   ({ server, baseUrl } = await startTestServer(projectAssignmentsTable));
@@ -40,19 +41,25 @@ before(async () => {
     query: async (sql, params) => {
       clientStatements.push(sql.split(" ")[0]);
       if (/^(begin|commit|rollback)$/i.test(sql) || sql.startsWith("select pg_advisory_xact_lock")) return { rows: [] };
-      if (sql.includes("<= $4::date")) {
-        overlapParams = params;
-        return { rows: overlapRows };
+      if (sql.includes("allocation_percentage as value")) {
+        otherParams = params;
+        return { rows: otherRows };
       }
-      return pool.query(sql, params);
+      // The router re-reads a written row to add the team's total; answer from the row just written.
+      if (sql.includes("as employee_total_allocation") && sql.includes(".id = $1")) {
+        return { rows: [{ ...lastWrittenRow, employee_total_allocation: "100.00" }] };
+      }
+      const result = await pool.query(sql, params);
+      if (/^(insert into|update) /.test(sql) && result.rows[0]) lastWrittenRow = result.rows[0];
+      return result;
     },
     release: () => {},
   }));
 });
 
 afterEach(() => {
-  overlapRows = [];
-  overlapParams = null;
+  otherRows = [];
+  otherParams = null;
   clientStatements = [];
 });
 
@@ -67,6 +74,7 @@ function baseRow(overrides = {}) {
     team_code: "TEAM-001",
     project_assignment_start_date: "2026-01-01",
     project_assignment_end_date: "2026-06-30",
+    allocation_percentage: "100.00",
     created_by: "Arshad Gani",
     created_at: "2026-01-01T00:00:00Z",
     updated_by: "Arshad Gani",
@@ -403,39 +411,60 @@ registerDeleteTests({
 
 const writeHeaders = { "Content-Type": "application/json", "x-internal-api-key": "test-secret" };
 
-test("POST /v1/project-assignments is 422 when the team already has an assignment sharing a day, and never inserts", async (t) => {
-  overlapRows = [{ start: "2026-09-01", end: "2026-12-05" }];
-  let insertCalled = false;
-  t.mock.method(pool, "query", async (sql) => {
+// What the team's other live assignments look like to the allocation check.
+const other = (overrides = {}) => ({ unique_value: "PRJ-2002", value: "100.00", start: "2026-09-01", end: "2026-12-05", ...overrides });
+
+function mockWrites(t, { insertParams } = {}) {
+  t.mock.method(pool, "query", async (sql, params) => {
     if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
     if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
-    if (sql.startsWith("insert into project_assignments")) insertCalled = true;
-    return { rows: [baseRow()] };
+    if (sql.startsWith("insert into project_assignments")) {
+      insertParams?.push(params);
+      return { rows: [baseRow()] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
   });
+}
+
+test("POST /v1/project-assignments is 422 when the team's shares on a shared day would pass 100, says how much is left, and never inserts", async (t) => {
+  otherRows = [other({ value: "50.00", start: "2026-11-01", end: "2026-12-31" })];
+  const insertParams = [];
+  mockWrites(t, { insertParams });
 
   const res = await fetch(`${baseUrl}/v1/project-assignments`, {
     method: "POST",
     headers: writeHeaders,
-    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-12-05", projectAssignmentEndDate: "2027-01-31" }),
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-12-01", projectAssignmentEndDate: "2027-01-31", allocationPercentage: 60 }),
   });
 
   assert.equal(res.status, 422);
   const body = await res.json();
-  assert.match(body.error.details.projectAssignmentStartDate, /already has an assignment from 2026-09-01 to 2026-12-05/);
-  assert.equal(insertCalled, false);
+  assert.match(body.error.details.allocationPercentage, /cannot exceed 100% on any day: on 2026-12-01 50% is already allocated, so at most 50% remains/);
+  assert.equal(insertParams.length, 0);
   assert.ok(clientStatements.includes("rollback"));
-  // Asked about this team and these exact dates (both ends inclusive).
-  assert.deepEqual(overlapParams, ["TEAM-001", null, "2026-12-05", "2027-01-31"]);
+  // Asked about this team, leaving no row out.
+  assert.deepEqual(otherParams, ["TEAM-001", null]);
 });
 
-test("POST /v1/project-assignments inserts when the next assignment starts the day after the last one ends", async (t) => {
-  overlapRows = [];
-  t.mock.method(pool, "query", async (sql) => {
-    if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
-    if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
-    if (sql.startsWith("insert into project_assignments")) return { rows: [baseRow()] };
-    throw new Error(`unexpected query: ${sql}`);
+test("POST /v1/project-assignments lets four projects of 25% share a team on the same days", async (t) => {
+  otherRows = ["PRJ-2001", "PRJ-2002", "PRJ-2003"].map((unique_value) => other({ unique_value, value: "25.00" }));
+  const insertParams = [];
+  mockWrites(t, { insertParams });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-10-01", projectAssignmentEndDate: "2026-12-31", allocationPercentage: 25 }),
   });
+
+  assert.equal(res.status, 201);
+  assert.ok(clientStatements.includes("commit"));
+  assert.equal(insertParams[0].at(4), 25);
+});
+
+test("POST /v1/project-assignments leaves the shares of days that do not overlap out of the sum", async (t) => {
+  otherRows = [other({ value: "100.00", start: "2026-09-01", end: "2026-12-05" })];
+  mockWrites(t);
 
   const res = await fetch(`${baseUrl}/v1/project-assignments`, {
     method: "POST",
@@ -447,8 +476,43 @@ test("POST /v1/project-assignments inserts when the next assignment starts the d
   assert.ok(clientStatements.includes("commit"));
 });
 
-test("PATCH /v1/project-assignments/:id checks the merged dates against the team's other assignments, leaving itself out", async (t) => {
-  overlapRows = [{ start: "2027-01-01", end: "2027-02-28" }];
+test("POST /v1/project-assignments stores 100 when allocationPercentage is left out, so a client from before it existed still works", async (t) => {
+  const insertParams = [];
+  mockWrites(t, { insertParams });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, { method: "POST", headers: writeHeaders, body: JSON.stringify(VALID_BODY) });
+
+  assert.equal(res.status, 201);
+  assert.equal(insertParams[0].at(4), 100);
+  const { data } = await res.json();
+  assert.equal(data.allocationPercentage, 100);
+});
+
+test("POST /v1/project-assignments is 422 when the same project is already on the team on a shared day", async (t) => {
+  otherRows = [other({ unique_value: "PRJ-1001", value: "25.00", start: "2026-06-01", end: "2026-09-30" })];
+  mockWrites(t);
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-09-01", projectAssignmentEndDate: "2026-12-31", allocationPercentage: 25 }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.projectId, /already allocated to PRJ-1001 on some of these days/);
+});
+
+test("POST /v1/project-assignments is 422 for an allocationPercentage of 0 or above 100", async (t) => {
+  mockWrites(t);
+  for (const allocationPercentage of [0, 100.01, -5]) {
+    const res = await fetch(`${baseUrl}/v1/project-assignments`, { method: "POST", headers: writeHeaders, body: JSON.stringify({ ...VALID_BODY, allocationPercentage }) });
+    assert.equal(res.status, 422, String(allocationPercentage));
+    assert.ok((await res.json()).error.details.allocationPercentage);
+  }
+});
+
+test("PATCH /v1/project-assignments/:id checks the merged share and dates against the team's other assignments, leaving itself out", async (t) => {
+  otherRows = [other({ value: "75.00", start: "2026-03-01", end: "2026-04-30" })];
   let updateCalled = false;
   t.mock.method(pool, "query", async (sql) => {
     if (sql.startsWith("select * from project_assignments where id")) return { rows: [baseRow()] };
@@ -459,16 +523,40 @@ test("PATCH /v1/project-assignments/:id checks the merged dates against the team
   const res = await fetch(`${baseUrl}/v1/project-assignments/${ASSIGNMENT_ID}`, {
     method: "PATCH",
     headers: writeHeaders,
-    body: JSON.stringify({ projectAssignmentEndDate: "2027-01-15" }),
+    body: JSON.stringify({ allocationPercentage: 30 }),
   });
 
   assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /at most 25% remains/);
   assert.equal(updateCalled, false);
-  assert.deepEqual(overlapParams, ["TEAM-001", ASSIGNMENT_ID, "2026-01-01", "2027-01-15"]);
+  assert.deepEqual(otherParams, ["TEAM-001", ASSIGNMENT_ID]);
 });
 
-test("POST /v1/project-assignments/:id/restore is 422 when the restored dates now clash, and never restores", async (t) => {
-  overlapRows = [{ start: "2026-03-01", end: "2026-04-30" }];
+test("PATCH /v1/project-assignments/:id changes only the share when the others leave room", async (t) => {
+  otherRows = [other({ value: "50.00", start: "2026-03-01", end: "2026-04-30" })];
+  const updateParams = [];
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.startsWith("select * from project_assignments where id")) return { rows: [baseRow()] };
+    if (sql.startsWith("update project_assignments")) {
+      updateParams.push(params);
+      return { rows: [baseRow({ allocation_percentage: "50.00" })] };
+    }
+    throw new Error(`unexpected query: ${sql}`);
+  });
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments/${ASSIGNMENT_ID}`, {
+    method: "PATCH",
+    headers: writeHeaders,
+    body: JSON.stringify({ allocationPercentage: 50 }),
+  });
+
+  assert.equal(res.status, 200);
+  assert.equal(updateParams[0].at(4), 50);
+  assert.equal((await res.json()).data.allocationPercentage, 50);
+});
+
+test("POST /v1/project-assignments/:id/restore is 422 when the restored share now passes 100, and never restores", async (t) => {
+  otherRows = [other({ value: "40.00", start: "2026-03-01", end: "2026-04-30" })];
   let updateCalled = false;
   t.mock.method(pool, "query", async (sql) => {
     if (sql.startsWith("select * from project_assignments where id")) {
@@ -486,7 +574,7 @@ test("POST /v1/project-assignments/:id/restore is 422 when the restored dates no
   assert.equal(updateCalled, false);
 });
 
-test("POST /v1/project-assignments maps a database exclusion violation (a race past the check) to a 422, not a 500", async (t) => {
+test("POST /v1/project-assignments maps a database exclusion violation (a race past the check) to a 422 naming the project, not a 500", async (t) => {
   t.mock.method(pool, "query", async (sql) => {
     if (sql.includes("select 1 from projects where project_id")) return { rows: [{}] };
     if (sql.includes("select 1 from teams where code")) return { rows: [{}] };
@@ -499,7 +587,50 @@ test("POST /v1/project-assignments maps a database exclusion violation (a race p
   const res = await fetch(`${baseUrl}/v1/project-assignments`, { method: "POST", headers: writeHeaders, body: JSON.stringify(VALID_BODY) });
 
   assert.equal(res.status, 422);
-  assert.ok((await res.json()).error.details.projectAssignmentStartDate);
+  assert.match((await res.json()).error.details.projectId, /already holds this project/);
+});
+
+test("PATCH /v1/project-assignments/:id is 422, not a 500 from the NOT NULL column, when allocationPercentage is null or has too many decimals", async (t) => {
+  let updateCalled = false;
+  t.mock.method(pool, "query", async (sql) => {
+    if (sql.startsWith("select * from project_assignments where id")) return { rows: [baseRow()] };
+    if (sql.startsWith("update project_assignments")) updateCalled = true;
+    return { rows: [baseRow()] };
+  });
+  for (const allocationPercentage of [null, 33.333, 0, 100.01]) {
+    const res = await fetch(`${baseUrl}/v1/project-assignments/${ASSIGNMENT_ID}`, { method: "PATCH", headers: writeHeaders, body: JSON.stringify({ allocationPercentage }) });
+    assert.equal(res.status, 422, String(allocationPercentage));
+    assert.ok((await res.json()).error.details.allocationPercentage);
+  }
+  assert.equal(updateCalled, false);
+});
+
+test("POST /v1/project-assignments finds the day two other projects stack up: 60% from 1 Nov and 50% from 15 Nov leave nothing for a 30% from 1 Nov", async (t) => {
+  otherRows = [other({ unique_value: "PRJ-2001", value: "60.00", start: "2026-11-01", end: "2026-12-31" }), other({ unique_value: "PRJ-2002", value: "50.00", start: "2026-11-15", end: "2026-12-31" })];
+  mockWrites(t);
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-11-01", projectAssignmentEndDate: "2026-12-31", allocationPercentage: 30 }),
+  });
+
+  assert.equal(res.status, 422);
+  assert.match((await res.json()).error.details.allocationPercentage, /on 2026-11-15 110% is already allocated, so at most 0% remains/);
+});
+
+test("POST /v1/project-assignments adds three shares that total exactly 100 when written to 2 decimals, and answers with the team's total today", async (t) => {
+  otherRows = [other({ unique_value: "PRJ-2001", value: "33.33" }), other({ unique_value: "PRJ-2002", value: "33.33" })];
+  mockWrites(t);
+
+  const res = await fetch(`${baseUrl}/v1/project-assignments`, {
+    method: "POST",
+    headers: writeHeaders,
+    body: JSON.stringify({ ...VALID_BODY, projectAssignmentStartDate: "2026-10-01", projectAssignmentEndDate: "2026-12-05", allocationPercentage: 33.34 }),
+  });
+
+  assert.equal(res.status, 201);
+  assert.equal((await res.json()).data.teamTotalAllocation, 100);
 });
 
 test("POST /v1/project-assignments is 422, not 500, for a date that is not a real calendar day", async (t) => {

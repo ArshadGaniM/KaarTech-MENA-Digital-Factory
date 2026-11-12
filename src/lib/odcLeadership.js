@@ -35,7 +35,7 @@ export const ODC_PROJECT_MANAGERS = [
   {
     id: 'pm-5',
     title: 'ODC Project Manager 5',
-    name: 'TBD',
+    name: 'Yasam Panidhar',
     departmentCodes: ['DEPT-004'], // QA & Testing
   },
   {

@@ -47,7 +47,7 @@ const detail = {
   allocatedTeamCost: 2375,
   locationMix: 'Hybrid',
   assignmentEndDate: '2026-12-05',
-  projects: [{ id: 'A-1', projectId: 'P1', projectName: 'Rollout', start: '2026-09-01', end: '2026-12-05' }],
+  projects: [{ id: 'A-1', projectId: 'P1', projectName: 'Rollout', start: '2026-09-01', end: '2026-12-05', allocationPercentage: 100, utilizedHours: 240, utilizedMonthlyCost: 2375, utilizedTotalCost: 7508.06 }],
   monthlyPlan: {
     months: [
       { month: '2026-09', utilizationPercent: 100, cost: 2375 },
@@ -121,7 +121,7 @@ describe('TeamDialog', () => {
     expect(screen.getByText('Rollout').tagName).toBe('STRONG');
     expect(within(row).getByText('P1')).toBeInTheDocument();
     expect(within(row).getByText('1 Sep 2026 to 5 Dec 2026')).toBeInTheDocument();
-    expect(within(row).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: /^Edit/ })).toBeInTheDocument();
     expect(within(row).queryByText(/active|status/i)).not.toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe('TeamDialog', () => {
     const utilization = screen.getByRole('region', { name: 'Month-wise Utilization Percentage' });
     expect(within(utilization).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['December 2026100%', 'January 20270%']);
     expect(within(screen.getByRole('region', { name: 'Month-wise Utilization Cost' })).getByText('$0.00')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Edit/ })).not.toBeInTheDocument();
   });
 
   it('keeps the "No live project assignment" text when an older backend sends no plan months', () => {
@@ -256,7 +256,7 @@ describe('TeamDialog', () => {
 
     it('shows the Utilized Team Total Cost equal to the Total line of the cost panel', () => {
       render(<TeamDialog {...props} />);
-      const stat = screen.getByText('Utilized Team Total Cost').closest('li');
+      const stat = screen.getAllByText('Utilized Team Total Cost')[0].closest('li');
       expect(stat).toHaveTextContent('$7,508.06');
       expect(screen.getByText('Total $7,508.06')).toBeInTheDocument();
     });
@@ -264,13 +264,13 @@ describe('TeamDialog', () => {
     it('shows a zero Utilized Team Total Cost for a team without plan months', () => {
       useTeamDetail.mockReturnValue({ data: { ...detail, projects: [], monthlyPlan: { months: [], totalCost: 0 } }, isLoading: false, error: null });
       render(<TeamDialog {...props} />);
-      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('$0.00');
+      expect(screen.getAllByText('Utilized Team Total Cost')[0].closest('li')).toHaveTextContent('$0.00');
     });
 
     it('shows "at least" on the stat and the Total line when the plan is truncated', () => {
       useTeamDetail.mockReturnValue({ data: { ...detail, monthlyPlan: { ...detail.monthlyPlan, truncated: true } }, isLoading: false, error: null });
       render(<TeamDialog {...props} />);
-      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('at least $7,508.06');
+      expect(screen.getAllByText('Utilized Team Total Cost')[0].closest('li')).toHaveTextContent('at least $7,508.06');
       expect(screen.getByText('Total at least $7,508.06')).toBeInTheDocument();
     });
 
@@ -278,7 +278,7 @@ describe('TeamDialog', () => {
       const { monthlyPlan: _plan, ...older } = detail;
       useTeamDetail.mockReturnValue({ data: older, isLoading: false, error: null });
       render(<TeamDialog {...props} />);
-      expect(screen.getByText('Utilized Team Total Cost').closest('li')).toHaveTextContent('—');
+      expect(screen.getAllByText('Utilized Team Total Cost')[0].closest('li')).toHaveTextContent('—');
     });
 
     it('shows the Module Lead note once at the bottom only when the team has a Module Lead seat', () => {
@@ -378,11 +378,11 @@ describe('TeamDialog', () => {
       useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
       render(<TeamDialog {...props} />);
 
-      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      await user.click(screen.getByRole('button', { name: /^Edit/ }));
 
       const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form edit' })).getByText(/route/).textContent);
       expect(passed.record).toEqual({
-        id: 'A-1', projectId: 'P1', teamId: 'TEAM-001', projectAssignmentStartDate: '2026-09-01', projectAssignmentEndDate: '2026-12-05',
+        id: 'A-1', projectId: 'P1', teamId: 'TEAM-001', projectAssignmentStartDate: '2026-09-01', projectAssignmentEndDate: '2026-12-05', allocationPercentage: 100,
       });
       expect(passed.lockedKeys).toEqual(['teamId']);
     });
@@ -425,22 +425,22 @@ describe('TeamDialog', () => {
       vi.useRealTimers();
     });
 
-    it('reads Delete Project Assignment while a project runs, never "End", and Add Project Assignment otherwise', () => {
+    it('puts Delete Project Assignment on each running project, never "End", and keeps Add Project Assignment in the header', () => {
       const { rerender } = render(<TeamDialog {...props} />);
-      expect(screen.getByRole('button', { name: 'Delete Project Assignment' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Add Project Assignment' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Delete Project Assignment/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add Project Assignment' })).toBeInTheDocument();
       expect(screen.queryByText(/End Project Assignment/)).not.toBeInTheDocument();
 
       useTeamDetail.mockReturnValue({ data: { ...detail, projects: [] }, isLoading: false, error: null });
       rerender(<TeamDialog {...props} />);
       expect(screen.getByRole('button', { name: 'Add Project Assignment' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Delete Project Assignment' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Delete Project Assignment/ })).not.toBeInTheDocument();
     });
 
     it('shows the project and dates with the end date set to yesterday, and saves it as a PATCH of the end date only', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
 
       const form = screen.getByRole('form', { name: 'Delete Project Assignment' });
       expect(form).toHaveTextContent('Rollout');
@@ -458,7 +458,7 @@ describe('TeamDialog', () => {
     it('saves an end date the user edited', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       const end = screen.getByLabelText('End date');
       await user.clear(end);
       await user.type(end, '2026-10-20');
@@ -474,7 +474,7 @@ describe('TeamDialog', () => {
         error: null,
       });
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       expect(screen.queryByLabelText('End date')).not.toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -487,7 +487,7 @@ describe('TeamDialog', () => {
       const user = userEvent.setup();
       updateRecord.mockRejectedValue(new Error('projectAssignmentEndDate must not be earlier than projectAssignmentStartDate.'));
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       await user.click(screen.getByRole('button', { name: 'Save' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('must not be earlier');
       expect(screen.getByRole('form', { name: 'Delete Project Assignment' })).toBeInTheDocument();
@@ -500,7 +500,7 @@ describe('TeamDialog', () => {
       });
       updateRecord.mockRejectedValue(failure);
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       await user.click(screen.getByRole('button', { name: 'Save' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('Ends before the next assignment starts.');
     });
@@ -512,7 +512,7 @@ describe('TeamDialog', () => {
       const user = userEvent.setup();
       useTeamDetail.mockReturnValue(withProjects([ended, detail.projects[0]]));
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       const form = screen.getByRole('form', { name: 'Delete Project Assignment' });
       expect(form).toHaveTextContent('Rollout');
       expect(form).not.toHaveTextContent('Old');
@@ -520,17 +520,17 @@ describe('TeamDialog', () => {
       expect(updateRecord).toHaveBeenCalledWith('project-assignments', 'A-1', { projectAssignmentEndDate: '2026-10-14' });
     });
 
-    it('offers Add Project Assignment when every listed project has ended', () => {
+    it('offers no Delete on a project that has already ended, and still offers Add Project Assignment', () => {
       useTeamDetail.mockReturnValue(withProjects([ended]));
       render(<TeamDialog {...props} />);
       expect(screen.getByRole('button', { name: 'Add Project Assignment' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Delete Project Assignment' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Delete Project Assignment/ })).not.toBeInTheDocument();
     });
 
     it('limits the end date to the project dates and rejects one outside them without a request', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       const form = screen.getByRole('form', { name: 'Delete Project Assignment' });
       const end = within(form).getByLabelText('End date');
       expect(end).toHaveAttribute('min', '2026-09-01');
@@ -551,7 +551,7 @@ describe('TeamDialog', () => {
       const later = { id: 'A-2', projectId: 'P2', projectName: 'Later', start: '2026-11-01', end: '2027-02-01' };
       useTeamDetail.mockReturnValue(withProjects([detail.projects[0], later]));
       const { rerender } = render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment Rollout' }));
 
       useTeamDetail.mockReturnValue(withProjects([{ ...detail.projects[0], end: '2026-10-14' }, later]));
       rerender(<TeamDialog {...props} />);
@@ -561,7 +561,7 @@ describe('TeamDialog', () => {
     it('closes the form when its project disappears after a refresh', async () => {
       const user = userEvent.setup();
       const { rerender } = render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
 
       useTeamDetail.mockReturnValue(withProjects([]));
       rerender(<TeamDialog {...props} />);
@@ -581,7 +581,7 @@ describe('TeamDialog', () => {
     it('does not touch the Project Assignments master-data wording: Cancel just closes the form', async () => {
       const user = userEvent.setup();
       render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment' }));
+      await user.click(screen.getByRole('button', { name: /^Delete Project Assignment/ }));
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(screen.queryByRole('form', { name: 'Delete Project Assignment' })).not.toBeInTheDocument();
       expect(updateRecord).not.toHaveBeenCalled();
@@ -987,7 +987,7 @@ describe('TeamDialog', () => {
       });
       render(<TeamDialog {...props} />);
       expect(screen.getByText(/Next assignment: Next Rollout, 6 Dec 2026 to 31 Jan 2027/)).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Edit/ })).not.toBeInTheDocument();
     });
 
     it('says how many people were costed at the default rate, and tags a missing cost', () => {
@@ -1005,13 +1005,145 @@ describe('TeamDialog', () => {
       const user = userEvent.setup();
       useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
       const { rerender } = render(<TeamDialog {...props} />);
-      await user.click(screen.getByRole('button', { name: 'Edit' }));
+      await user.click(screen.getByRole('button', { name: /^Edit/ }));
 
       useTeamDetail.mockReturnValue({ data: { ...detail, projects: [{ ...detail.projects[0], id: 'A-2' }] }, isLoading: false, error: null });
       rerender(<TeamDialog {...props} />);
 
       const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form edit' })).getByText(/route/).textContent);
       expect(passed.record.id).toBe('A-1');
+    });
+  });
+  describe('several projects with an allocation percentage', () => {
+    const twoProjects = [
+      { id: 'A-1', projectId: 'P1', projectName: 'Rollout', start: '2026-09-01', end: '2026-12-05', allocationPercentage: 25, utilizedHours: 60, utilizedMonthlyCost: 593.75, utilizedTotalCost: 2375, utilizedTotalTruncated: false },
+      { id: 'A-2', projectId: 'P2', projectName: 'Support', start: '2026-10-01', end: '2027-01-31', allocationPercentage: 33.33, utilizedHours: 80, utilizedMonthlyCost: 791.59, utilizedTotalCost: 4000, utilizedTotalTruncated: true },
+    ];
+    const withTwo = () => ({ data: { ...detail, projects: twoProjects }, isLoading: false, error: null });
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-15T09:00:00Z') });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('lists every project in a card with its percentage, planned utilization and utilized costs, and no available or allocated hours', () => {
+      useTeamDetail.mockReturnValue(withTwo());
+      render(<TeamDialog {...props} />);
+
+      const first = screen.getByText('Rollout').closest('li');
+      expect(first).toHaveTextContent('Allocation 25%');
+      expect(first).toHaveTextContent('Planned utilization60h');
+      expect(first).toHaveTextContent('Utilized Team Monthly Cost$593.75');
+      expect(first).toHaveTextContent('Utilized Team Total Cost$2,375.00');
+      expect(first).not.toHaveTextContent(/Available|Allocated/);
+
+      const second = screen.getByText('Support').closest('li');
+      expect(second).toHaveTextContent('Allocation 33.33%');
+      expect(second).toHaveTextContent('Utilized Team Total Cost' + 'at least $4,000.00');
+    });
+
+    it('treats a project from a backend that predates the percentage as 100% and shows a dash for the figures it does not send', () => {
+      useTeamDetail.mockReturnValue({ data: { ...detail, projects: [{ id: 'A-1', projectId: 'P1', projectName: 'Rollout', start: '2026-09-01', end: '2026-12-05' }] }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+
+      const card = screen.getByText('Rollout').closest('li');
+      expect(card).toHaveTextContent('Allocation 100%');
+      expect(within(card).getAllByText('—')).toHaveLength(3);
+    });
+
+    it('edits and deletes the project whose own buttons were clicked', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue(withTwo());
+      render(<TeamDialog {...props} />);
+
+      await user.click(screen.getByRole('button', { name: 'Edit Support' }));
+      const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form edit' })).getByText(/route/).textContent);
+      expect(passed.record).toMatchObject({ id: 'A-2', projectId: 'P2', allocationPercentage: 33.33 });
+      await user.click(screen.getByRole('button', { name: 'close form' }));
+
+      await user.click(screen.getByRole('button', { name: 'Delete Project Assignment Support' }));
+      expect(screen.getByRole('form', { name: 'Delete Project Assignment' })).toHaveTextContent('Support');
+      expect(screen.getByRole('form', { name: 'Delete Project Assignment' })).toHaveTextContent('allocation 33.33%');
+    });
+
+    it('starts the Add form with what is left of the team today', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue({ data: { ...detail, projects: [twoProjects[0], { ...twoProjects[1], allocationPercentage: 50 }] }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Project Assignment' }));
+      const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form add' })).getByText(/route/).textContent);
+      expect(passed.initialValues.allocationPercentage).toBe(25);
+    });
+
+    it('starts the Add form with the percentage empty in a month other than the current one, where the list may miss projects running today', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue({ data: { ...detail, month: '2026-11', projects: [] }, isLoading: false, error: null });
+      render(<TeamDialog {...props} month="2026-11" />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Project Assignment' }));
+      const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form add' })).getByText(/route/).textContent);
+      expect(passed.initialValues.allocationPercentage).toBe('');
+    });
+
+    it('starts the Add form with the percentage empty when nothing is left', async () => {
+      const user = userEvent.setup();
+      useTeamDetail.mockReturnValue({ data: { ...detail, projects: [{ ...twoProjects[0], allocationPercentage: 100 }] }, isLoading: false, error: null });
+      render(<TeamDialog {...props} />);
+
+      await user.click(screen.getByRole('button', { name: 'Add Project Assignment' }));
+      const passed = JSON.parse(within(screen.getByRole('dialog', { name: 'form add' })).getByText(/route/).textContent);
+      expect(passed.initialValues.allocationPercentage).toBe('');
+    });
+  });
+
+  describe('month picker inside the popup', () => {
+    beforeEach(() => {
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: null });
+    });
+
+    it('opens on the month it was given and loads the team for another month when the picker moves, without telling the page', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      expect(useTeamDetail).toHaveBeenLastCalledWith('TEAM-001', '2026-10', expect.any(String));
+      expect(screen.getByLabelText('Month, October 2026')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(useTeamDetail).toHaveBeenLastCalledWith('TEAM-001', '2026-11', expect.any(String));
+      expect(screen.getByLabelText('Month, November 2026')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Previous month' }));
+      await user.click(screen.getByRole('button', { name: 'Previous month' }));
+      expect(useTeamDetail).toHaveBeenLastCalledWith('TEAM-001', '2026-09', expect.any(String));
+    });
+
+    it('does not show the last month\'s figures under the new month while it loads, and says so when it fails', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      expect(screen.getByText('Rollout')).toBeInTheDocument();
+
+      // The hook still holds October's team while November loads.
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: true, error: null });
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(screen.queryByText('Rollout')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+      expect(screen.getByLabelText('Month, November 2026')).toBeInTheDocument();
+
+      useTeamDetail.mockReturnValue({ data: detail, isLoading: false, error: new Error('Backend unreachable') });
+      await user.click(screen.getByRole('button', { name: 'Previous month' }));
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(screen.getByRole('alert')).toHaveTextContent('Backend unreachable');
+    });
+
+    it('shows the figures once the team for the picked month has arrived', async () => {
+      const user = userEvent.setup();
+      render(<TeamDialog {...props} />);
+      useTeamDetail.mockReturnValue({ data: { ...detail, month: '2026-11', name: 'Alpha in November' }, isLoading: false, error: null });
+      await user.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(screen.getByRole('heading', { name: 'Alpha in November' })).toBeInTheDocument();
     });
   });
 });

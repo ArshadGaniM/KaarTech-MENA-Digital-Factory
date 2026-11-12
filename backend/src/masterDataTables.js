@@ -528,6 +528,20 @@ export const MASTER_DATA_TABLES = [
         required: true,
         type: "date",
       },
+      // The share of the team this assignment takes (migration 0040). Optional on
+      // the API: left out, it is 100, so a client from before it existed still works.
+      {
+        key: "allocationPercentage",
+        column: "allocation_percentage",
+        required: false,
+        nullable: false,
+        defaultValue: 100,
+        type: "number",
+        numeric: true,
+        decimals: 2,
+        min: 0.01,
+        max: 100,
+      },
     ],
     // FEAT-11: the first table needing cross-field validation — a rule
     // that can only be checked once both dates are known, unlike every
@@ -535,16 +549,23 @@ export const MASTER_DATA_TABLES = [
     // masterDataSchema.js's validateCrossFields for how a PATCH that only
     // sends one of the two dates is still checked against the other's
     // real, currently-stored value.
-    // A team cannot have two live assignments that share a day (both ends are
-    // inclusive). Checked under a per-team lock, with an exclusion constraint
-    // (migration 0029) behind it.
-    overlapRule: {
+    // A team may be on several projects at once, but on any one day the live
+    // assignments of the team may not add up to more than 100%, and it may not
+    // hold the same project twice (both ends are inclusive). Checked under a
+    // per-team lock, with an exclusion constraint (migration 0040) behind the
+    // second part. Shown per row as teamTotalAllocation.
+    allocationRule: {
       groupKey: "teamId",
-      groupLabel: "team",
       groupColumn: "team_code",
-      startKey: "projectAssignmentStartDate",
+      uniqueKey: "projectId",
+      uniqueColumn: "project_id",
+      uniqueNoun: "project",
+      valueKey: "allocationPercentage",
+      valueColumn: "allocation_percentage",
       startColumn: "project_assignment_start_date",
       endColumn: "project_assignment_end_date",
+      totalKey: "teamTotalAllocation",
+      total: 100,
     },
     crossFieldValidations: [
       {

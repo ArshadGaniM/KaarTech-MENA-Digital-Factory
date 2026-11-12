@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MASTER_DATA_TABLES } from "./masterDataTables.js";
-import { buildPeople, buildSeats, buildStructure, HEALTH_SQL, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
+import { ASSIGNMENTS_SQL, buildPeople, buildSeats, buildStructure, HEALTH_SQL, monthsBetween, validateRange, MAX_MONTHS } from "./analytics.js";
 
 const rows = {
   departments: [{ code: "DEPT-1", name: "Design Services", floorNumber: 3 }],
@@ -222,4 +222,20 @@ test("a deployed person with no resource row is costed as offshore at the defaul
 test("the health query cuts each table to the last 12 weeks and covers every table and the 12 blank checks", () => {
   assert.equal(HEALTH_SQL.match(/interval '11 weeks'/g).length, MASTER_DATA_TABLES.length);
   assert.equal(HEALTH_SQL.split("union all").length, 2 * MASTER_DATA_TABLES.length + 12);
+});
+
+test("a seat's utilized hours follow the allocation percentages of the team's projects: two 25% projects are half", () => {
+  const assignments = [
+    { teamCode: "TEAM-1", start: "2026-10-01", end: "2026-10-31", allocationPercentage: 25 },
+    { teamCode: "TEAM-1", start: "2026-10-01", end: "2026-10-31", allocationPercentage: 25 },
+  ];
+  const [seat] = buildSeats({ ...rows, assignments }, "2026-10", "2026-10", "2026-10-20").filter((s) => s.teamCode === "TEAM-1" && s.positionName === "Lead Consultant");
+  const [whole] = buildSeats({ ...rows, assignments: [{ teamCode: "TEAM-1", start: "2026-10-01", end: "2026-10-31" }] }, "2026-10", "2026-10", "2026-10-20").filter((s) => s.teamCode === "TEAM-1" && s.positionName === "Consultant");
+  const [half] = buildSeats({ ...rows, assignments }, "2026-10", "2026-10", "2026-10-20").filter((s) => s.teamCode === "TEAM-1" && s.positionName === "Consultant");
+  assert.equal(half.utilizedHours, whole.utilizedHours / 2);
+  assert.equal(seat.utilizedHours, 0);
+});
+
+test("the assignments dataset carries each assignment's allocation percentage as a number", () => {
+  assert.match(ASSIGNMENTS_SQL, /pa\.allocation_percentage::float as "allocationPercentage"/);
 });

@@ -324,6 +324,16 @@ export const MASTER_DATA_TABLES = [
         required: true,
         type: "date",
       },
+      {
+        key: "allocationPercentage",
+        label:
+          "share of the team this project takes, at least 0.01 and up to 100, up to 2 decimals. A team can be on " +
+          "several projects at once, but on any one day the live assignments of the team may not add up to more " +
+          "than 100 (only assignments that share a day are added up), and the team cannot hold the same project " +
+          "twice on one day; the backend answers a 422 that says how much is left. Left out, it is 100",
+        required: false,
+        type: "number",
+      },
     ],
   },
 ];

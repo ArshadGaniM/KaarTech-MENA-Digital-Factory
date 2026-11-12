@@ -209,6 +209,8 @@ export const MASTER_DATA_TABLES = [
       { key: "departmentName", label: "Department Name" },
       { key: "projectAssignmentStartDate", label: "Project Assignment Start Date" },
       { key: "projectAssignmentEndDate", label: "Project Assignment End Date" },
+      { key: "allocationPercentage", label: "Allocation %" },
+      { key: "teamTotalAllocation", label: "Team Total %" },
       ...AUDIT_COLUMNS,
     ],
   },

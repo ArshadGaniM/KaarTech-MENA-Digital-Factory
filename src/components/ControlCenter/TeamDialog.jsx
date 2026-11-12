@@ -4,12 +4,14 @@ import { useTeamDetail } from '../../hooks/useTeamDetail';
 import { formatHours, STATUS_LABELS } from '../../lib/hours';
 import { formatDay, formatUsd } from '../../lib/money';
 import { MASTER_DATA_TABLES } from '../../lib/masterDataApi';
-import { formatMonth } from '../../lib/months';
+import { currentMonth, formatMonth } from '../../lib/months';
 import RecordFormModal from '../RecordFormModal';
 import DeleteRecordModal from '../DeleteRecordModal';
-import { isModuleLeadSeat, todayIso, unassignSeat } from '../../lib/teamActions';
+import { isModuleLeadSeat, remainingAllocation, todayIso, unassignSeat } from '../../lib/teamActions';
 import DeleteAssignmentForm from './DeleteAssignmentForm';
 import IconButton from './IconButton';
+import MonthPicker from './MonthPicker';
+import ProjectCard from './ProjectCard';
 import SeatRows from './SeatRows';
 import { statusClass } from './statusClass';
 import styles from './ControlCenter.module.css';
@@ -43,7 +45,9 @@ const assignmentRecord = (teamCode, assignment) => ({
   teamId: teamCode,
   projectAssignmentStartDate: assignment.start,
   projectAssignmentEndDate: assignment.end,
+  allocationPercentage: assignment.allocationPercentage,
 });
+
 const MODULE_LEAD_NOTE = 'Module Lead position is not counted in the total available, allocated and planned utilization hours.';
 const OTHER_UNCOUNTED_NOTE = 'Positions other than Consultant and Lead Consultant are not counted in the team hours and cost.';
 const LOCATION_CLASS = { Onsite: styles.dotOnsite, Offshore: styles.dotOffshore, Hybrid: styles.dotHybrid };
@@ -90,7 +94,10 @@ MonthPanel.propTypes = {
 
 // `pageError` is the page's own refresh failure: the popup is refetched from
 // the page's refreshes, so while those fail it must not claim to be live.
-function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
+// `month` is the month the popup opens on. The month picker inside it changes only
+// the popup, so it works the same from the Control Center and from Organization Structure.
+function TeamDialog({ code, month: openMonth, updatedAt, pageError, onClose }) {
+  const [month, setMonth] = useState(openMonth);
   const [reloads, setReloads] = useState(0);
   // null, { mode: 'add' } or { mode: 'edit', record }. The record is taken when the
   // form opens, so a refetch cannot change which assignment an open form saves to.
@@ -103,7 +110,10 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   const [seatError, setSeatError] = useState(null);
   // The shared Add / Delete Position modals: null, { mode: 'add' } or { mode: 'delete', code }.
   const [positionModal, setPositionModal] = useState(null);
-  const { data: team, isLoading, error } = useTeamDetail(code, month, `${updatedAt.getTime()}-${reloads}`);
+  const { data, isLoading, error } = useTeamDetail(code, month, `${updatedAt.getTime()}-${reloads}`);
+  // The hook keeps the last team while another month loads. Its figures belong to its own month,
+  // so they are not shown under another month's heading.
+  const team = data && data.month === month ? data : null;
   const closeRef = useRef(null);
 
   // Focus moves into the dialog on open and back to the card that opened it.
@@ -134,8 +144,9 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
   };
   const projects = team?.projects ?? [];
   const today = todayIso();
-  // The assignment Delete acts on: the first one by start that has not ended.
-  const target = [...projects].sort((a, b) => a.start.localeCompare(b.start)).find((project) => project.end >= today) ?? null;
+  // The Add form starts on what is left of the team today. The popup lists only the projects of the
+  // viewed month, so the figure is a fair start only when that month is the current one.
+  const addFormShare = month === currentMonth() ? remainingAllocation(projects, today) || '' : '';
   const deleteTarget = projects.find((project) => project.id === deletingId) ?? null;
   const latestEnd = projects.reduce((latest, project) => (project.end > latest ? project.end : latest), '');
 
@@ -147,7 +158,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
     setSeatBusy(true);
     setSeatError(null);
     try {
-      await unassignSeat(seat, todayIso());
+      await unassignSeat(seat, today);
       reload();
     } catch (err) {
       setSeatError(err);
@@ -184,13 +195,10 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
               </p>
             </div>
             <div className={styles.dialogActions}>
+              <MonthPicker month={month} onChange={setMonth} />
               {team && (
-                <button
-                  type="button"
-                  className={styles.addAssignment}
-                  onClick={() => (target ? setDeletingId(target.id) : setForm({ mode: 'add' }))}
-                >
-                  {target ? 'Delete Project Assignment' : 'Add Project Assignment'}
+                <button type="button" className={styles.addAssignment} onClick={() => setForm({ mode: 'add' })}>
+                  Add Project Assignment
                 </button>
               )}
               <button ref={closeRef} type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
@@ -199,7 +207,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
             </div>
           </header>
 
-          {!team && isLoading ? (
+          {!team && !error ? (
             <p role="status" aria-live="polite">
               Loading…
             </p>
@@ -261,22 +269,13 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
                   ) : (
                     <ul className={styles.projectList}>
                       {projects.map((project) => (
-                        <li key={project.id} className={styles.projectRow}>
-                          <div>
-                            <strong className={styles.projectName}>{project.projectName ?? project.projectId}</strong>
-                            {project.projectName && <span className={styles.projectCode}>{project.projectId}</span>}
-                            <span className={styles.projectDates}>
-                              {formatDay(project.start)} to {formatDay(project.end)}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className={styles.editAssignment}
-                            onClick={() => setForm({ mode: 'edit', record: assignmentRecord(team.code, project) })}
-                          >
-                            Edit
-                          </button>
-                        </li>
+                        <ProjectCard
+                          key={project.id}
+                          project={project}
+                          isRunning={project.end >= today}
+                          onEdit={() => setForm({ mode: 'edit', record: assignmentRecord(team.code, project) })}
+                          onDelete={() => setDeletingId(project.id)}
+                        />
                       ))}
                     </ul>
                   )}
@@ -440,7 +439,7 @@ function TeamDialog({ code, month, updatedAt, pageError, onClose }) {
           singularLabel="Project Assignment"
           labelByKey={ASSIGNMENT_LABELS}
           record={form.record}
-          initialValues={{ teamId: team.code, projectAssignmentStartDate: todayIso() }}
+          initialValues={{ teamId: team.code, projectAssignmentStartDate: today, allocationPercentage: addFormShare }}
           lockedKeys={['teamId']}
           onClose={() => setForm(null)}
           onSaved={() => {

@@ -12,7 +12,6 @@ import {
   invalidValueError,
   isExclusionViolation,
   inUse,
-  overlapRaceError,
   positionOverlapRaceError,
   moduleLeadSeatRaceError,
 } from "./errors.js";
@@ -25,7 +24,7 @@ import {
   lookupJoinSql,
   lookupSelectSql,
   allocationSelectSql,
-  validateGroupRules,
+  validateAllocation,
   normalizeLists,
   searchSql,
   searchTermOf,
@@ -76,7 +75,6 @@ function actorOf(body) {
 // is removed between that check and the write — still needs the same 422
 // treatment as a unique-violation rather than a leaked 500.
 function mapWriteError(err, fields, body, table) {
-  if (isExclusionViolation(err) && table?.overlapRule) return overlapRaceError(table.overlapRule);
   if (isExclusionViolation(err) && table?.allocationRule) return positionOverlapRaceError(table.allocationRule);
   if (isUniqueViolation(err) && table?.moduleLeadSeatRule && err.constraint === table.moduleLeadSeatRule.constraint) {
     return moduleLeadSeatRaceError(table.moduleLeadSeatRule);
@@ -109,9 +107,9 @@ export function createMasterDataRouter(table) {
 
   // Rows of one group (a resource, or a team) are checked and written under a
   // per-group advisory lock held for the transaction, so two concurrent writes
-  // can't both pass validateAllocation / validateOverlap and break the rule.
-  // Tables with neither rule skip the transaction entirely.
-  const groupRule = table.allocationRule ?? table.overlapRule;
+  // can't both pass validateAllocation and break the rule.
+  // Tables without a rule skip the transaction entirely.
+  const groupRule = table.allocationRule;
   // Positions have one more group rule: a team holds one live Module Lead seat. Only a
   // write that makes such a seat takes the team's lock, so every other position write
   // keeps running outside a transaction. `seatName` is the name the row will hold.
@@ -288,9 +286,9 @@ export function createMasterDataRouter(table) {
       const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
 
       const created = await withGroupLock(req.body[lockRule?.groupKey], async (db) => {
-        const candidate = Object.fromEntries(fields.map((f) => [f.column, req.body[f.key]]));
+        const candidate = Object.fromEntries(fields.map((f) => [f.column, req.body[f.key] ?? f.defaultValue]));
         const { seat, forChecks } = await prepare(db, candidate, null, 0);
-        await validateGroupRules(db, table, forChecks);
+        await validateAllocation(db, table, forChecks);
         await validateModuleLeadSeat(db, table, forChecks);
         const result = await db.query(
           `insert into ${tableName} (${columns.join(", ")}) values (${placeholders}) returning *`,
@@ -334,7 +332,7 @@ export function createMasterDataRouter(table) {
       const updated = await withGroupLock(groupIndex === -1 ? null : merged[groupIndex], async (db) => {
         const candidate = Object.fromEntries(fields.map((f, i) => [f.column, merged[i]]));
         const { seat, forChecks } = await prepare(db, candidate, req.params.id, Number(current[percentageField?.column]));
-        await validateGroupRules(db, table, forChecks, req.params.id);
+        await validateAllocation(db, table, forChecks, req.params.id);
         await validateModuleLeadSeat(db, table, forChecks, req.params.id);
         const values = [...fields.map((f) => candidate[f.column]), actor];
         const result = await db.query(
@@ -433,7 +431,7 @@ export function createMasterDataRouter(table) {
       const restored = await withGroupLock(current[lockRule?.groupColumn], async (db) => {
         const candidate = Object.fromEntries(fields.map((f) => [f.column, current[f.column]]));
         const { seat, forChecks } = await prepare(db, candidate, req.params.id, Number(current[percentageField?.column]));
-        await validateGroupRules(db, table, forChecks, req.params.id);
+        await validateAllocation(db, table, forChecks, req.params.id);
         await validateModuleLeadSeat(db, table, forChecks, req.params.id);
         const result = await db.query(
           `update ${tableName} set deleted_at = null, updated_by = $1

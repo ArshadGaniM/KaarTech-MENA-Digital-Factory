@@ -102,9 +102,9 @@ Built with `ApiError` in `backend/src/errors.js`.
 - The central handler in `index.js` returns an `ApiError` as is, logs every 500 and hides
   its cause. It does not translate Postgres errors.
 - `mapWriteError` in `masterDataRouter.js` turns 23505 (unique), 23503 (foreign key),
-  22P02 (bad text value) and, for a table with an `overlapRule` or an `allocationRule`, 23P01
-  (exclusion: two assignments of one team, or two deployments of one resource to one position,
-  sharing a day) into a 422 that names the field. A router outside the
+  22P02 (bad text value) and, for a table with an `allocationRule`, 23P01
+  (exclusion: two assignments of one team to one project, or two deployments of one resource to
+  one position, sharing a day) into a 422 that names the field. A router outside the
   master-data router must call the same mapping itself, or the client gets a generic 500.
 - Other constraint errors, such as a `check` violation (23514), still surface as a logged
   500. Validate those in the API first.
